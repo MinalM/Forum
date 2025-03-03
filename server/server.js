@@ -26,6 +26,34 @@ app.use('/api/posts', posts);
 app.use('/api/comments', comments);
 app.use('/api/categories', categories);
 
+// Health check endpoint
+app.get('/api/health', async (req, res) => {
+  try {
+    // Check database connection
+    const dbStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
+    
+    // Get system info
+    const systemInfo = {
+      uptime: Math.floor(process.uptime()),
+      timestamp: Date.now(),
+      nodeVersion: process.version,
+      memoryUsage: process.memoryUsage(),
+    };
+
+    res.status(200).json({
+      status: 'UP',
+      database: dbStatus,
+      environment: process.env.NODE_ENV || 'development',
+      system: systemInfo
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'DOWN',
+      error: error.message
+    });
+  }
+});
+
 // Error handler
 app.use(require('./middleware/error'));
 
