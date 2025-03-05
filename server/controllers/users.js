@@ -98,10 +98,8 @@ exports.updateDetails = asyncHandler(async (req, res, next) => {
     runValidators: true
   });
 
-  res.status(200).json({
-    success: true,
-    data: user
-  });
+  // Return a new token to ensure any role changes are reflected
+  sendTokenResponse(user, 200, res);
 });
 
 // @desc    Update password

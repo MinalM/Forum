@@ -93,7 +93,20 @@ export const AuthProvider = ({ children }) => {
   const updateProfile = async (formData) => {
     try {
       const res = await axios.put('/api/users/updatedetails', formData);
-      setUser(res.data.data);
+      
+      // Handle token response (server now returns a token instead of user data)
+      if (res.data.token) {
+        localStorage.setItem('token', res.data.token);
+        setToken(res.data.token);
+        
+        // Fetch updated user data
+        const userRes = await axios.get('/api/users/me');
+        setUser(userRes.data.data);
+      } else {
+        // Fallback to old behavior if token is not returned
+        setUser(res.data.data);
+      }
+      
       setError(null);
       return true;
     } catch (err) {
