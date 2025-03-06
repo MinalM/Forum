@@ -30,12 +30,16 @@ export const AuthProvider = ({ children }) => {
           setUser(res.data.data);
           setIsAuthenticated(true);
         } catch (err) {
+          console.error('Error loading user:', err);
           localStorage.removeItem('token');
           setToken(null);
           setUser(null);
           setIsAuthenticated(false);
           setError('Authentication error. Please login again.');
         }
+      } else {
+        setUser(null);
+        setIsAuthenticated(false);
       }
       setLoading(false);
     };
@@ -115,6 +119,12 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Google login
+  const googleLogin = () => {
+    // Use the full URL to the backend server for OAuth redirect
+    window.location.href = 'http://localhost:2000/api/users/auth/google';
+  };
+
   // Update password
   const updatePassword = async (currentPassword, newPassword) => {
     try {
@@ -138,12 +148,14 @@ export const AuthProvider = ({ children }) => {
       value={{
         user,
         token,
+        setToken, // Expose setToken function
         isAuthenticated,
         loading,
         error,
         register,
         login,
         logout,
+        googleLogin,
         updateProfile,
         updatePassword,
         clearErrors
