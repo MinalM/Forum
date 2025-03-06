@@ -2,9 +2,25 @@
 
 A community platform for professionals transitioning to careers in Artificial Intelligence and Machine Learning. This forum software is similar to Discourse but specifically focused on enabling career transitions to AI/ML fields.
 
+## Recent Updates
+
+### March 5, 2025
+- Added Google OAuth integration for easy sign-in
+- Fixed authentication error handling in Dashboard component
+- Added proper null checks for user data to prevent "Cannot read properties of null" errors
+- Improved token management in AuthContext
+- Enhanced user experience with loading indicators during authentication
+
+### February 28, 2025
+- Fixed login persistence issues across page refreshes
+- Improved error handling for authentication failures
+- Enhanced token validation and refresh mechanism
+- Added better error messages for login/registration failures
+
 ## Features
 
 - User authentication and profiles with AI/ML experience levels
+- Google OAuth integration for easy sign-in
 - Categories and tags for organizing discussions
 - Posts with upvoting/downvoting functionality
 - Comments and nested replies
@@ -19,12 +35,14 @@ A community platform for professionals transitioning to careers in Artificial In
 - Express.js
 - MongoDB with Mongoose
 - JWT Authentication
+- Passport.js with Google OAuth 2.0
 - RESTful API
 
 ### Frontend
 - React
 - React Router
 - Context API for state management
+- Google OAuth integration with @react-oauth/google
 - Axios for API requests
 - CSS with responsive design
 
@@ -63,6 +81,11 @@ MONGO_URI=your_mongodb_connection_string
 JWT_SECRET=your_jwt_secret
 JWT_EXPIRE=30d
 JWT_COOKIE_EXPIRE=30
+
+# Google OAuth credentials (required for Google sign-in)
+GOOGLE_CLIENT_ID=your_google_client_id
+GOOGLE_CLIENT_SECRET=your_google_client_secret
+GOOGLE_CALLBACK_URL=http://localhost:5000/api/users/auth/google/callback
 ```
 
 ### Running the Application
@@ -81,6 +104,9 @@ npm run dev
 - POST /api/users/login - Login user
 - GET /api/users/logout - Logout user
 - GET /api/users/me - Get current user
+- GET /api/users/auth/google - Initiate Google OAuth login
+- GET /api/users/auth/google/callback - Google OAuth callback
+- GET /api/users/auth/google/success - Check Google OAuth authentication status
 
 ### Users
 - GET /api/users - Get all users (admin)
