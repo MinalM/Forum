@@ -19,6 +19,11 @@ const Dashboard = () => {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
+        if (!user || !user._id) {
+          setLoading(false);
+          return;
+        }
+        
         // Fetch user's posts
         const postsRes = await axios.get(`/api/users/${user._id}/posts`);
         setUserPosts(postsRes.data.data);
@@ -42,20 +47,34 @@ const Dashboard = () => {
 
         setLoading(false);
       } catch (err) {
+        console.error('Error fetching user data:', err);
         setAlert('Error fetching user data', 'danger');
         setLoading(false);
       }
     };
 
-    if (user) {
-      fetchUserData();
-    }
+    fetchUserData();
   }, [user, setAlert]);
 
   if (loading) {
     return (
       <div className="loading-container">
         <div className="loading-spinner"></div>
+      </div>
+    );
+  }
+  
+  // If user is null, show a message
+  if (!user) {
+    return (
+      <div className="main-content">
+        <div className="text-center">
+          <h2>Authentication Error</h2>
+          <p>Unable to load user data. Please try logging in again.</p>
+          <Link to="/login" className="btn">
+            Go to Login
+          </Link>
+        </div>
       </div>
     );
   }

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useAlert } from '../context/AlertContext';
+import { GoogleLogin } from '@react-oauth/google';
 
 const Login = () => {
   const [formData, setFormData] = useState({
@@ -11,7 +12,7 @@ const Login = () => {
 
   const { email, password } = formData;
 
-  const { login, isAuthenticated, error, clearErrors } = useAuth();
+  const { login, googleLogin, isAuthenticated, error, clearErrors } = useAuth();
   const { setAlert } = useAlert();
   const navigate = useNavigate();
 
@@ -80,6 +81,19 @@ const Login = () => {
             Login
           </button>
         </form>
+
+        <div className="divider">
+          <span>OR</span>
+        </div>
+
+        <div className="google-login-container">
+          <button 
+            onClick={googleLogin}
+            className="btn btn-google btn-block"
+          >
+            <i className="fab fa-google"></i> Login with Google
+          </button>
+        </div>
 
         <div className="form-footer">
           Don't have an account? <Link to="/register">Register</Link>

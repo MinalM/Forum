@@ -19,6 +19,7 @@ import CategoryPosts from './pages/CategoryPosts';
 import PostDetail from './pages/PostDetail';
 import CreatePost from './pages/CreatePost';
 import EditPost from './pages/EditPost';
+import OAuthSuccess from './pages/OAuthSuccess';
 import NotFound from './pages/NotFound';
 
 // Route Protection
@@ -53,6 +54,7 @@ const App = () => {
           <Route path="/posts/:id" element={<PostDetail />} />
           <Route path="/create-post" element={<PrivateRoute><CreatePost /></PrivateRoute>} />
           <Route path="/edit-post/:id" element={<PrivateRoute><EditPost /></PrivateRoute>} />
+          <Route path="/oauth-success" element={<OAuthSuccess />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </div>

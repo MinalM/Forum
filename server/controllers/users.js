@@ -1,5 +1,6 @@
 const ErrorResponse = require('../utils/errorResponse');
 const asyncHandler = require('../middleware/async');
+const passport = require('passport');
 const User = require('../models/User');
 
 // @desc    Register user
@@ -194,6 +195,61 @@ exports.deleteUser = asyncHandler(async (req, res, next) => {
   res.status(200).json({
     success: true,
     data: {}
+  });
+});
+
+// @desc    Google OAuth login
+// @route   GET /api/users/auth/google
+// @access  Public
+exports.googleLogin = passport.authenticate('google', { scope: ['profile', 'email'] });
+
+// @desc    Google OAuth callback
+// @route   GET /api/users/auth/google/callback
+// @access  Public
+exports.googleCallback = (req, res, next) => {
+  passport.authenticate('google', { session: false }, (err, user) => {
+    if (err) {
+      return next(new ErrorResponse('Authentication error', 500));
+    }
+    
+    if (!user) {
+      return next(new ErrorResponse('Authentication failed', 401));
+    }
+
+    // Create token
+    const token = user.getSignedJwtToken();
+
+    // Set cookie options
+    const options = {
+      expires: new Date(
+        Date.now() + process.env.JWT_COOKIE_EXPIRE * 24 * 60 * 60 * 1000
+      ),
+      httpOnly: true
+    };
+
+    if (process.env.NODE_ENV === 'production') {
+      options.secure = true;
+    }
+
+    // Set cookie with token
+    res.cookie('token', token, options);
+    
+    // Redirect to frontend with token in query params
+    res.redirect(`http://localhost:3000/oauth-success?token=${token}`);
+  })(req, res, next);
+};
+
+// @desc    Check if user is logged in via Google
+// @route   GET /api/users/auth/google/success
+// @access  Private
+exports.googleSuccess = asyncHandler(async (req, res, next) => {
+  if (!req.user) {
+    return next(new ErrorResponse('Not authenticated', 401));
+  }
+
+  res.status(200).json({
+    success: true,
+    data: req.user
   });
 });
 

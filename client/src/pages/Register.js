@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useAlert } from '../context/AlertContext';
+import { GoogleLogin } from '@react-oauth/google';
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -16,7 +17,7 @@ const Register = () => {
 
   const { name, email, password, password2, currentRole, targetRole, aiMlExperience } = formData;
 
-  const { register, isAuthenticated, error, clearErrors } = useAuth();
+  const { register, googleLogin, isAuthenticated, error, clearErrors } = useAuth();
   const { setAlert } = useAlert();
   const navigate = useNavigate();
 
@@ -167,6 +168,19 @@ const Register = () => {
             Register
           </button>
         </form>
+
+        <div className="divider">
+          <span>OR</span>
+        </div>
+
+        <div className="google-login-container">
+          <button 
+            onClick={googleLogin}
+            className="btn btn-google btn-block"
+          >
+            <i className="fab fa-google"></i> Register with Google
+          </button>
+        </div>
 
         <div className="form-footer">
           Already have an account? <Link to="/login">Login</Link>

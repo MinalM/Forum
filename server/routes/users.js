@@ -10,7 +10,10 @@ const {
   logout,
   getMe,
   updateDetails,
-  updatePassword
+  updatePassword,
+  googleLogin,
+  googleCallback,
+  googleSuccess
 } = require('../controllers/users');
 
 const User = require('../models/User');
@@ -24,6 +27,11 @@ const advancedResults = require('../middleware/advancedResults');
 router.post('/register', registerUser);
 router.post('/login', loginUser);
 router.get('/logout', logout);
+
+// Google OAuth routes
+router.get('/auth/google', googleLogin);
+router.get('/auth/google/callback', googleCallback);
+router.get('/auth/google/success', protect, googleSuccess);
 
 // Protected routes
 router.use(protect);
