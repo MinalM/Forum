@@ -117,7 +117,9 @@ exports.updatePassword = asyncHandler(async (req, res, next) => {
   user.password = req.body.newPassword;
   await user.save();
 
-  sendTokenResponse(user, 200, res);
+  // Get fresh user data with new password hash
+  const updatedUser = await User.findById(user._id).select('+password');
+  sendTokenResponse(updatedUser, 200, res);
 });
 
 // @desc    Get all users
@@ -190,7 +192,7 @@ exports.deleteUser = asyncHandler(async (req, res, next) => {
     );
   }
 
-  await user.remove();
+  await User.deleteOne({ _id: user._id });
 
   res.status(200).json({
     success: true,
