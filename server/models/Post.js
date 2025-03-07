@@ -73,13 +73,22 @@ PostSchema.pre('save', function(next) {
   this.slug = this.title
     .toLowerCase()
     .replace(/[^a-zA-Z0-9]/g, '-')
-    .replace(/-+/g, '-') + '-' + Date.now().toString().slice(-6);
+    .replace(/-+/g, '-')
+    .replace(/-$/, '') + '-' + Date.now().toString().slice(-6);
   next();
 });
 
 // Cascade delete comments when a post is deleted
-PostSchema.pre('remove', async function(next) {
+PostSchema.pre('deleteOne', { document: true, query: false }, async function(next) {
   await this.model('Comment').deleteMany({ post: this._id });
+  next();
+});
+
+PostSchema.pre('findOneAndDelete', async function(next) {
+  const doc = await this.model.findOne(this.getFilter());
+  if (doc) {
+    await doc.model('Comment').deleteMany({ post: doc._id });
+  }
   next();
 });
 
