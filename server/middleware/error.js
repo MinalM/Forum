@@ -1,15 +1,26 @@
 const ErrorResponse = require('../utils/errorResponse');
 
 const errorHandler = (err, req, res, next) => {
-  let error = { ...err };
-  error.message = err.message;
+  // Log detailed error information
+  console.log('Error Stack:', err.stack);
+  console.log('Error Name:', err.name);
+  console.log('Error Message:', err.message);
+  console.log('Error Code:', err.code);
+  console.log('Full Error:', err);
 
-  // Log to console for dev
-  console.log(err);
+  let error = { ...err };
+
+  // Copy all properties from err to error
+  Object.getOwnPropertyNames(err).forEach(prop => {
+    error[prop] = err[prop];
+  });
+
+  // Ensure message is copied
+  error.message = err.message;
 
   // Mongoose bad ObjectId
   if (err.name === 'CastError') {
-    const message = `Resource not found`;
+    const message = `Resource not found with id of ${err.value}`;
     error = new ErrorResponse(message, 404);
   }
 
@@ -25,9 +36,20 @@ const errorHandler = (err, req, res, next) => {
     error = new ErrorResponse(message, 400);
   }
 
-  res.status(error.statusCode || 500).json({
+  // Handle other errors
+  if (!error.statusCode) {
+    error = new ErrorResponse(error.message || 'Server Error', 500);
+  }
+
+  // Log final error response
+  console.log('Final Error Response:', {
+    statusCode: error.statusCode,
+    message: error.message
+  });
+
+  res.status(error.statusCode).json({
     success: false,
-    error: error.message || 'Server Error'
+    error: error.message
   });
 };
 

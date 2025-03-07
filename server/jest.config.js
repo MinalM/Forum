@@ -16,5 +16,22 @@ module.exports = {
       lines: 80,
       statements: 80
     }
-  }
+  },
+  testTimeout: 30000,
+  verbose: true,
+  forceExit: true,
+  clearMocks: true,
+  restoreMocks: true,
+  detectOpenHandles: true,
+  testEnvironmentOptions: {
+    url: 'http://localhost'
+  },
+  globals: {
+    __TEST_SERVER__: null,
+    __MONGO_URI__: null
+  },
+  // Prevent tests from running in parallel to avoid port conflicts
+  maxWorkers: 1,
+  // Add environment variables for testing
+  setupFiles: ['<rootDir>/jest.env.js']
 };

@@ -72,7 +72,7 @@ exports.deleteCategory = asyncHandler(async (req, res, next) => {
     );
   }
 
-  await category.remove();
+  await Category.deleteOne({ _id: req.params.id });
 
   res.status(200).json({
     success: true,

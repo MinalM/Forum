@@ -25,7 +25,7 @@ app.use(cors({
 
 // Session configuration
 app.use(session({
-  secret: process.env.JWT_SECRET,
+  secret: process.env.JWT_SECRET || 'test-secret',
   resave: false,
   saveUninitialized: false,
   cookie: {
@@ -49,9 +49,10 @@ const categories = require('./routes/categories');
 
 // Mount routers
 app.use('/api/users', users);
-app.use('/api/posts', posts);
-app.use('/api/comments', comments);
 app.use('/api/categories', categories);
+app.use('/api/posts', posts);
+app.use('/api/posts/:postId/comments', comments); // Mount nested routes first
+app.use('/api/comments', comments); // Then mount standalone routes
 
 // Health check endpoint
 app.get('/api/health', async (req, res) => {
@@ -97,19 +98,66 @@ if (process.env.NODE_ENV === 'production') {
 // Connect to MongoDB
 const connectDB = async () => {
   try {
-    await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/ai_ml_forum');
-    console.log('MongoDB Connected...');
+    const mongoUri = process.env.NODE_ENV === 'test'
+      ? global.__MONGO_URI__
+      : (process.env.MONGO_URI || 'mongodb://localhost:27017/ai_ml_forum');
+
+    const options = {
+      autoIndex: true,
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 45000,
+      family: 4
+    };
+
+    await mongoose.connect(mongoUri, options);
+
+    if (process.env.NODE_ENV !== 'test') {
+      console.log('MongoDB Connected...');
+    }
+
+    mongoose.connection.on('error', (err) => {
+      console.error('MongoDB connection error:', err);
+      if (process.env.NODE_ENV !== 'test') {
+        process.exit(1);
+      }
+    });
+
+    mongoose.connection.on('disconnected', () => {
+      console.log('MongoDB disconnected');
+      if (process.env.NODE_ENV !== 'test') {
+        process.exit(1);
+      }
+    });
+
   } catch (err) {
-    console.error(err.message);
-    // Exit process with failure
-    process.exit(1);
+    console.error('MongoDB connection error:', err.message);
+    if (process.env.NODE_ENV !== 'test') {
+      process.exit(1);
+    }
   }
 };
 
-connectDB();
+// Only connect to DB and start server if not in test environment
+if (process.env.NODE_ENV !== 'test') {
+  connectDB();
+  const PORT = process.env.PORT || 5000;
+  app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+}
 
-// Define port
-const PORT = process.env.PORT || 5000;
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (err) => {
+  console.error('UNHANDLED REJECTION! 💥 Shutting down...', err);
+  if (process.env.NODE_ENV !== 'test') {
+    process.exit(1);
+  }
+});
 
-// Start server
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+// Handle uncaught exceptions
+process.on('uncaughtException', (err) => {
+  console.error('UNCAUGHT EXCEPTION! 💥 Shutting down...', err);
+  if (process.env.NODE_ENV !== 'test') {
+    process.exit(1);
+  }
+});
+
+module.exports = app;

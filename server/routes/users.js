@@ -28,6 +28,34 @@ router.post('/register', registerUser);
 router.post('/login', loginUser);
 router.get('/logout', logout);
 
+// Make user-related public routes available before protection middleware
+router.get('/:id([0-9a-fA-F]{24})', getUser);
+router.get('/:userId/posts', async (req, res, next) => {
+  try {
+    const user = await User.findById(req.params.userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: `User not found with id of ${req.params.userId}`
+      });
+    }
+
+    const posts = await require('../models/Post')
+      .find({ user: req.params.userId })
+      .populate('category', 'name')
+      .populate('user', 'name avatar')
+      .sort('-createdAt');
+
+    res.status(200).json({
+      success: true,
+      count: posts.length,
+      data: posts
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // Google OAuth routes
 router.get('/auth/google', googleLogin);
 router.get('/auth/google/callback', googleCallback);
@@ -38,27 +66,28 @@ router.use(protect);
 router.get('/me', getMe);
 router.put('/updatedetails', updateDetails);
 router.put('/updatepassword', updatePassword);
+// Make the user posts route public
 router.get('/:userId/posts', async (req, res, next) => {
   try {
-    // Check if user is requesting their own posts or is an admin
-    if (req.user.id !== req.params.userId && req.user.role !== 'admin') {
-      return res.status(403).json({
+    const user = await User.findById(req.params.userId);
+    if (!user) {
+      return res.status(404).json({
         success: false,
-        error: 'Not authorized to access other users\' posts'
+        error: `User not found with id of ${req.params.userId}`
       });
     }
-    
-    // Forward the request to the posts controller
-    req.query.user = req.params.userId;
-    res.locals.advancedResults = {
+
+    const posts = await require('../models/Post')
+      .find({ user: req.params.userId })
+      .populate('category', 'name')
+      .populate('user', 'name avatar')
+      .sort('-createdAt');
+
+    res.status(200).json({
       success: true,
-      data: await require('../models/Post').find({ user: req.params.userId })
-        .populate('category', 'name')
-        .populate('user', 'name avatar')
-        .sort('-createdAt')
-    };
-    
-    res.status(200).json(res.locals.advancedResults);
+      count: posts.length,
+      data: posts
+    });
   } catch (err) {
     next(err);
   }

@@ -11,6 +11,13 @@ const Category = require('../models/Category');
 // @access  Public
 exports.getPosts = asyncHandler(async (req, res, next) => {
   if (req.params.categoryId) {
+    const category = await Category.findById(req.params.categoryId);
+    if (!category) {
+      return next(
+        new ErrorResponse(`Category not found with id of ${req.params.categoryId}`, 404)
+      );
+    }
+
     const posts = await Post.find({ category: req.params.categoryId })
       .populate({
         path: 'user',
@@ -24,6 +31,13 @@ exports.getPosts = asyncHandler(async (req, res, next) => {
       data: posts
     });
   } else if (req.params.userId) {
+    const user = await User.findById(req.params.userId);
+    if (!user) {
+      return next(
+        new ErrorResponse(`User not found with id of ${req.params.userId}`, 404)
+      );
+    }
+
     const posts = await Post.find({ user: req.params.userId })
       .populate({
         path: 'user',
@@ -156,7 +170,7 @@ exports.deletePost = asyncHandler(async (req, res, next) => {
     );
   }
 
-  await post.remove();
+  await Post.deleteOne({ _id: req.params.id });
 
   res.status(200).json({
     success: true,

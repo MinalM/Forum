@@ -29,23 +29,29 @@ exports.getComments = asyncHandler(async (req, res, next) => {
 // @route   GET /api/comments/:id
 // @access  Public
 exports.getComment = asyncHandler(async (req, res, next) => {
-  const comment = await Comment.findById(req.params.id)
-    .populate({
-      path: 'user',
-      select: 'name avatar'
-    })
-    .populate('post', 'title');
+  console.log('Getting comment with ID:', req.params.id);
+  
+  try {
+    // Use lean() to get a plain JavaScript object instead of a Mongoose document
+    const comment = await Comment.findById(req.params.id).lean();
+    
+    console.log('Found comment:', comment);
 
-  if (!comment) {
-    return next(
-      new ErrorResponse(`Comment not found with id of ${req.params.id}`, 404)
-    );
+    if (!comment) {
+      return next(
+        new ErrorResponse(`Comment not found with id of ${req.params.id}`, 404)
+      );
+    }
+
+    // Return the comment without trying to populate fields
+    res.status(200).json({
+      success: true,
+      data: comment
+    });
+  } catch (err) {
+    console.error('Error in getComment:', err);
+    return next(new ErrorResponse(`Error retrieving comment: ${err.message}`, 500));
   }
-
-  res.status(200).json({
-    success: true,
-    data: comment
-  });
 });
 
 // @desc    Add comment
@@ -129,7 +135,7 @@ exports.deleteComment = asyncHandler(async (req, res, next) => {
     );
   }
 
-  await comment.remove();
+  await Comment.deleteOne({ _id: req.params.id });
 
   res.status(200).json({
     success: true,

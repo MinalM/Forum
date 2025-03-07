@@ -11,9 +11,6 @@ const {
   getPostsByLevel
 } = require('../controllers/posts');
 
-// Include other resource routers
-const commentRouter = require('./comments');
-
 const Post = require('../models/Post');
 
 const router = express.Router({ mergeParams: true });
@@ -21,8 +18,7 @@ const router = express.Router({ mergeParams: true });
 const { protect, authorize } = require('../middleware/auth');
 const advancedResults = require('../middleware/advancedResults');
 
-// Re-route into other resource routers
-router.use('/:postId/comments', commentRouter);
+// Comments router will be mounted at the app level
 
 // Special routes
 router.get('/level/:level', getPostsByLevel);
