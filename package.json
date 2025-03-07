@@ -3,6 +3,8 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
+    "prepare": "cd client && npm install",
+    "install-all": "npm install && npm run prepare",
     "test": "jest --config server/jest.config.js --detectOpenHandles",
     "test:watch": "jest --config server/jest.config.js --watch",
     "test:coverage": "jest --config server/jest.config.js --coverage",
@@ -12,7 +14,8 @@
     "dev": "concurrently \"npm run server\" \"npm run client\"",
     "build": "cd client && npm run build",
     "seed": "node server/seeder.js -i",
-    "seed:delete": "node server/seeder.js -d"
+    "seed:delete": "node server/seeder.js -d",
+    "ci": "npm ci && cd client && npm ci"
   },
   "keywords": [],
   "author": "",
