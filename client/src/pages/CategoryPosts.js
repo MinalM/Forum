@@ -78,7 +78,7 @@ const CategoryPosts = () => {
         </div>
         {isAuthenticated && (
           <div className="category-actions">
-            <Link to="/create-post" className="btn">
+            <Link to="/create-post" className="btn btn-link">
               <i className="fas fa-plus"></i> New Post
             </Link>
           </div>

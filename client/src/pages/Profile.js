@@ -54,12 +54,20 @@ const Profile = () => {
     <div className="main-content">
       <div className="profile-header">
         <img
-          src={user.avatar || 'https://via.placeholder.com/150'}
+          src={user.avatar ? user.avatar : '/images/default-avatar1.png'}
           alt={user.name}
           className="profile-avatar"
+          onError={(e) => (e.target.src = '/images/default-avatar1.png')}
         />
         <div className="profile-info">
-          <h1 className="profile-name">{user.name}</h1>
+          <div className="profile-name-section">
+            <h1 className="profile-name">{user.name}</h1>
+            {authUser && authUser._id === user._id && (
+              <Link to="/edit-profile" className="btn btn-link">
+                <i className="fas fa-user-edit"></i> Edit Profile
+              </Link>
+            )}
+          </div>
           <p className="profile-role">
             {user.currentRole && `Current: ${user.currentRole}`}
             {user.currentRole && user.targetRole && ' → '}
@@ -77,13 +85,6 @@ const Profile = () => {
               <div className="profile-stat-label">AI/ML Level</div>
             </div>
           </div>
-          {authUser && authUser._id === user._id && (
-            <div className="profile-actions">
-              <Link to="/edit-profile" className="btn btn-secondary">
-                <i className="fas fa-user-edit"></i> Edit Profile
-              </Link>
-            </div>
-          )}
         </div>
       </div>
 

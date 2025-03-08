@@ -9,12 +9,15 @@ const Dashboard = () => {
   const { user } = useAuth();
   const { setAlert } = useAlert();
   const [userPosts, setUserPosts] = useState([]);
+  const [userComments, setUserComments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     totalPosts: 0,
     totalComments: 0,
     solvedPosts: 0
   });
+  const [currentPage, setCurrentPage] = useState(1);
+  const commentsPerPage = 3;
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -38,6 +41,7 @@ const Dashboard = () => {
         });
         
         const totalComments = commentsRes.data.count || 0;
+        setUserComments(commentsRes.data.data);
 
         setStats({
           totalPosts,
@@ -83,7 +87,12 @@ const Dashboard = () => {
     <div className="main-content">
       <div className="dashboard-header">
         <h1>Dashboard</h1>
-        <p>Welcome back, {user.name}</p>
+        <div className="welcome-section">
+          <p>Welcome back, {user.name}</p>
+          <Link to="/edit-profile" className="btn btn-link">
+            <i className="fas fa-user-edit"></i> Edit Profile
+          </Link>
+        </div>
       </div>
 
       <div className="dashboard-stats">
@@ -118,18 +127,14 @@ const Dashboard = () => {
         </div>
       </div>
 
-      <div className="dashboard-actions">
-        <Link to="/create-post" className="btn">
-          <i className="fas fa-plus"></i> Create New Post
-        </Link>
-        <Link to="/edit-profile" className="btn btn-secondary">
-          <i className="fas fa-user-edit"></i> Edit Profile
-        </Link>
-      </div>
-
       <div className="dashboard-content">
         <div className="dashboard-section">
-          <h2>Your Recent Posts</h2>
+          <div className="section-header">
+            <h2>Your Recent Posts</h2>
+            <Link to="/create-post" className="btn btn-link">
+              <i className="fas fa-plus"></i> Create New Post
+            </Link>
+          </div>
           {userPosts.length > 0 ? (
             <div className="post-list">
               {userPosts.slice(0, 5).map(post => (
@@ -141,6 +146,66 @@ const Dashboard = () => {
               <p>You haven't created any posts yet.</p>
               <Link to="/create-post" className="btn btn-sm">
                 Create Your First Post
+              </Link>
+            </div>
+          )}
+        </div>
+
+        <div className="dashboard-section">
+          <div className="section-header">
+            <h2>Your Recent Comments</h2>
+          </div>
+          {userComments.length > 0 ? (
+            <>
+              <div className="comment-list">
+                {userComments
+                  .slice((currentPage - 1) * commentsPerPage, currentPage * commentsPerPage)
+                  .map(comment => (
+                    <div key={comment._id} className="comment-item">
+                      <div className="comment-content">
+                        <p>{comment.content}</p>
+                      </div>
+                      <div className="comment-meta">
+                        <span className="comment-post">
+                          <i className="fas fa-link"></i>
+                          <Link to={`/posts/${comment.post}`}>
+                            View Post
+                          </Link>
+                        </span>
+                        <span className="comment-date">
+                          {new Date(comment.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+              {userComments.length > commentsPerPage && (
+                <div className="pagination">
+                  <button
+                    className="btn btn-link"
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    disabled={currentPage === 1}
+                  >
+                    <i className="fas fa-chevron-left"></i>
+                  </button>
+                  <span className="page-info">
+                    Page {currentPage} of {Math.ceil(userComments.length / commentsPerPage)}
+                  </span>
+                  <button
+                    className="btn btn-link"
+                    onClick={() => setCurrentPage(prev => Math.min(Math.ceil(userComments.length / commentsPerPage), prev + 1))}
+                    disabled={currentPage === Math.ceil(userComments.length / commentsPerPage)}
+                  >
+                    <i className="fas fa-chevron-right"></i>
+                  </button>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="empty-state">
+              <p>You haven't made any comments yet.</p>
+              <Link to="/categories" className="btn btn-sm">
+                Browse Posts to Comment
               </Link>
             </div>
           )}

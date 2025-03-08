@@ -91,7 +91,7 @@ const Categories = () => {
         )}
       </div>
 
-      <div className="categories-footer">
+      <div className="categories-footer" style={{ marginTop: '3rem' }}>
         <div className="card">
           <div className="card-body">
             <h3>AI/ML Career Transition</h3>
