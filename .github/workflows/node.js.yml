@@ -41,6 +41,16 @@ jobs:
     - name: Run unit tests
       run: npm test
       
+    - name: Start Server
+      run: npm run server & # Run in background
+      
+    - name: Start Client  
+      run: npm run client & # Run in background
+      
+    - name: Wait for services
+      run: |
+        sleep 30 # Give time for server/client to initialize
+      
     - name: Run Playwright tests
       run: npx playwright test
       
