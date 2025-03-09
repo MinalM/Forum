@@ -234,6 +234,7 @@ const PostDetail = () => {
               <div className="form-group">
                 <textarea
                   className="form-control"
+                  name="comment"
                   rows="3"
                   placeholder="Add a comment..."
                   value={commentText}
