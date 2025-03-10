@@ -52,10 +52,15 @@ jobs:
       env:
         MONGO_URI: mongodb://localhost:27017/ai_ml_forum_test
 
+    - name: Generate and run seed script
+      run: |
+        node scripts/generate-seed.js
+        mongosh mongodb://localhost:27017/ai_ml_forum -f scripts/seed-mongo.js --quiet
+      
     - name: Start Server
       run: npm run server & # Run in background
       env:
-        MONGO_URI: mongodb://localhost:27017/ai_ml_forum_test
+        MONGO_URI: mongodb://localhost:27017/ai_ml_forum
       
     - name: Start Client  
       run: npm run client & # Run in background
@@ -67,7 +72,7 @@ jobs:
     - name: Run Playwright tests
       run: npx playwright test
       env:
-        MONGO_URI: mongodb://localhost:27017/ai_ml_forum_test
+        MONGO_URI: mongodb://localhost:27017/ai_ml_forum
       
     - uses: actions/upload-artifact@v4
       if: always()
