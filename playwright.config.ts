@@ -42,7 +42,7 @@ export default defineConfig({
       command: 'npm run server',
       url: 'http://localhost:5000/api/health',
       timeout: 120000,
-      reuseExistingServer: !process.env.CI,
+      reuseExistingServer: true,
       env: {
         PORT: '5000',
         NODE_ENV: 'development',
@@ -56,7 +56,7 @@ export default defineConfig({
       command: 'npm run client',
       url: 'http://localhost:3000',
       timeout: 120000,
-      reuseExistingServer: !process.env.CI,
+      reuseExistingServer: true,
       env: {
         PORT: '3000',
         REACT_APP_API_URL: 'http://localhost:5000'
