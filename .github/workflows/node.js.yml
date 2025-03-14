@@ -70,6 +70,8 @@ jobs:
       run: npm run server > server_logs.txt 2>&1 & # Run in background and redirect output to file
       env:
         MONGO_URI: mongodb://localhost:27017/ai_ml_forum
+        DEBUG: "express:*,app:*"
+        NODE_DEBUG: "http"
       
     - name: Start Client  
       run: npm run client > client_logs.txt 2>&1 & # Run in background and redirect output to file
