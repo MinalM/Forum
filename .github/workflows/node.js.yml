@@ -67,16 +67,24 @@ jobs:
         mongosh mongodb://localhost:27017/ai_ml_forum -f scripts/seed-mongo.js --quiet
       
     - name: Start Server
-      run: npm run server & # Run in background
+      run: npm run server > server_logs.txt 2>&1 & # Run in background and redirect output to file
       env:
         MONGO_URI: mongodb://localhost:27017/ai_ml_forum
       
     - name: Start Client  
-      run: npm run client & # Run in background
+      run: npm run client > client_logs.txt 2>&1 & # Run in background and redirect output to file
       
     - name: Wait for services
       run: |
         sleep 30 # Give time for server/client to initialize
+        
+    - name: Display Server Logs
+      run: cat server_logs.txt
+      if: always() # This ensures logs are shown even if tests fail
+      
+    - name: Display Client Logs
+      run: cat client_logs.txt
+      if: always() # This ensures logs are shown even if tests fail
       
     - name: Run Playwright tests
       run: npx playwright test
