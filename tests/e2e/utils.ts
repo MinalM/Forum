@@ -1,7 +1,7 @@
 export const testUserData = {
-  email: 'test@example.com',
-  password: 'Password123!',
-  name: 'Test User',
+  email: 'john@example.com',
+  password: 'password123',
+  name: 'John Doe',
 };
 export const testUserData1 = {
   email: 'test1@example.com',
