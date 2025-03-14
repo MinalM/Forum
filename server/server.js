@@ -18,8 +18,12 @@ app.use(express.json());
 app.use(cookieParser());
 
 // Configure CORS with credentials
+const allowedOrigins = process.env.CI 
+  ? ['http://localhost:3000', 'http://127.0.0.1:3000'] // CI environment
+  : ['http://localhost:3000', 'http://127.0.0.1:3000', 'http://localhost:2000', 'http://127.0.0.1:2000']; // Local development
+
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
+  origin: allowedOrigins,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -68,6 +72,7 @@ app.get('/api/health', async (req, res) => {
       timestamp: Date.now(),
       nodeVersion: process.version,
       memoryUsage: process.memoryUsage(),
+      port: process.env.PORT || 5000
     };
 
     res.status(200).json({
@@ -142,7 +147,8 @@ const connectDB = async () => {
 // Only connect to DB and start server if not in test environment
 if (process.env.NODE_ENV !== 'test') {
   connectDB();
-  const PORT = process.env.PORT || 5000;
+  // Use PORT from environment variable, defaulting to 5000 for CI if not set
+  const PORT = process.env.CI ? 5000 : (process.env.PORT || 2000);
   app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 }
 

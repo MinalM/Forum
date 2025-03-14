@@ -1,11 +1,12 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
+import config from '../config';
 
 const AuthContext = createContext();
 
 // Configure axios defaults
-axios.defaults.withCredentials = true; // Important for cookies
-axios.defaults.baseURL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+axios.defaults.withCredentials = config.withCredentials;
+axios.defaults.baseURL = config.apiUrl;
 
 export const useAuth = () => useContext(AuthContext);
 
@@ -73,7 +74,7 @@ export const AuthProvider = ({ children }) => {
   // Login user
   const login = async (email, password) => {
     try {
-      console.log('Attempting login with:', { email });
+      console.log('Attempting login with:', { email, apiUrl: config.apiUrl });
       const res = await axios.post('/api/users/login', { email, password });
       console.log('Login response:', res.data);
       
@@ -134,7 +135,7 @@ export const AuthProvider = ({ children }) => {
 
   // Google login
   const googleLogin = () => {
-    window.location.href = `${axios.defaults.baseURL}/api/users/auth/google`;
+    window.location.href = `${config.apiUrl}/api/users/auth/google`;
   };
 
   // Update password
