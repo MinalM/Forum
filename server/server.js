@@ -16,8 +16,10 @@ const app = express();
 // Middleware
 app.use(express.json());
 app.use(cookieParser());
+
+// Configure CORS with credentials
 app.use(cors({
-  origin: true,
+  origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization']

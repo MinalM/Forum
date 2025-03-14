@@ -3,6 +3,10 @@ import axios from 'axios';
 
 const AuthContext = createContext();
 
+// Configure axios defaults
+axios.defaults.withCredentials = true; // Important for cookies
+axios.defaults.baseURL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
@@ -52,12 +56,15 @@ export const AuthProvider = ({ children }) => {
     try {
       const res = await axios.post('/api/users/register', formData);
       
-      localStorage.setItem('token', res.data.token);
-      setToken(res.data.token);
+      if (res.data.token) {
+        localStorage.setItem('token', res.data.token);
+        setToken(res.data.token);
+      }
       setError(null);
       
       return true;
     } catch (err) {
+      console.error('Registration error:', err);
       setError(err.response?.data?.error || 'Registration failed');
       return false;
     }
@@ -66,14 +73,19 @@ export const AuthProvider = ({ children }) => {
   // Login user
   const login = async (email, password) => {
     try {
+      console.log('Attempting login with:', { email });
       const res = await axios.post('/api/users/login', { email, password });
+      console.log('Login response:', res.data);
       
-      localStorage.setItem('token', res.data.token);
-      setToken(res.data.token);
+      if (res.data.token) {
+        localStorage.setItem('token', res.data.token);
+        setToken(res.data.token);
+      }
       setError(null);
       
       return true;
     } catch (err) {
+      console.error('Login error:', err.response || err);
       setError(err.response?.data?.error || 'Invalid credentials');
       return false;
     }
@@ -98,7 +110,7 @@ export const AuthProvider = ({ children }) => {
     try {
       const res = await axios.put('/api/users/updatedetails', formData);
       
-      // Handle token response (server now returns a token instead of user data)
+      // Handle token response
       if (res.data.token) {
         localStorage.setItem('token', res.data.token);
         setToken(res.data.token);
@@ -114,6 +126,7 @@ export const AuthProvider = ({ children }) => {
       setError(null);
       return true;
     } catch (err) {
+      console.error('Update profile error:', err);
       setError(err.response?.data?.error || 'Failed to update profile');
       return false;
     }
@@ -121,8 +134,7 @@ export const AuthProvider = ({ children }) => {
 
   // Google login
   const googleLogin = () => {
-    // Use the full URL to the backend server for OAuth redirect
-    window.location.href = 'http://localhost:2000/api/users/auth/google';
+    window.location.href = `${axios.defaults.baseURL}/api/users/auth/google`;
   };
 
   // Update password
@@ -135,6 +147,7 @@ export const AuthProvider = ({ children }) => {
       setError(null);
       return true;
     } catch (err) {
+      console.error('Update password error:', err);
       setError(err.response?.data?.error || 'Failed to update password');
       return false;
     }
@@ -148,7 +161,7 @@ export const AuthProvider = ({ children }) => {
       value={{
         user,
         token,
-        setToken, // Expose setToken function
+        setToken,
         isAuthenticated,
         loading,
         error,
