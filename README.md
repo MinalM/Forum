@@ -52,6 +52,7 @@ A community platform for professionals transitioning to careers in Artificial In
 
 - Node.js (v14 or higher)
 - MongoDB (local or Atlas)
+- Docker (optional, for containerized MongoDB)
 
 ### Installation
 
@@ -76,7 +77,7 @@ cd ..
 4. Create a `.env` file in the root directory with the following variables:
 ```
 NODE_ENV=development
-PORT=5000
+PORT=2000
 MONGO_URI=your_mongodb_connection_string
 JWT_SECRET=your_jwt_secret
 JWT_EXPIRE=30d
@@ -85,7 +86,50 @@ JWT_COOKIE_EXPIRE=30
 # Google OAuth credentials (required for Google sign-in)
 GOOGLE_CLIENT_ID=your_google_client_id
 GOOGLE_CLIENT_SECRET=your_google_client_secret
-GOOGLE_CALLBACK_URL=http://localhost:5000/api/users/auth/google/callback
+GOOGLE_CALLBACK_URL=http://localhost:2000/api/users/auth/google/callback
+```
+
+### Setting up MongoDB Container (Optional)
+
+If you prefer using a containerized MongoDB instance for development:
+
+1. Start MongoDB container:
+```bash
+docker run -d --name mongodb-test -p 27017:27017 \
+  -v "$(pwd)/scripts:/seed" \
+  mongo:6.0
+```
+
+2. Generate and run seed data:
+```bash
+# Install bcryptjs if not already installed
+npm install bcryptjs
+
+# Generate seed file with proper password hashing
+node scripts/generate-seed.js
+
+# Seed the database
+docker exec mongodb-test mongosh -f /seed/seed-mongo.js --quiet
+```
+
+3. Switch between MongoDB configurations:
+```bash
+# Switch to container MongoDB
+npm run mongo:container
+
+# Switch back to Atlas MongoDB
+npm run mongo:atlas
+```
+
+Test users after seeding:
+- Admin: admin@example.com / password123
+- User 1: john@example.com / password123
+- User 2: jane@example.com / password123
+
+To stop and remove the container:
+```bash
+docker stop mongodb-test
+docker rm mongodb-test
 ```
 
 ### Running the Application
@@ -95,7 +139,7 @@ GOOGLE_CALLBACK_URL=http://localhost:5000/api/users/auth/google/callback
 npm run dev
 ```
 
-2. The server will run on http://localhost:5000 and the client on http://localhost:3000
+2. The server will run on http://localhost:2000 and the client on http://localhost:3000
 
 ## API Endpoints
 
