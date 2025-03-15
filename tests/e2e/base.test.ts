@@ -1,4 +1,4 @@
-import { test as baseTest, expect } from '@playwright/test';
+import { test as baseTest, expect, devices } from '@playwright/test';
 
 export const test = baseTest.extend({
   // Store user credentials for reuse
@@ -21,5 +21,15 @@ export const test = baseTest.extend({
     comment: {
       content: 'This is a test comment.',
     },
+  },
+  // Add mobile device context
+  mobileContext: async ({ browser }, use) => {
+    const context = await browser.newContext({
+      ...devices['iPhone 12'],
+      viewport: { width: 390, height: 844 },
+      deviceScaleFactor: 3,
+    });
+    await use(context);
+    await context.close();
   },
 });
