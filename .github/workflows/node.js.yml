@@ -137,6 +137,21 @@ jobs:
         path: playwright-report/
         retention-days: 30
 
+    - name: Deploy to Render
+      uses: render-actions/deploy@v1
+      with:
+        api-key: ${{ secrets.RENDER_API_KEY }}
+        service-id: ${{ secrets.RENDER_SERVICE_ID }}
+        env-vars: |
+          MONGO_URI=${{ secrets.MONGO_URI }}
+          JWT_SECRET=${{ secrets.JWT_SECRET }}
+          JWT_EXPIRE=${{ secrets.JWT_EXPIRE }}
+          JWT_COOKIE_EXPIRE=${{ secrets.JWT_COOKIE_EXPIRE }}
+          PORT=${{ secrets.PORT }}
+          NODE_ENV=${{ secrets.NODE_ENV }}
+          CORS_ORIGIN=${{ secrets.CORS_ORIGIN }}
+          SESSION_SECRET=${{ secrets.SESSION_SECRET }}
+
   deploy:
     needs: [security, build-and-test]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
