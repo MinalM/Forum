@@ -138,7 +138,7 @@ jobs:
         retention-days: 30
 
     - name: Deploy to Render
-      uses: render-actions/deploy@v1
+      uses: render-actions/deploy@v2
       with:
         api-key: ${{ secrets.RENDER_API_KEY }}
         service-id: ${{ secrets.RENDER_SERVICE_ID }}
