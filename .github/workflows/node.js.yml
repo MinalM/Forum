@@ -21,11 +21,11 @@ jobs:
         
         # Run security fixes and audits
         npm audit fix --force
-        cd client && npm audit fix --force
+        cd $GITHUB_WORKSPACE/client && npm audit fix --force
         
         # Final security check
-        npm audit
-        cd client && npm audit
+        cd $GITHUB_WORKSPACE && npm audit
+        cd $GITHUB_WORKSPACE/client && npm audit
     - name: Run OWASP dependency check
       uses: dependency-check/Dependency-Check_Action@main
       with:
