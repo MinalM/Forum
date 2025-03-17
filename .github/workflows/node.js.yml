@@ -14,10 +14,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
+    - name: Install dependencies
+      run: npm ci
+      
     - name: Run security audit
       run: |
         npm audit fix --force || true
-        cd client && npm audit fix --force || true
+        cd client && npm ci && npm audit fix --force || true
         npm audit
         cd client && npm audit
     - name: Run OWASP dependency check
@@ -140,19 +143,12 @@ jobs:
         retention-days: 30
 
     - name: Deploy to Render
-      uses: render-actions/deploy@v2
-      with:
-        api-key: ${{ secrets.RENDER_API_KEY }}
-        service-id: ${{ secrets.RENDER_SERVICE_ID }}
-        env-vars: |
-          MONGO_URI=${{ secrets.MONGO_URI }}
-          JWT_SECRET=${{ secrets.JWT_SECRET }}
-          JWT_EXPIRE=${{ secrets.JWT_EXPIRE }}
-          JWT_COOKIE_EXPIRE=${{ secrets.JWT_COOKIE_EXPIRE }}
-          PORT=${{ secrets.PORT }}
-          NODE_ENV=${{ secrets.NODE_ENV }}
-          CORS_ORIGIN=${{ secrets.CORS_ORIGIN }}
-          SESSION_SECRET=${{ secrets.SESSION_SECRET }}
+      env:
+        RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+      run: |
+        curl -X POST "https://api.render.com/v1/services/${{ secrets.RENDER_SERVICE_ID }}/deploys" \
+          -H "accept: application/json" \
+          -H "authorization: Bearer $RENDER_API_KEY"
 
   deploy:
     needs: [security, build-and-test]
