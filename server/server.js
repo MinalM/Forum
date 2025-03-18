@@ -18,12 +18,23 @@ app.use(express.json());
 app.use(cookieParser());
 
 // Configure CORS with credentials
-const allowedOrigins = process.env.CI 
-  ? ['http://localhost:3000', 'http://127.0.0.1:3000'] // CI environment
-  : ['http://localhost:3000', 'http://127.0.0.1:3000', 'http://localhost:2000', 'http://127.0.0.1:2000']; // Local development
+const allowedOrigins = process.env.NODE_ENV === 'production'
+  ? [process.env.CORS_ORIGIN] // Production environment
+  : process.env.CI 
+    ? ['http://localhost:3000', 'http://127.0.0.1:3000'] // CI environment
+    : ['http://localhost:3000', 'http://127.0.0.1:3000', 'http://localhost:2000', 'http://127.0.0.1:2000']; // Local development
 
 app.use(cors({
-  origin: allowedOrigins,
+  origin: function(origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -154,7 +165,7 @@ if (process.env.NODE_ENV !== 'test') {
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (err) => {
-  console.error('UNHANDLED REJECTION! 💥 Shutting down...', err);
+  console.error('UNHANDLED REJECTION! Shutting down...', err);
   if (process.env.NODE_ENV !== 'test') {
     process.exit(1);
   }
@@ -162,7 +173,7 @@ process.on('unhandledRejection', (err) => {
 
 // Handle uncaught exceptions
 process.on('uncaughtException', (err) => {
-  console.error('UNCAUGHT EXCEPTION! 💥 Shutting down...', err);
+  console.error('UNCAUGHT EXCEPTION! Shutting down...', err);
   if (process.env.NODE_ENV !== 'test') {
     process.exit(1);
   }
