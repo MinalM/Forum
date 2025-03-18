@@ -5,7 +5,6 @@ import { useAuth } from '../context/AuthContext';
 import { useAlert } from '../context/AlertContext';
 
 const CreatePost = () => {
-  const { user } = useAuth();
   const { setAlert } = useAlert();
   const navigate = useNavigate();
 

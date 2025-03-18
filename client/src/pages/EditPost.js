@@ -20,7 +20,6 @@ const EditPost = () => {
 
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [post, setPost] = useState(null);
 
   const { title, content, category, tags, aiMlLevel } = formData;
 
@@ -30,7 +29,6 @@ const EditPost = () => {
         // Fetch post details
         const postRes = await axios.get(`/api/posts/${id}`);
         const postData = postRes.data.data;
-        setPost(postData);
 
         // Check if user is authorized to edit this post
         if (user._id !== postData.user._id && user.role !== 'admin') {

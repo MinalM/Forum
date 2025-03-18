@@ -8,7 +8,7 @@ const OAuthSuccess = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { setAlert } = useAlert();
-  const { token, setToken } = useAuth();
+  const { setToken } = useAuth();
   
   useEffect(() => {
     const handleOAuthSuccess = async () => {
