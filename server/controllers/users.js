@@ -26,8 +26,12 @@ exports.registerUser = asyncHandler(async (req, res, next) => {
 exports.loginUser = asyncHandler(async (req, res, next) => {
   const { email, password } = req.body;
 
+  // Debug logging
+  console.log('Login attempt for email:', email);
+
   // Validate email & password
   if (!email || !password) {
+    console.log('Missing email or password');
     return next(new ErrorResponse('Please provide an email and password', 400));
   }
 
@@ -35,13 +39,18 @@ exports.loginUser = asyncHandler(async (req, res, next) => {
   const user = await User.findOne({ email }).select('+password');
 
   if (!user) {
+    console.log('User not found with email:', email);
     return next(new ErrorResponse('Invalid credentials', 401));
   }
 
+  console.log('User found:', { id: user._id, email: user.email, authProvider: user.authProvider });
+
   // Check if password matches
   const isMatch = await user.matchPassword(password);
+  console.log('Password match result:', isMatch);
 
   if (!isMatch) {
+    console.log('Password does not match for user:', user._id);
     return next(new ErrorResponse('Invalid credentials', 401));
   }
 
