@@ -19,24 +19,30 @@ app.use(cookieParser());
 
 // Configure CORS with credentials
 const allowedOrigins = process.env.NODE_ENV === 'production'
-  ? [process.env.CORS_ORIGIN] // Production environment
+  ? ['https://cerulean-marshmallow-003d16.netlify.app'] // Production environment - hardcoded for testing
   : process.env.CI 
     ? ['http://localhost:3000', 'http://127.0.0.1:3000'] // CI environment
     : ['http://localhost:3000', 'http://127.0.0.1:3000', 'http://localhost:2000', 'http://127.0.0.1:2000']; // Local development
 
+console.log('Allowed Origins:', allowedOrigins); // Debug logging
+console.log('NODE_ENV:', process.env.NODE_ENV); // Debug logging
+console.log('CORS_ORIGIN:', process.env.CORS_ORIGIN); // Debug logging
+
 app.use(cors({
   origin: function(origin, callback) {
+    console.log('Request Origin:', origin); // Debug logging
+    
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
     
     if (allowedOrigins.indexOf(origin) === -1) {
-      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+      const msg = `The CORS policy for this site does not allow access from the specified Origin: ${origin}. Allowed origins: ${allowedOrigins.join(', ')}`;
       return callback(new Error(msg), false);
     }
     return callback(null, true);
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
