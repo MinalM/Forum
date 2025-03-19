@@ -19,7 +19,7 @@
     "start:prod": "NODE_ENV=production node server/server.js",
     "seed": "node server/seeder.js -i",
     "seed:delete": "node server/seeder.js -d",
-    "ci": "npm ci && cd client && npm ci",
+    "ci": "npm ci && cd client && npm ci && cd ../server && npm ci",
     "mongo:container": "node scripts/switch-mongo.js container",
     "mongo:atlas": "node scripts/switch-mongo.js atlas"
   },
