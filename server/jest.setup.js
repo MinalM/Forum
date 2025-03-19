@@ -5,6 +5,19 @@ const User = require('./models/User');
 
 let mongod;
 
+// Mock MongoStore
+jest.mock('connect-mongo', () => ({
+  create: jest.fn().mockReturnValue({
+    on: jest.fn(),
+    close: jest.fn(),
+    get: jest.fn(),
+    set: jest.fn(),
+    destroy: jest.fn(),
+    all: jest.fn(),
+    touch: jest.fn()
+  })
+}));
+
 // Set test environment variables
 process.env.JWT_SECRET = 'test-jwt-secret';
 process.env.JWT_EXPIRE = '1h';
@@ -29,8 +42,21 @@ beforeAll(async () => {
 
 afterAll(async () => {
   // Clean up and close MongoDB Memory Server
-  await mongoose.disconnect();
-  await mongod.stop();
+  const promises = [];
+  
+  // Close any open MongoStore connections
+  if (mongoose.connection.readyState === 1) {
+    const collections = mongoose.connection.collections;
+    if (collections.sessions) {
+      promises.push(collections.sessions.drop());
+    }
+  }
+
+  // Close mongoose connection and stop MongoDB Memory Server
+  promises.push(mongoose.disconnect());
+  promises.push(mongod.stop());
+
+  await Promise.all(promises);
 });
 
 // Clear all mocks between tests
@@ -44,8 +70,15 @@ afterEach(async () => {
   if (mongoose.connection.readyState === 1) {
     const collections = mongoose.connection.collections;
     const promises = [];
+    
+    // Clear all collections including sessions
     for (const key in collections) {
-      promises.push(collections[key].deleteMany({}));
+      if (key === 'sessions') {
+        // Drop the sessions collection to close MongoStore connections
+        promises.push(collections[key].drop().catch(() => {}));
+      } else {
+        promises.push(collections[key].deleteMany({}));
+      }
     }
     await Promise.all(promises);
   }
