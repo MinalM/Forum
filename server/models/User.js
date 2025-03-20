@@ -81,8 +81,10 @@ UserSchema.pre('save', async function(next) {
 
 // Sign JWT and return
 UserSchema.methods.getSignedJwtToken = function() {
+  // Convert JWT_EXPIRE to a valid timespan string if it's a number
+  const expiresIn = process.env.JWT_EXPIRE ? process.env.JWT_EXPIRE : '24h';
   return jwt.sign({ id: this._id }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRE
+    expiresIn: expiresIn
   });
 };
 
