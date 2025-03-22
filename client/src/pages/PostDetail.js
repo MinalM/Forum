@@ -261,13 +261,13 @@ const PostDetail = () => {
                 <div className="comment-header">
                   <div className="comment-user">
                     <img
-                      src={comment.user.avatar || 'https://via.placeholder.com/40'}
-                      alt={comment.user.name}
+                      src={comment.user?.avatar || 'https://via.placeholder.com/40'}
+                      alt={comment.user?.name || 'User'}
                       className="comment-avatar"
                     />
                     <div>
-                      <Link to={`/profile/${comment.user._id}`} className="comment-username">
-                        {comment.user.name}
+                      <Link to={`/profile/${comment.user?._id}`} className="comment-username">
+                        {comment.user?.name || 'Anonymous'}
                       </Link>
                       <div className="comment-meta">
                         {formatDistanceToNow(new Date(comment.createdAt), {
