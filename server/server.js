@@ -142,16 +142,35 @@ const connectDB = async () => {
     console.log('NODE_ENV:', process.env.NODE_ENV);
 
     // Enable Mongoose debug mode
-    mongoose.set('debug', true);
-
-    // Add query logging middleware
     mongoose.set('debug', (collectionName, method, query, doc) => {
-      console.log(`MongoDB Query - ${collectionName}.${method}`, {
+      console.log(`\n[MongoDB Query] ${collectionName}.${method}`, {
         query: JSON.stringify(query),
         doc: JSON.stringify(doc),
         timestamp: new Date().toISOString()
       });
     });
+
+    // Add response logging
+    const originalExec = mongoose.Query.prototype.exec;
+    mongoose.Query.prototype.exec = async function() {
+      const startTime = Date.now();
+      try {
+        const result = await originalExec.apply(this, arguments);
+        const endTime = Date.now();
+        console.log(`\n[MongoDB Response] ${this.mongooseCollection.name}.${this.op}`, {
+          result: JSON.stringify(result),
+          duration: `${endTime - startTime}ms`,
+          timestamp: new Date().toISOString()
+        });
+        return result;
+      } catch (error) {
+        console.error(`\n[MongoDB Error] ${this.mongooseCollection.name}.${this.op}`, {
+          error: error.message,
+          timestamp: new Date().toISOString()
+        });
+        throw error;
+      }
+    };
 
     const options = {
       autoIndex: true,
