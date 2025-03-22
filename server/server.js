@@ -133,6 +133,26 @@ const connectDB = async () => {
       ? global.__MONGO_URI__
       : (process.env.MONGO_URI || 'mongodb://localhost:27017/ai_ml_forum');
 
+    // Log MongoDB connection string (with credentials redacted)
+    const redactedUri = mongoUri.replace(
+      /(mongodb\+srv:\/\/)([^:]+):([^@]+)@/,
+      '$1[username]:[password]@'
+    );
+    console.log('Attempting MongoDB connection with URI:', redactedUri);
+    console.log('NODE_ENV:', process.env.NODE_ENV);
+
+    // Enable Mongoose debug mode
+    mongoose.set('debug', true);
+
+    // Add query logging middleware
+    mongoose.set('debug', (collectionName, method, query, doc) => {
+      console.log(`MongoDB Query - ${collectionName}.${method}`, {
+        query: JSON.stringify(query),
+        doc: JSON.stringify(doc),
+        timestamp: new Date().toISOString()
+      });
+    });
+
     const options = {
       autoIndex: true,
       serverSelectionTimeoutMS: 5000,
