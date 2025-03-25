@@ -4,8 +4,9 @@ import dotenv from 'dotenv';
 // Load environment variables from .env file
 dotenv.config();
 
-// Get server port from env with fallback
-const SERVER_PORT = process.env.PORT || '2000';
+// Get server port with CI fallback
+const SERVER_PORT = process.env.CI ? '5000' : (process.env.PORT || '2000');
+const CLIENT_PORT = '3000';
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -15,7 +16,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
   use: {
-    baseURL: process.env.PLAYWRIGHT_TEST_BASE_URL || 'http://localhost:3000',
+    baseURL: process.env.PLAYWRIGHT_TEST_BASE_URL || `http://localhost:${CLIENT_PORT}`,
     trace: 'on-first-retry',
     // Enable JavaScript in the browser
     javaScriptEnabled: true,
@@ -49,7 +50,7 @@ export default defineConfig({
       command: 'npm run server',
       url: `http://localhost:${SERVER_PORT}/api/health`,
       timeout: 120000,
-      reuseExistingServer: true,
+      reuseExistingServer: !process.env.CI, // Don't reuse server in CI
       env: {
         PORT: SERVER_PORT,
         NODE_ENV: process.env.NODE_ENV || 'development',
@@ -61,11 +62,11 @@ export default defineConfig({
     },
     {
       command: 'npm run client',
-      url: 'http://localhost:3000',
+      url: `http://localhost:${CLIENT_PORT}`,
       timeout: 120000,
-      reuseExistingServer: true,
+      reuseExistingServer: !process.env.CI, // Don't reuse server in CI
       env: {
-        PORT: '3000', // Keep this fixed for client
+        PORT: CLIENT_PORT,
         REACT_APP_API_URL: `http://localhost:${SERVER_PORT}`
       },
     },
