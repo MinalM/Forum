@@ -1,4 +1,11 @@
 import { defineConfig, devices } from '@playwright/test';
+import dotenv from 'dotenv';
+
+// Load environment variables from .env file
+dotenv.config();
+
+// Get server port from env with fallback
+const SERVER_PORT = process.env.PORT || '2000';
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -40,16 +47,16 @@ export default defineConfig({
   webServer: [
     {
       command: 'npm run server',
-      url: 'http://localhost:5000/api/health',
+      url: `http://localhost:${SERVER_PORT}/api/health`,
       timeout: 120000,
       reuseExistingServer: true,
       env: {
-        PORT: '5000',
-        NODE_ENV: 'development',
-        MONGO_URI: 'mongodb://localhost:27017/ai_ml_forum',
-        JWT_SECRET: 'test-jwt-secret',
-        JWT_EXPIRE: '1h',
-        JWT_COOKIE_EXPIRE: '1'
+        PORT: SERVER_PORT,
+        NODE_ENV: process.env.NODE_ENV || 'development',
+        MONGO_URI: process.env.MONGO_URI || 'mongodb://localhost:27017/ai_ml_forum',
+        JWT_SECRET: process.env.JWT_SECRET || 'test-jwt-secret',
+        JWT_EXPIRE: process.env.JWT_EXPIRE || '1h',
+        JWT_COOKIE_EXPIRE: process.env.JWT_COOKIE_EXPIRE || '1'
       },
     },
     {
@@ -58,8 +65,8 @@ export default defineConfig({
       timeout: 120000,
       reuseExistingServer: true,
       env: {
-        PORT: '3000',
-        REACT_APP_API_URL: 'http://localhost:5000'
+        PORT: '3000', // Keep this fixed for client
+        REACT_APP_API_URL: `http://localhost:${SERVER_PORT}`
       },
     },
   ],

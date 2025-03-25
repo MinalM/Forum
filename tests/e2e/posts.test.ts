@@ -32,7 +32,7 @@ test('should allow user to create and view posts', async ({ page }) => {
   await page.fill('input[name="title"]', testData.post.title);
   
   await page.click('select[name="category"]');
-  await page.selectOption('select[name="category"]', { label: 'Career Advice' }); // Assuming 'General' is a valid option
+  await page.selectOption('select[name="category"]', { label: 'Machine Learning Fundamentals' }); // Using existing category
 
   await page.fill('textarea[name="content"]', testData.post.content);
   await page.click('button[type="submit"]');
