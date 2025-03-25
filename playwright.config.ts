@@ -5,7 +5,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // Get server port with CI fallback
-const SERVER_PORT = process.env.CI ? '5000' : (process.env.PORT || '2000');
+const SERVER_PORT = process.env.CI ? '5050' : (process.env.PORT || '2000');
 const CLIENT_PORT = '3000';
 
 export default defineConfig({
@@ -50,7 +50,7 @@ export default defineConfig({
       command: 'npm run server',
       url: `http://localhost:${SERVER_PORT}/api/health`,
       timeout: 120000,
-      reuseExistingServer: !process.env.CI, // Don't reuse server in CI
+      reuseExistingServer: true,
       env: {
         PORT: SERVER_PORT,
         NODE_ENV: process.env.NODE_ENV || 'development',
@@ -64,7 +64,7 @@ export default defineConfig({
       command: 'npm run client',
       url: `http://localhost:${CLIENT_PORT}`,
       timeout: 120000,
-      reuseExistingServer: !process.env.CI, // Don't reuse server in CI
+      reuseExistingServer: true,
       env: {
         PORT: CLIENT_PORT,
         REACT_APP_API_URL: `http://localhost:${SERVER_PORT}`
