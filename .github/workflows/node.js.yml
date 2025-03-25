@@ -105,23 +105,6 @@ jobs:
         node scripts/generate-seed.js
         mongosh mongodb://localhost:27017/ai_ml_forum -f scripts/seed-mongo.js --quiet
       
-    - name: Run Playwright tests
-      run: npx playwright test
-      env:
-        MONGO_URI: mongodb://localhost:27017/ai_ml_forum
-        JWT_SECRET: test-jwt-secret
-        JWT_EXPIRE: 1h
-        JWT_COOKIE_EXPIRE: 1
-        NODE_ENV: development
-        PLAYWRIGHT_TEST_BASE_URL: http://localhost:3000
-      
-    - uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: playwright-report
-        path: playwright-report/
-        retention-days: 30
-        
     - name: Start Server
       run: npm run server & # Run in background
       env:
@@ -145,22 +128,22 @@ jobs:
         timeout 30 bash -c 'until curl -s http://localhost:3000; do sleep 1; done'
         echo "Services are up!"
       
-    # - name: Run Playwright tests
-    #   run: npx playwright test
-    #   env:
-    #     MONGO_URI: mongodb://localhost:27017/ai_ml_forum
-    #     JWT_SECRET: test-jwt-secret
-    #     JWT_EXPIRE: 1h
-    #     JWT_COOKIE_EXPIRE: 1
-    #     NODE_ENV: development
-    #     PLAYWRIGHT_TEST_BASE_URL: http://localhost:3000
+    - name: Run Playwright tests
+      run: npx playwright test
+      env:
+        MONGO_URI: mongodb://localhost:27017/ai_ml_forum
+        JWT_SECRET: test-jwt-secret
+        JWT_EXPIRE: 1h
+        JWT_COOKIE_EXPIRE: 1
+        NODE_ENV: development
+        PLAYWRIGHT_TEST_BASE_URL: http://localhost:3000
       
-    # - uses: actions/upload-artifact@v4
-    #   if: always()
-    #   with:
-    #     name: playwright-report
-    #     path: playwright-report/
-    #     retention-days: 30
+    - uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: playwright-report
+        path: playwright-report/
+        retention-days: 30
 
     - name: Deploy to Render
       env:
