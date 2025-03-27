@@ -79,7 +79,7 @@ jobs:
       
     - name: Build the app
       run: |
-        echo "REACT_APP_API_URL=http://localhost:5000" > client/.env
+        echo "REACT_APP_API_URL=http://localhost:2000" > client/.env
         CI=false npm run build --if-present
       
     - name: Run unit tests
@@ -113,18 +113,18 @@ jobs:
         JWT_EXPIRE: 1h
         JWT_COOKIE_EXPIRE: 1
         NODE_ENV: development
-        PORT: 5000
+        PORT: 2000
       
     - name: Start Client  
       run: npm run client & # Run in background
       env:
-        REACT_APP_API_URL: http://localhost:5000
+        REACT_APP_API_URL: http://localhost:2000
         PORT: 3000
       
     - name: Wait for services
       run: |
         echo "Waiting for services to start..."
-        timeout 30 bash -c 'until curl -s http://localhost:5000/api/health; do sleep 1; done'
+        timeout 30 bash -c 'until curl -s http://localhost:2000/api/health; do sleep 1; done'
         timeout 30 bash -c 'until curl -s http://localhost:3000; do sleep 1; done'
         echo "Services are up!"
       
