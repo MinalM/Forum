@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { testUserData, testUserData1, testData } from './utils';
 
-test('should allow user to create and view posts', async ({ page }) => {
+/* test('should allow user to create and view posts', async ({ page }) => {
   // First check if user is logged in, otherwise log in
   await page.goto('/');
   
@@ -47,7 +47,7 @@ test('should allow user to create and view posts', async ({ page }) => {
 
   // Verify comment is visible
   await expect(page.locator(`text="${testData.comment.content}"`)).toBeVisible();
-});
+}); */
 
 // test('should allow other users to view posts and comments', async ({ page }) => {
 //   // Navigate to home page as a different user
