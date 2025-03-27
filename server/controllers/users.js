@@ -103,6 +103,19 @@ exports.updateDetails = asyncHandler(async (req, res, next) => {
     key => fieldsToUpdate[key] === undefined && delete fieldsToUpdate[key]
   );
 
+  // Check if trying to update email
+  if (fieldsToUpdate.email) {
+    // Check if email already exists for another user
+    const existingUser = await User.findOne({
+      email: fieldsToUpdate.email,
+      _id: { $ne: req.user.id }
+    });
+
+    if (existingUser) {
+      return next(new ErrorResponse('Email already exists', 400));
+    }
+  }
+
   const user = await User.findByIdAndUpdate(req.user.id, fieldsToUpdate, {
     new: true,
     runValidators: true
