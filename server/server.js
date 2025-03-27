@@ -96,7 +96,7 @@ app.get('/api/health', async (req, res) => {
       timestamp: Date.now(),
       nodeVersion: process.version,
       memoryUsage: process.memoryUsage(),
-      port: process.env.PORT || 5000
+      port: process.env.PORT || 2000
     };
 
     res.status(200).json({
@@ -211,7 +211,7 @@ const connectDB = async () => {
 if (process.env.NODE_ENV !== 'test') {
   connectDB();
   // Use PORT from environment variable, defaulting to 5000 for CI if not set
-  const PORT = process.env.CI ? 5000 : (process.env.PORT || 2000);
+  const PORT = process.env.PORT || 2000;
   app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 }
 
