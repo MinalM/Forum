@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { testUserData, testUserData1, testData } from './utils';
 
-/* test('should allow user to create and view posts', async ({ page }) => {
+test('should allow user to create and view posts', async ({ page }) => {
   // First check if user is logged in, otherwise log in
   await page.goto('/');
   
@@ -20,7 +20,7 @@ import { testUserData, testUserData1, testData } from './utils';
   }
   
   // Now we're logged in, navigate to home page
-  await page.goto('/dashboard');
+  //await page.goto('/dashboard');
 
   // Create a new post - click on the link instead of button
   await page.click('a:has-text("Create New Post")');
@@ -47,23 +47,23 @@ import { testUserData, testUserData1, testData } from './utils';
 
   // Verify comment is visible
   await expect(page.locator(`text="${testData.comment.content}"`)).toBeVisible();
-}); */
+}); 
 
-// test('should allow other users to view posts and comments', async ({ page }) => {
+/*test('should allow other users to view posts and comments', async ({ page }) => {
 //   // Navigate to home page as a different user
-//   await page.goto('/login');
-//   await page.fill('input[name="email"]', testUserData1.email);
-//   await page.fill('input[name="password"]', testUserData1.password);
-//   await page.click('button[type="submit"]');
+   await page.goto('/login');
+   await page.fill('input[name="email"]', testUserData1.email);
+   await page.fill('input[name="password"]', testUserData1.password);
+   await page.click('button[type="submit"]');
 
-//   await page.goto('/categories/67cbb5ca71e8be810c50104b'); // Assuming 'Career Advice' category ID is '67cbb5ca71e8
+   await page.goto('/categories/67d430a8d18c85ba2fa00aa4'); // Assuming 'Machine Learning' category ID is 67d430a8d18c85ba2fa00aa4
 
 //   // Verify post is visible to other users
-//   //await expect(page.locator(`text="${testData.post.title}"`)).toBeVisible();
-//   //await expect(page.locator(`text="${testData.post.content}"`)).toBeVisible();
-//   //await expect(page.locator(`text="${testData.comment.content}"`)).toBeVisible();
-//      // Use a more flexible selector
-//   await expect(page.getByText(testData.post.title)).toBeInViewport();
-//   await expect(page.getByText(testData.post.content, { exact: false })).toBeVisible();
-//   await expect(page.getByText(testData.comment.content)).toBeVisible();
-// });
+   await expect(page.locator(`text="${testData.post.title}"`)).toBeVisible();
+   await expect(page.locator(`text="${testData.post.content}"`)).toBeVisible();
+   await expect(page.locator(`text="${testData.comment.content}"`)).toBeVisible();
+      // Use a more flexible selector
+   await expect(page.getByText(testData.post.title)).toBeInViewport();
+   await expect(page.getByText(testData.post.content, { exact: false })).toBeVisible();
+   await expect(page.getByText(testData.comment.content)).toBeVisible();
+ });*/

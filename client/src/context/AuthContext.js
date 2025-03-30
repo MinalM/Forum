@@ -12,19 +12,12 @@ export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(localStorage.getItem('token'));
+  const [token, setToken] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Set axios default headers
-  useEffect(() => {
-    if (token) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-    } else {
-      delete axios.defaults.headers.common['Authorization'];
-    }
-  }, [token]);
+  // Remove setting Authorization header since we're using httpOnly cookies
 
   // Load user if token exists
   useEffect(() => {
@@ -57,10 +50,7 @@ export const AuthProvider = ({ children }) => {
     try {
       const res = await axios.post('/api/users/register', formData);
       
-      if (res.data.token) {
-        localStorage.setItem('token', res.data.token);
-        setToken(res.data.token);
-      }
+      setToken(res.data.token);
       setError(null);
       
       return true;
@@ -78,10 +68,7 @@ export const AuthProvider = ({ children }) => {
       const res = await axios.post('/api/users/login', { email, password });
       console.log('Login response:', res.data);
       
-      if (res.data.token) {
-        localStorage.setItem('token', res.data.token);
-        setToken(res.data.token);
-      }
+      setToken(res.data.token);
       setError(null);
       
       return true;
@@ -100,7 +87,6 @@ export const AuthProvider = ({ children }) => {
       console.error('Logout error:', err);
     }
     
-    localStorage.removeItem('token');
     setToken(null);
     setUser(null);
     setIsAuthenticated(false);
