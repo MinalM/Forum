@@ -288,9 +288,15 @@ const sendTokenResponse = (user, statusCode, res) => {
     ),
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-    domain: process.env.NODE_ENV === 'production' ? '.netlify.app' : undefined
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
   };
+
+  console.log('Setting auth cookie with options:', {
+    ...options,
+    token: token ? 'present' : 'missing',
+    env: process.env.NODE_ENV,
+    cookieExpiry: options.expires.toISOString()
+  });
 
   res
     .status(statusCode)
