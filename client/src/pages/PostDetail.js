@@ -7,14 +7,14 @@ import { useAlert } from '../context/AlertContext';
 
 const PostDetail = () => {
   const { id } = useParams();
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, loading: authLoading } = useAuth();
   const { setAlert } = useAlert();
   const navigate = useNavigate();
   
   const [post, setPost] = useState(null);
   const [comments, setComments] = useState([]);
   const [commentText, setCommentText] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [pageLoading, setPageLoading] = useState(true);
 
   useEffect(() => {
     const fetchPostData = async () => {
@@ -27,10 +27,10 @@ const PostDetail = () => {
         const commentsRes = await axios.get(`/api/posts/${id}/comments`);
         setComments(commentsRes.data.data);
 
-        setLoading(false);
+        setPageLoading(false);
       } catch (err) {
         setAlert('Error fetching post data', 'danger');
-        setLoading(false);
+        setPageLoading(false);
       }
     };
 
@@ -60,7 +60,7 @@ const PostDetail = () => {
   };
 
   const handleUpvote = async () => {
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !user) {
       setAlert('Please log in to vote', 'danger');
       return;
     }
@@ -69,12 +69,17 @@ const PostDetail = () => {
       const res = await axios.put(`/api/posts/${id}/upvote`);
       setPost(res.data.data);
     } catch (err) {
-      setAlert('Error upvoting post', 'danger');
+      if (err.response?.status === 401) {
+        setAlert('Your session has expired. Please login again.', 'danger');
+        navigate('/login');
+      } else {
+        setAlert('Error upvoting post', 'danger');
+      }
     }
   };
 
   const handleDownvote = async () => {
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !user) {
       setAlert('Please log in to vote', 'danger');
       return;
     }
@@ -109,12 +114,17 @@ const PostDetail = () => {
         setAlert('Post deleted successfully', 'success');
         navigate('/');
       } catch (err) {
-        setAlert('Error deleting post', 'danger');
+        if (err.response?.status === 401) {
+          setAlert('Your session has expired. Please login again.', 'danger');
+          navigate('/login');
+        } else {
+          setAlert('Error deleting post', 'danger');
+        }
       }
     }
   };
 
-  if (loading) {
+  if (pageLoading || authLoading) {
     return (
       <div className="loading-container">
         <div className="loading-spinner"></div>

@@ -19,30 +19,31 @@ export const AuthProvider = ({ children }) => {
 
   // Remove setting Authorization header since we're using httpOnly cookies
 
-  // Load user if token exists
+  // Load user data
   useEffect(() => {
     const loadUser = async () => {
-      if (token) {
-        try {
-          const res = await axios.get('/api/users/me');
-          setUser(res.data.data);
-          setIsAuthenticated(true);
-        } catch (err) {
-          console.error('Error loading user:', err);
-          localStorage.removeItem('token');
-          setToken(null);
-          setUser(null);
-          setIsAuthenticated(false);
-          setError('Authentication error. Please login again.');
-        }
-      } else {
+      try {
+        const res = await axios.get('/api/users/me');
+        setUser(res.data.data);
+        setIsAuthenticated(true);
+        setLoading(false);
+      } catch (err) {
+        console.error('Error loading user:', err);
+        setToken(null);
         setUser(null);
         setIsAuthenticated(false);
+        setError('Authentication error. Please login again.');
+        setLoading(false);
       }
-      setLoading(false);
     };
 
-    loadUser();
+    if (token) {
+      loadUser();
+    } else {
+      setUser(null);
+      setIsAuthenticated(false);
+      setLoading(false);
+    }
   }, [token]);
 
   // Register user
