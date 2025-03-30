@@ -20,8 +20,8 @@ app.use(cookieParser());
 
 // Configure CORS with credentials
 const allowedOrigins = process.env.NODE_ENV === 'production'
-  ? ['https://cerulean-marshmallow-003d16.netlify.app'] // Production environment - hardcoded for testing
-  : process.env.CI 
+  ? [process.env.CORS_ORIGIN || 'https://cerulean-marshmallow-003d16.netlify.app'] // Production environment
+  : process.env.CI
     ? ['http://localhost:3000', 'http://127.0.0.1:3000'] // CI environment
     : ['http://localhost:3000', 'http://127.0.0.1:3000', 'http://localhost:2000', 'http://127.0.0.1:2000']; // Local development
 
@@ -60,7 +60,9 @@ app.use(session({
   cookie: {
     secure: process.env.NODE_ENV === 'production',
     httpOnly: true,
-    maxAge: 24 * 60 * 60 * 1000 // 1 day
+    maxAge: 24 * 60 * 60 * 1000, // 1 day
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    domain: process.env.NODE_ENV === 'production' ? '.netlify.app' : undefined
   }
 }));
 
