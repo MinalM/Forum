@@ -49,8 +49,12 @@ export const AuthProvider = ({ children }) => {
   const register = async (formData) => {
     try {
       const res = await axios.post('/api/users/register', formData);
-      
       setToken(res.data.token);
+      
+      // Immediately fetch user data after registration
+      const userRes = await axios.get('/api/users/me');
+      setUser(userRes.data.data);
+      setIsAuthenticated(true);
       setError(null);
       
       return true;
@@ -69,6 +73,11 @@ export const AuthProvider = ({ children }) => {
       console.log('Login response:', res.data);
       
       setToken(res.data.token);
+      
+      // Immediately fetch user data after login
+      const userRes = await axios.get('/api/users/me');
+      setUser(userRes.data.data);
+      setIsAuthenticated(true);
       setError(null);
       
       return true;
