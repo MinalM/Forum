@@ -29,13 +29,31 @@ export const AuthProvider = ({ children }) => {
         setLoading(false);
       } catch (err) {
         console.error('Error loading user:', err);
-        setToken(null);
-        setUser(null);
-        setIsAuthenticated(false);
-        setError('Authentication error. Please login again.');
+        // Clear auth state on 401 errors
+        if (err.response?.status === 401) {
+          setToken(null);
+          setUser(null);
+          setIsAuthenticated(false);
+          setError('Session expired. Please login again.');
+        } else {
+          setError('Authentication error. Please try again.');
+        }
         setLoading(false);
       }
     };
+
+    // Set up axios interceptor for 401 errors
+    const interceptor = axios.interceptors.response.use(
+      response => response,
+      error => {
+        if (error.response?.status === 401) {
+          setToken(null);
+          setUser(null);
+          setIsAuthenticated(false);
+        }
+        return Promise.reject(error);
+      }
+    );
 
     if (token) {
       loadUser();
@@ -44,6 +62,9 @@ export const AuthProvider = ({ children }) => {
       setIsAuthenticated(false);
       setLoading(false);
     }
+
+    // Cleanup interceptor
+    return () => axios.interceptors.response.eject(interceptor);
   }, [token]);
 
   // Register user
