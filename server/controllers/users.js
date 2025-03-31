@@ -259,7 +259,8 @@ exports.googleCallback = (req, res, next) => {
     res.cookie('token', token, options);
     
     // Redirect to frontend with token in query params
-    res.redirect(`http://localhost:3000/oauth-success?token=${token}`);
+    const frontendUrl = process.env.CORS_ORIGIN || 'http://localhost:3000';
+    res.redirect(`${frontendUrl}/oauth-success?token=${token}`);
   })(req, res, next);
 };
 
