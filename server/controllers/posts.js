@@ -124,8 +124,8 @@ exports.updatePost = asyncHandler(async (req, res, next) => {
     );
   }
 
-  // Make sure user is post owner or admin
-  if (post.user.toString() !== req.user.id && req.user.role !== 'admin') {
+  // Make sure user is post owner, moderator, or admin
+  if (post.user.toString() !== req.user.id && !['admin', 'moderator'].includes(req.user.role)) {
     return next(
       new ErrorResponse(
         `User ${req.user.id} is not authorized to update this post`,
@@ -160,8 +160,8 @@ exports.deletePost = asyncHandler(async (req, res, next) => {
     );
   }
 
-  // Make sure user is post owner or admin
-  if (post.user.toString() !== req.user.id && req.user.role !== 'admin') {
+  // Make sure user is post owner, moderator, or admin
+  if (post.user.toString() !== req.user.id && !['admin', 'moderator'].includes(req.user.role)) {
     return next(
       new ErrorResponse(
         `User ${req.user.id} is not authorized to delete this post`,
@@ -260,8 +260,8 @@ exports.solvePost = asyncHandler(async (req, res, next) => {
     );
   }
 
-  // Make sure user is post owner or admin
-  if (post.user.toString() !== req.user.id && req.user.role !== 'admin') {
+  // Make sure user is post owner, moderator, or admin
+  if (post.user.toString() !== req.user.id && !['admin', 'moderator'].includes(req.user.role)) {
     return next(
       new ErrorResponse(
         `User ${req.user.id} is not authorized to mark this post as solved`,
@@ -271,6 +271,107 @@ exports.solvePost = asyncHandler(async (req, res, next) => {
   }
 
   post.isSolved = !post.isSolved;
+  await post.save();
+
+  res.status(200).json({
+    success: true,
+    data: post
+  });
+});
+
+// @desc    Pin a post (Moderator/Admin only)
+// @route   PUT /api/posts/:id/pin
+// @access  Private (Moderator & Admin)
+exports.pinPost = asyncHandler(async (req, res, next) => {
+  let post = await Post.findById(req.params.id);
+
+  if (!post) {
+    return next(
+      new ErrorResponse(`Post not found with id of ${req.params.id}`, 404)
+    );
+  }
+
+  // Only moderators and admins can pin posts
+  if (!['admin', 'moderator'].includes(req.user.role)) {
+    return next(
+      new ErrorResponse(
+        `User ${req.user.id} is not authorized to pin posts`,
+        403
+      )
+    );
+  }
+
+  post.isPinned = !post.isPinned;
+  await post.save();
+
+  res.status(200).json({
+    success: true,
+    data: post
+  });
+});
+
+// @desc    Lock a thread (Moderator/Admin only)
+// @route   PUT /api/posts/:id/lock
+// @access  Private (Moderator & Admin)
+exports.lockThread = asyncHandler(async (req, res, next) => {
+  let post = await Post.findById(req.params.id);
+
+  if (!post) {
+    return next(
+      new ErrorResponse(`Post not found with id of ${req.params.id}`, 404)
+    );
+  }
+
+  // Only moderators and admins can lock threads
+  if (!['admin', 'moderator'].includes(req.user.role)) {
+    return next(
+      new ErrorResponse(
+        `User ${req.user.id} is not authorized to lock threads`,
+        403
+      )
+    );
+  }
+
+  post.isLocked = !post.isLocked;
+  await post.save();
+
+  res.status(200).json({
+    success: true,
+    data: post
+  });
+});
+
+// @desc    Move a thread to different category (Moderator/Admin only)
+// @route   PUT /api/posts/:id/move
+// @access  Private (Moderator & Admin)
+exports.moveThread = asyncHandler(async (req, res, next) => {
+  let post = await Post.findById(req.params.id);
+
+  if (!post) {
+    return next(
+      new ErrorResponse(`Post not found with id of ${req.params.id}`, 404)
+    );
+  }
+
+  // Only moderators and admins can move threads
+  if (!['admin', 'moderator'].includes(req.user.role)) {
+    return next(
+      new ErrorResponse(
+        `User ${req.user.id} is not authorized to move threads`,
+        403
+      )
+    );
+  }
+
+  // Check if category exists
+  const category = await Category.findById(req.body.category);
+  if (!category) {
+    return next(
+      new ErrorResponse(`Category not found with id of ${req.body.category}`, 404)
+    );
+  }
+
+  post.category = req.body.category;
   await post.save();
 
   res.status(200).json({

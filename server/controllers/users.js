@@ -148,6 +148,16 @@ exports.updatePassword = asyncHandler(async (req, res, next) => {
 // @route   GET /api/users
 // @access  Private/Admin
 exports.getUsers = asyncHandler(async (req, res, next) => {
+  // Check if user is admin
+  if (req.user.role !== 'admin') {
+    return next(
+      new ErrorResponse(
+        `User ${req.user.id} is not authorized to access all users`,
+        403
+      )
+    );
+  }
+
   res.status(200).json(res.advancedResults);
 });
 
@@ -155,7 +165,35 @@ exports.getUsers = asyncHandler(async (req, res, next) => {
 // @route   GET /api/users/:id
 // @access  Private/Admin
 exports.getUser = asyncHandler(async (req, res, next) => {
+  // Check if user is admin
+  if (req.user.role !== 'admin') {
+    return next(
+      new ErrorResponse(
+        `User ${req.user.id} is not authorized to access user details`,
+        403
+      )
+    );
+  }
+
   const user = await User.findById(req.params.id);
+
+  if (!user) {
+    return next(
+      new ErrorResponse(`User not found with id of ${req.params.id}`, 404)
+    );
+  }
+
+  res.status(200).json({
+    success: true,
+    data: user
+  });
+});
+
+// @desc    Get user public profile
+// @route   GET /api/users/:id/profile
+// @access  Public
+exports.getUserProfile = asyncHandler(async (req, res, next) => {
+  const user = await User.findById(req.params.id).select('name email role bio avatar aiMlExperience currentRole targetRole skills createdAt');
 
   if (!user) {
     return next(
@@ -173,6 +211,16 @@ exports.getUser = asyncHandler(async (req, res, next) => {
 // @route   POST /api/users
 // @access  Private/Admin
 exports.createUser = asyncHandler(async (req, res, next) => {
+  // Check if user is admin
+  if (req.user.role !== 'admin') {
+    return next(
+      new ErrorResponse(
+        `User ${req.user.id} is not authorized to create users`,
+        403
+      )
+    );
+  }
+
   const user = await User.create(req.body);
 
   res.status(201).json({
@@ -185,6 +233,16 @@ exports.createUser = asyncHandler(async (req, res, next) => {
 // @route   PUT /api/users/:id
 // @access  Private/Admin
 exports.updateUser = asyncHandler(async (req, res, next) => {
+  // Check if user is admin
+  if (req.user.role !== 'admin') {
+    return next(
+      new ErrorResponse(
+        `User ${req.user.id} is not authorized to update users`,
+        403
+      )
+    );
+  }
+
   const user = await User.findByIdAndUpdate(req.params.id, req.body, {
     new: true,
     runValidators: true
@@ -206,6 +264,16 @@ exports.updateUser = asyncHandler(async (req, res, next) => {
 // @route   DELETE /api/users/:id
 // @access  Private/Admin
 exports.deleteUser = asyncHandler(async (req, res, next) => {
+  // Check if user is admin
+  if (req.user.role !== 'admin') {
+    return next(
+      new ErrorResponse(
+        `User ${req.user.id} is not authorized to delete users`,
+        403
+      )
+    );
+  }
+
   const user = await User.findById(req.params.id);
 
   if (!user) {
@@ -219,6 +287,185 @@ exports.deleteUser = asyncHandler(async (req, res, next) => {
   res.status(200).json({
     success: true,
     data: {}
+  });
+});
+
+// @desc    Change user role
+// @route   PUT /api/users/:id/role
+// @access  Private/Admin
+exports.changeUserRole = asyncHandler(async (req, res, next) => {
+  // Check if user is admin
+  if (req.user.role !== 'admin') {
+    return next(
+      new ErrorResponse(
+        `User ${req.user.id} is not authorized to change user roles`,
+        403
+      )
+    );
+  }
+
+  // Check if role is valid
+  const validRoles = ['user', 'moderator', 'admin'];
+  if (!validRoles.includes(req.body.role)) {
+    return next(
+      new ErrorResponse(`Role ${req.body.role} is not valid`, 400)
+    );
+  }
+
+  const user = await User.findById(req.params.id);
+
+  if (!user) {
+    return next(
+      new ErrorResponse(`User not found with id of ${req.params.id}`, 404)
+    );
+  }
+
+  user.role = req.body.role;
+  await user.save();
+
+  res.status(200).json({
+    success: true,
+    data: user
+  });
+});
+
+// @desc    Ban user 
+// @route   PUT /api/users/:id/ban
+// @access  Private/Admin
+exports.banUser = asyncHandler(async (req, res, next) => {
+  // Check if user is admin
+  if (req.user.role !== 'admin') {
+    return next(
+      new ErrorResponse(
+        `User ${req.user.id} is not authorized to ban users`,
+        403
+      )
+    );
+  }
+
+  const user = await User.findById(req.params.id);
+
+  if (!user) {
+    return next(
+      new ErrorResponse(`User not found with id of ${req.params.id}`, 404)
+    );
+  }
+
+  // Cannot ban yourself or other admins
+  if (user._id.toString() === req.user.id || user.role === 'admin') {
+    return next(
+      new ErrorResponse(`Cannot ban yourself or other administrators`, 400)
+    );
+  }
+
+  user.isBanned = true;
+  user.banReason = req.body.reason || 'Violation of forum rules';
+  user.bannedUntil = null; // Permanent ban
+  user.bannedBy = req.user.id;
+  user.bannedAt = Date.now();
+  
+  await user.save();
+
+  res.status(200).json({
+    success: true,
+    data: user
+  });
+});
+
+// @desc    Timeout user (temporary restriction)
+// @route   PUT /api/users/:id/timeout
+// @access  Private/Admin/Moderator
+exports.timeoutUser = asyncHandler(async (req, res, next) => {
+  // Check if user is moderator or admin
+  if (!['moderator', 'admin'].includes(req.user.role)) {
+    return next(
+      new ErrorResponse(
+        `User ${req.user.id} is not authorized to timeout users`,
+        403
+      )
+    );
+  }
+
+  const user = await User.findById(req.params.id);
+
+  if (!user) {
+    return next(
+      new ErrorResponse(`User not found with id of ${req.params.id}`, 404)
+    );
+  }
+
+  // Cannot timeout yourself, admins, or other moderators if you're a moderator
+  if (
+    user._id.toString() === req.user.id || 
+    user.role === 'admin' || 
+    (user.role === 'moderator' && req.user.role === 'moderator')
+  ) {
+    return next(
+      new ErrorResponse(`Cannot timeout yourself, administrators, or other moderators`, 400)
+    );
+  }
+
+  // Duration in hours, default 24 hours
+  const durationHours = req.body.durationHours || 24;
+  const timeoutUntil = new Date(Date.now() + durationHours * 60 * 60 * 1000);
+
+  user.isBanned = true;
+  user.banReason = req.body.reason || 'Temporary restriction due to rule violation';
+  user.bannedUntil = timeoutUntil;
+  user.bannedBy = req.user.id;
+  user.bannedAt = Date.now();
+  
+  await user.save();
+
+  res.status(200).json({
+    success: true,
+    data: user
+  });
+});
+
+// @desc    Remove ban/timeout from user
+// @route   PUT /api/users/:id/unban
+// @access  Private/Admin/Moderator
+exports.unbanUser = asyncHandler(async (req, res, next) => {
+  // Check if user is moderator or admin
+  if (!['moderator', 'admin'].includes(req.user.role)) {
+    return next(
+      new ErrorResponse(
+        `User ${req.user.id} is not authorized to remove user restrictions`,
+        403
+      )
+    );
+  }
+
+  const user = await User.findById(req.params.id);
+
+  if (!user) {
+    return next(
+      new ErrorResponse(`User not found with id of ${req.params.id}`, 404)
+    );
+  }
+
+  // Moderators can only remove temporary restrictions, not permanent bans
+  if (req.user.role === 'moderator' && !user.bannedUntil) {
+    return next(
+      new ErrorResponse(
+        `Moderators cannot remove permanent bans, only administrators can`,
+        403
+      )
+    );
+  }
+
+  user.isBanned = false;
+  user.banReason = null;
+  user.bannedUntil = null;
+  user.unbannedBy = req.user.id;
+  user.unbannedAt = Date.now();
+  
+  await user.save();
+
+  res.status(200).json({
+    success: true,
+    data: user
   });
 });
 

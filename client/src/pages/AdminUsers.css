@@ -1,0 +1,117 @@
+.admin-users-page {
+  padding: 20px;
+}
+
+.admin-users-page h1 {
+  margin-bottom: 20px;
+  color: #333;
+}
+
+.admin-controls {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.search-form {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  max-width: 500px;
+}
+
+.user-list-container {
+  overflow-x: auto;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-radius: 5px;
+}
+
+.user-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.user-table th,
+.user-table td {
+  padding: 12px 16px;
+  text-align: left;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.user-table th {
+  background-color: #f5f5f5;
+  font-weight: bold;
+}
+
+.user-table tr:hover {
+  background-color: #f9f9f9;
+}
+
+.banned-user {
+  background-color: #fff0f0;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.role-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.85em;
+  font-weight: 500;
+}
+
+.role-admin {
+  background-color: #d32f2f;
+  color: white;
+}
+
+.role-moderator {
+  background-color: #2e7d32;
+  color: white;
+}
+
+.role-user {
+  background-color: #1976d2;
+  color: white;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.85em;
+  font-weight: 500;
+}
+
+.status-badge.active {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+}
+
+.status-badge.banned {
+  background-color: #ffebee;
+  color: #d32f2f;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+}
+
+@media (max-width: 768px) {
+  .action-buttons {
+    flex-direction: column;
+  }
+  
+  .user-table th,
+  .user-table td {
+    padding: 8px;
+  }
+}

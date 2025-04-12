@@ -5,7 +5,7 @@ const advancedResults = (model, populate) => async (req, res, next) => {
   const reqQuery = { ...req.query };
 
   // Fields to exclude
-  const removeFields = ['select', 'sort', 'page', 'limit'];
+  const removeFields = ['select', 'sort', 'page', 'limit', 'search'];
 
   // Loop over removeFields and delete them from reqQuery
   removeFields.forEach(param => delete reqQuery[param]);
@@ -18,6 +18,48 @@ const advancedResults = (model, populate) => async (req, res, next) => {
 
   // Finding resource
   query = model.find(JSON.parse(queryStr));
+
+  // Handle search functionality
+  if (req.query.search) {
+    const searchQuery = req.query.search;
+    const searchRegex = new RegExp(searchQuery, 'i');
+    
+    // Determine which fields to search based on model
+    let searchFields = [];
+    
+    // Detect model by checking if collection name exists
+    if (model.collection && model.collection.name) {
+      switch (model.collection.name) {
+        case 'users':
+          searchFields = ['name', 'email'];
+          break;
+        case 'posts':
+          searchFields = ['title', 'content'];
+          break;
+        case 'comments':
+          searchFields = ['content'];
+          break;
+        case 'categories':
+          searchFields = ['name', 'description'];
+          break;
+        default:
+          searchFields = ['name']; // Default search by name
+      }
+    }
+    
+    // Build search conditions
+    const searchConditions = searchFields.map(field => ({
+      [field]: { $regex: searchRegex }
+    }));
+    
+    // Clear previous query and apply search condition
+    query = model.find({
+      $and: [
+        JSON.parse(queryStr), // Original query conditions
+        { $or: searchConditions } // Search conditions
+      ]
+    });
+  }
 
   // Select Fields
   if (req.query.select) {
@@ -38,7 +80,49 @@ const advancedResults = (model, populate) => async (req, res, next) => {
   const limit = parseInt(req.query.limit, 10) || 10;
   const startIndex = (page - 1) * limit;
   const endIndex = page * limit;
-  const total = await model.countDocuments(JSON.parse(queryStr));
+  
+  // Count documents with the same query parameters (including search)
+  let countQuery = {};
+  if (req.query.search) {
+    const searchQuery = req.query.search;
+    const searchRegex = new RegExp(searchQuery, 'i');
+    
+    // Use the same search fields as before
+    let searchFields = [];
+    if (model.collection && model.collection.name) {
+      switch (model.collection.name) {
+        case 'users':
+          searchFields = ['name', 'email'];
+          break;
+        case 'posts':
+          searchFields = ['title', 'content'];
+          break;
+        case 'comments':
+          searchFields = ['content'];
+          break;
+        case 'categories':
+          searchFields = ['name', 'description'];
+          break;
+        default:
+          searchFields = ['name'];
+      }
+    }
+    
+    const searchConditions = searchFields.map(field => ({
+      [field]: { $regex: searchRegex }
+    }));
+    
+    countQuery = {
+      $and: [
+        JSON.parse(queryStr),
+        { $or: searchConditions }
+      ]
+    };
+  } else {
+    countQuery = JSON.parse(queryStr);
+  }
+  
+  const total = await model.countDocuments(countQuery);
 
   query = query.skip(startIndex).limit(limit);
 
@@ -51,6 +135,11 @@ const advancedResults = (model, populate) => async (req, res, next) => {
 
   // Pagination result
   const pagination = {};
+
+  pagination.total = total;
+  pagination.limit = limit;
+  pagination.page = page;
+  pagination.pages = Math.ceil(total / limit);
 
   if (endIndex < total) {
     pagination.next = {

@@ -1,0 +1,37 @@
+User Role
+
+Account management (registration, login, profile editing)
+Create, edit, and delete own posts and comments
+Follow topics/categories of interest
+Subscribe to threads for notifications
+Upvote/downvote content
+Send private messages to other users
+Search functionality
+Report inappropriate content
+Bookmark favorite threads
+View their activity history
+
+Moderator Role
+All user capabilities, plus:
+Review and act on reported content
+Hide/delete inappropriate posts or comments
+Apply temporary user restrictions/timeouts
+Move threads between categories
+Lock or unlock threads to prevent further comments
+Pin important threads to category tops
+Merge similar threads
+Edit post tags/categories
+View basic moderation metrics
+
+Admin Role
+All moderator capabilities, plus:
+Create/edit/delete forum categories and subcategories
+Manage user roles (promote users to moderators, etc.)
+Ban users permanently
+Configure forum settings and appearance
+Access system-wide analytics and reporting
+Manage moderation team
+Create and modify forum rules
+Implement site-wide announcements
+Manage integrations with other platforms
+Database/content backup functionality

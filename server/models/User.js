@@ -61,6 +61,30 @@ const UserSchema = new mongoose.Schema({
     type: String,
     default: 'default-avatar.jpg'
   },
+  isBanned: {
+    type: Boolean,
+    default: false
+  },
+  banReason: {
+    type: String
+  },
+  bannedUntil: {
+    type: Date
+  },
+  bannedBy: {
+    type: mongoose.Schema.ObjectId,
+    ref: 'User'
+  },
+  bannedAt: {
+    type: Date
+  },
+  unbannedBy: {
+    type: mongoose.Schema.ObjectId,
+    ref: 'User'
+  },
+  unbannedAt: {
+    type: Date
+  },
   resetPasswordToken: String,
   resetPasswordExpire: Date,
   createdAt: {

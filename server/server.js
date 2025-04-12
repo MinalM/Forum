@@ -79,6 +79,7 @@ const users = require('./routes/users');
 const posts = require('./routes/posts');
 const comments = require('./routes/comments');
 const categories = require('./routes/categories');
+const reports = require('./routes/reports');
 
 // Mount routers
 app.use('/api/users', users);
@@ -86,6 +87,7 @@ app.use('/api/categories', categories);
 app.use('/api/posts', posts);
 app.use('/api/posts/:postId/comments', comments); // Mount nested routes first
 app.use('/api/comments', comments); // Then mount standalone routes
+app.use('/api/reports', reports); // Add reports routes
 
 // Health check endpoint
 app.get('/api/health', async (req, res) => {

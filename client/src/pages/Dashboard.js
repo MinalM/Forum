@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { useAlert } from '../context/AlertContext';
+import { hasPermission } from '../utils/permissions';
 import PostItem from '../components/posts/PostItem';
 
 const Dashboard = () => {
@@ -249,6 +250,24 @@ const Dashboard = () => {
             </div>
           </div>
         </div>
+
+        {hasPermission(user, 'admin') && (
+          <div className="dashboard-section">
+            <h2>Admin Dashboard</h2>
+            <Link to="/admin" className="btn btn-link">
+              <i className="fas fa-user-shield"></i> Go to Admin Dashboard
+            </Link>
+          </div>
+        )}
+
+        {hasPermission(user, 'moderator') && (
+          <div className="dashboard-section">
+            <h2>Moderator Dashboard</h2>
+            <Link to="/moderator" className="btn btn-link">
+              <i className="fas fa-user-cog"></i> Go to Moderator Dashboard
+            </Link>
+          </div>
+        )}
       </div>
     </div>
   );

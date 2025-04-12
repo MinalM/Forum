@@ -12,25 +12,30 @@ export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(null);
+  const [token, setToken] = useState(localStorage.getItem('token'));
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Remove setting Authorization header since we're using httpOnly cookies
-
   // Load user data
   useEffect(() => {
     const loadUser = async () => {
+      if (!token) {
+        setUser(null);
+        setIsAuthenticated(false);
+        setLoading(false);
+        return;
+      }
+      
       try {
         const res = await axios.get('/api/users/me');
         setUser(res.data.data);
         setIsAuthenticated(true);
-        setLoading(false);
       } catch (err) {
         console.error('Error loading user:', err);
         // Clear auth state on 401 errors
         if (err.response?.status === 401) {
+          localStorage.removeItem('token');
           setToken(null);
           setUser(null);
           setIsAuthenticated(false);
@@ -38,6 +43,7 @@ export const AuthProvider = ({ children }) => {
         } else {
           setError('Authentication error. Please try again.');
         }
+      } finally {
         setLoading(false);
       }
     };
@@ -47,6 +53,7 @@ export const AuthProvider = ({ children }) => {
       response => response,
       error => {
         if (error.response?.status === 401) {
+          localStorage.removeItem('token');
           setToken(null);
           setUser(null);
           setIsAuthenticated(false);
@@ -55,13 +62,7 @@ export const AuthProvider = ({ children }) => {
       }
     );
 
-    if (token) {
-      loadUser();
-    } else {
-      setUser(null);
-      setIsAuthenticated(false);
-      setLoading(false);
-    }
+    loadUser();
 
     // Cleanup interceptor
     return () => axios.interceptors.response.eject(interceptor);
@@ -71,14 +72,11 @@ export const AuthProvider = ({ children }) => {
   const register = async (formData) => {
     try {
       const res = await axios.post('/api/users/register', formData);
+      localStorage.setItem('token', res.data.token);
       setToken(res.data.token);
       
-      // Immediately fetch user data after registration
-      const userRes = await axios.get('/api/users/me');
-      setUser(userRes.data.data);
-      setIsAuthenticated(true);
+      // User data will be loaded by the useEffect
       setError(null);
-      
       return true;
     } catch (err) {
       console.error('Registration error:', err);
@@ -94,14 +92,11 @@ export const AuthProvider = ({ children }) => {
       const res = await axios.post('/api/users/login', { email, password });
       console.log('Login response:', res.data);
       
+      localStorage.setItem('token', res.data.token);
       setToken(res.data.token);
       
-      // Immediately fetch user data after login
-      const userRes = await axios.get('/api/users/me');
-      setUser(userRes.data.data);
-      setIsAuthenticated(true);
+      // User data will be loaded by the useEffect
       setError(null);
-      
       return true;
     } catch (err) {
       console.error('Login error:', err.response || err);
@@ -118,6 +113,7 @@ export const AuthProvider = ({ children }) => {
       console.error('Logout error:', err);
     }
     
+    localStorage.removeItem('token');
     setToken(null);
     setUser(null);
     setIsAuthenticated(false);
@@ -132,14 +128,11 @@ export const AuthProvider = ({ children }) => {
       if (res.data.token) {
         localStorage.setItem('token', res.data.token);
         setToken(res.data.token);
-        
-        // Fetch updated user data
-        const userRes = await axios.get('/api/users/me');
-        setUser(userRes.data.data);
-      } else {
-        // Fallback to old behavior if token is not returned
-        setUser(res.data.data);
       }
+      
+      // Fetch updated user data
+      const userRes = await axios.get('/api/users/me');
+      setUser(userRes.data.data);
       
       setError(null);
       return true;
@@ -158,10 +151,17 @@ export const AuthProvider = ({ children }) => {
   // Update password
   const updatePassword = async (currentPassword, newPassword) => {
     try {
-      await axios.put('/api/users/updatepassword', { 
+      const res = await axios.put('/api/users/updatepassword', { 
         currentPassword, 
         newPassword 
       });
+      
+      // Handle token response if provided
+      if (res.data.token) {
+        localStorage.setItem('token', res.data.token);
+        setToken(res.data.token);
+      }
+      
       setError(null);
       return true;
     } catch (err) {
@@ -179,7 +179,6 @@ export const AuthProvider = ({ children }) => {
       value={{
         user,
         token,
-        setToken,
         isAuthenticated,
         loading,
         error,

@@ -46,6 +46,27 @@ exports.protect = asyncHandler(async (req, res, next) => {
       console.log('User not found in database');
       return next(new ErrorResponse('User not found', 401));
     }
+    
+    // Check if user is banned
+    if (user.isBanned) {
+      // Check if the ban is temporary and has expired
+      if (user.bannedUntil && user.bannedUntil < Date.now()) {
+        // Ban has expired, unban the user
+        user.isBanned = false;
+        user.banReason = null;
+        user.bannedUntil = null;
+        user.unbannedAt = Date.now();
+        user.unbannedBy = null; // System unban
+        await user.save();
+      } else {
+        // User is still banned
+        const bannedMessage = user.bannedUntil 
+          ? `Your account is temporarily restricted until ${user.bannedUntil.toLocaleString()}. Reason: ${user.banReason || 'Violation of forum rules'}`
+          : `Your account has been permanently banned. Reason: ${user.banReason || 'Violation of forum rules'}`;
+        
+        return next(new ErrorResponse(bannedMessage, 403));
+      }
+    }
 
     req.user = user;
     next();

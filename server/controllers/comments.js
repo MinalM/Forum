@@ -89,14 +89,21 @@ exports.updateComment = asyncHandler(async (req, res, next) => {
     );
   }
 
-  // Make sure user is comment owner or admin
-  if (comment.user.toString() !== req.user.id && req.user.role !== 'admin') {
+  // Make sure user is comment owner, moderator, or admin
+  if (comment.user.toString() !== req.user.id && !['admin', 'moderator'].includes(req.user.role)) {
     return next(
       new ErrorResponse(
         `User ${req.user.id} is not authorized to update this comment`,
         401
       )
     );
+  }
+
+  // If moderator or admin is updating, record moderation details
+  if (['admin', 'moderator'].includes(req.user.role) && 
+      comment.user.toString() !== req.user.id) {
+    req.body.lastModeratedBy = req.user.id;
+    req.body.lastModeratedAt = Date.now();
   }
 
   // Update the updatedAt field
@@ -125,8 +132,8 @@ exports.deleteComment = asyncHandler(async (req, res, next) => {
     );
   }
 
-  // Make sure user is comment owner or admin
-  if (comment.user.toString() !== req.user.id && req.user.role !== 'admin') {
+  // Make sure user is comment owner, moderator, or admin
+  if (comment.user.toString() !== req.user.id && !['admin', 'moderator'].includes(req.user.role)) {
     return next(
       new ErrorResponse(
         `User ${req.user.id} is not authorized to delete this comment`,
@@ -228,8 +235,8 @@ exports.markAsAnswer = asyncHandler(async (req, res, next) => {
   // Get the post
   const post = await Post.findById(comment.post);
 
-  // Make sure user is post owner or admin
-  if (post.user.toString() !== req.user.id && req.user.role !== 'admin') {
+  // Make sure user is post owner, moderator, or admin
+  if (post.user.toString() !== req.user.id && !['admin', 'moderator'].includes(req.user.role)) {
     return next(
       new ErrorResponse(
         `User ${req.user.id} is not authorized to mark this comment as an answer`,
@@ -282,6 +289,17 @@ exports.addReply = asyncHandler(async (req, res, next) => {
       new ErrorResponse(`Comment not found with id of ${req.params.id}`, 404)
     );
   }
+  
+  // Check if the post is locked and user is not moderator or admin
+  const post = await Post.findById(parentComment.post);
+  if (post.isLocked && !['admin', 'moderator'].includes(req.user.role)) {
+    return next(
+      new ErrorResponse(
+        `This thread is locked and not accepting new comments`,
+        403
+      )
+    );
+  }
 
   req.body.parentComment = req.params.id;
   req.body.post = parentComment.post;
@@ -292,5 +310,40 @@ exports.addReply = asyncHandler(async (req, res, next) => {
   res.status(201).json({
     success: true,
     data: reply
+  });
+});
+
+// @desc    Hide a comment (Moderator/Admin only)
+// @route   PUT /api/comments/:id/hide
+// @access  Private (Moderator & Admin)
+exports.hideComment = asyncHandler(async (req, res, next) => {
+  let comment = await Comment.findById(req.params.id);
+
+  if (!comment) {
+    return next(
+      new ErrorResponse(`Comment not found with id of ${req.params.id}`, 404)
+    );
+  }
+
+  // Only moderators and admins can hide comments
+  if (!['admin', 'moderator'].includes(req.user.role)) {
+    return next(
+      new ErrorResponse(
+        `User ${req.user.id} is not authorized to hide comments`,
+        403
+      )
+    );
+  }
+
+  comment.isHidden = !comment.isHidden;
+  comment.moderationReason = req.body.moderationReason || 'Content moderation';
+  comment.lastModeratedBy = req.user.id;
+  comment.lastModeratedAt = Date.now();
+  
+  await comment.save();
+
+  res.status(200).json({
+    success: true,
+    data: comment
   });
 });

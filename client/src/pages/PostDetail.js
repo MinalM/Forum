@@ -4,6 +4,8 @@ import axios from 'axios';
 import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '../context/AuthContext';
 import { useAlert } from '../context/AlertContext';
+import { hasPermission, canModifyResource } from '../utils/permissions';
+import ReportModal from '../components/reports/ReportModal';
 
 const PostDetail = () => {
   const { id } = useParams();
@@ -15,6 +17,12 @@ const PostDetail = () => {
   const [comments, setComments] = useState([]);
   const [commentText, setCommentText] = useState('');
   const [pageLoading, setPageLoading] = useState(true);
+  const [reportModal, setReportModal] = useState({
+    isOpen: false,
+    type: 'post',
+    itemId: '',
+    itemName: ''
+  });
 
   useEffect(() => {
     const fetchPostData = async () => {
@@ -124,6 +132,66 @@ const PostDetail = () => {
     }
   };
 
+  const handleLockThread = async () => {
+    try {
+      const res = await axios.put(`/api/posts/${id}/lock`);
+      setPost(res.data.data);
+      setAlert(
+        res.data.data.isLocked
+          ? 'Thread locked successfully'
+          : 'Thread unlocked successfully',
+        'success'
+      );
+    } catch (err) {
+      setAlert('Error updating thread status', 'danger');
+    }
+  };
+
+  const handlePinThread = async () => {
+    try {
+      const res = await axios.put(`/api/posts/${id}/pin`);
+      setPost(res.data.data);
+      setAlert(
+        res.data.data.isPinned
+          ? 'Thread pinned successfully'
+          : 'Thread unpinned successfully',
+        'success'
+      );
+    } catch (err) {
+      setAlert('Error updating thread status', 'danger');
+    }
+  };
+
+  const openReportModal = (type, itemId, itemName) => {
+    setReportModal({
+      isOpen: true,
+      type,
+      itemId,
+      itemName
+    });
+  };
+
+  const closeReportModal = () => {
+    setReportModal({
+      isOpen: false,
+      type: 'post',
+      itemId: '',
+      itemName: ''
+    });
+  };
+
+  const handleDeleteComment = async (commentId) => {
+    if (window.confirm('Are you sure you want to delete this comment?')) {
+      try {
+        await axios.delete(`/api/comments/${commentId}`);
+        setComments(comments.filter(comment => comment._id !== commentId));
+        setAlert('Comment deleted successfully', 'success');
+      } catch (err) {
+        setAlert('Error deleting comment', 'danger');
+      }
+    }
+  };
+
   if (pageLoading || authLoading) {
     return (
       <div className="loading-container">
@@ -158,6 +226,12 @@ const PostDetail = () => {
             {post.title}
             {post.isSolved && (
               <span className="badge badge-success ml-2">Solved</span>
+            )}
+            {post.isPinned && (
+              <span className="badge badge-info ml-2">Pinned</span>
+            )}
+            {post.isLocked && (
+              <span className="badge badge-warning ml-2">Locked</span>
             )}
           </h1>
           <div className="post-meta">
@@ -230,6 +304,37 @@ const PostDetail = () => {
               </button>
             </>
           )}
+
+          {/* Moderation tools */}
+          {hasPermission(user, 'lockThread') && (
+            <button 
+              className={`btn btn-sm ${post.isLocked ? 'btn-warning' : 'btn-outline-warning'}`}
+              onClick={handleLockThread}
+            >
+              <i className={`fas fa-${post.isLocked ? 'lock' : 'unlock'}`}></i>{' '}
+              {post.isLocked ? 'Unlock' : 'Lock'}
+            </button>
+          )}
+
+          {hasPermission(user, 'pinPost') && (
+            <button 
+              className={`btn btn-sm ${post.isPinned ? 'btn-info' : 'btn-outline-info'}`}
+              onClick={handlePinThread}
+            >
+              <i className="fas fa-thumbtack"></i>{' '}
+              {post.isPinned ? 'Unpin' : 'Pin'}
+            </button>
+          )}
+
+          {/* Report button */}
+          {isAuthenticated && !isAuthor && (
+            <button
+              className="btn btn-sm btn-outline-danger"
+              onClick={() => openReportModal('post', post._id, post.title)}
+            >
+              <i className="fas fa-flag"></i> Report
+            </button>
+          )}
         </div>
       </div>
 
@@ -238,7 +343,7 @@ const PostDetail = () => {
           Comments ({comments.length})
         </h2>
 
-        {isAuthenticated ? (
+        {isAuthenticated && !post.isLocked ? (
           <div className="comment-form">
             <form onSubmit={handleCommentSubmit}>
               <div className="form-group">
@@ -257,6 +362,10 @@ const PostDetail = () => {
               </button>
             </form>
           </div>
+        ) : post.isLocked ? (
+          <div className="alert alert-warning">
+            This thread is locked. New comments are disabled.
+          </div>
         ) : (
           <div className="alert alert-info">
             <Link to="/login">Login</Link> or{' '}
@@ -271,7 +380,7 @@ const PostDetail = () => {
                 <div className="comment-header">
                   <div className="comment-user">
                     <img
-                      src={comment.user?.avatar || 'https://via.placeholder.com/40'}
+                      src={comment.user?.avatar || '/images/default-avatar1.png'}
                       alt={comment.user?.name || 'User'}
                       className="comment-avatar"
                     />
@@ -286,9 +395,27 @@ const PostDetail = () => {
                       </div>
                     </div>
                   </div>
-                  {comment.isAnswer && (
-                    <span className="badge badge-success">Answer</span>
-                  )}
+                  <div className="comment-actions">
+                    {comment.isAnswer && (
+                      <span className="badge badge-success">Answer</span>
+                    )}
+                    {(canModifyResource(user, comment) || hasPermission(user, 'deleteComment')) && (
+                      <button 
+                        className="btn btn-sm btn-danger"
+                        onClick={() => handleDeleteComment(comment._id)}
+                      >
+                        <i className="fas fa-trash"></i>
+                      </button>
+                    )}
+                    {isAuthenticated && user._id !== comment.user?._id && (
+                      <button 
+                        className="btn btn-sm btn-outline-danger"
+                        onClick={() => openReportModal('comment', comment._id, `Comment by ${comment.user?.name}`)}
+                      >
+                        <i className="fas fa-flag"></i>
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <div className="comment-content">{comment.content}</div>
               </div>
@@ -298,6 +425,15 @@ const PostDetail = () => {
           )}
         </div>
       </div>
+
+      {/* Report modal */}
+      <ReportModal
+        isOpen={reportModal.isOpen}
+        onClose={closeReportModal}
+        type={reportModal.type}
+        itemId={reportModal.itemId}
+        itemName={reportModal.itemName}
+      />
     </div>
   );
 };

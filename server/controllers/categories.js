@@ -31,6 +31,16 @@ exports.getCategory = asyncHandler(async (req, res, next) => {
 // @route   POST /api/categories
 // @access  Private/Admin
 exports.createCategory = asyncHandler(async (req, res, next) => {
+  // Check if user is admin
+  if (req.user.role !== 'admin') {
+    return next(
+      new ErrorResponse(
+        `User ${req.user.id} is not authorized to create categories`,
+        403
+      )
+    );
+  }
+
   const category = await Category.create(req.body);
 
   res.status(201).json({
@@ -43,6 +53,16 @@ exports.createCategory = asyncHandler(async (req, res, next) => {
 // @route   PUT /api/categories/:id
 // @access  Private/Admin
 exports.updateCategory = asyncHandler(async (req, res, next) => {
+  // Check if user is admin
+  if (req.user.role !== 'admin') {
+    return next(
+      new ErrorResponse(
+        `User ${req.user.id} is not authorized to update categories`,
+        403
+      )
+    );
+  }
+
   const category = await Category.findByIdAndUpdate(req.params.id, req.body, {
     new: true,
     runValidators: true
@@ -64,6 +84,16 @@ exports.updateCategory = asyncHandler(async (req, res, next) => {
 // @route   DELETE /api/categories/:id
 // @access  Private/Admin
 exports.deleteCategory = asyncHandler(async (req, res, next) => {
+  // Check if user is admin
+  if (req.user.role !== 'admin') {
+    return next(
+      new ErrorResponse(
+        `User ${req.user.id} is not authorized to delete categories`,
+        403
+      )
+    );
+  }
+
   const category = await Category.findById(req.params.id);
 
   if (!category) {

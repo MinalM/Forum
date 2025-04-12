@@ -33,6 +33,20 @@ const CommentSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  isHidden: {
+    type: Boolean,
+    default: false
+  },
+  lastModeratedBy: {
+    type: mongoose.Schema.ObjectId,
+    ref: 'User'
+  },
+  lastModeratedAt: {
+    type: Date
+  },
+  moderationReason: {
+    type: String
+  },
   createdAt: {
     type: Date,
     default: Date.now

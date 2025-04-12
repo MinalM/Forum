@@ -42,6 +42,10 @@ const PostSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  isLocked: {
+    type: Boolean,
+    default: false
+  },
   isAnnouncement: {
     type: Boolean,
     default: false
@@ -62,6 +66,16 @@ const PostSchema = new mongoose.Schema({
   updatedAt: {
     type: Date,
     default: Date.now
+  },
+  lastModeratedBy: {
+    type: mongoose.Schema.ObjectId,
+    ref: 'User'
+  },
+  lastModeratedAt: {
+    type: Date
+  },
+  moderationReason: {
+    type: String
   }
 }, {
   toJSON: { virtuals: true },

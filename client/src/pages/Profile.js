@@ -1,38 +1,61 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { useAlert } from '../context/AlertContext';
+import { hasPermission } from '../utils/permissions';
 import PostItem from '../components/posts/PostItem';
+import ReportModal from '../components/reports/ReportModal';
 
 const Profile = () => {
   const { id } = useParams();
-  const { user: authUser } = useAuth();
+  const { user: authUser, isAuthenticated, token } = useAuth();
   const { setAlert } = useAlert();
+  const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [userPosts, setUserPosts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
 
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        // Fetch user profile
-        const userRes = await axios.get(`/api/users/${id}`);
+        setLoading(true);
+        
+        // Fetch user profile using the public profile endpoint
+        const userRes = await axios.get(`/api/users/${id}/profile`);
+        console.log('User data received:', userRes.data.data);
         setUser(userRes.data.data);
 
         // Fetch user's posts
         const postsRes = await axios.get(`/api/users/${id}/posts`);
         setUserPosts(postsRes.data.data);
-
-        setLoading(false);
+        
+        setError(false);
       } catch (err) {
+        console.error('Error fetching profile data:', err);
+        setError(true);
         setAlert('Error fetching user profile', 'danger');
+      } finally {
         setLoading(false);
       }
     };
 
-    fetchUserData();
+    if (id) {
+      fetchUserData();
+    }
   }, [id, setAlert]);
+
+  const handleReportUser = () => {
+    if (!isAuthenticated) {
+      setAlert('You must be logged in to report a user', 'danger');
+      navigate('/login');
+      return;
+    }
+    
+    setShowReportModal(true);
+  };
 
   if (loading) {
     return (
@@ -42,10 +65,18 @@ const Profile = () => {
     );
   }
 
-  if (!user) {
+  if (error || !user) {
     return (
       <div className="main-content">
-        <div className="alert alert-danger">User not found</div>
+        <div className="alert alert-danger">
+          User not found or profile could not be loaded
+          <button 
+            className="btn btn-primary ml-3" 
+            onClick={() => navigate('/')}
+          >
+            Return to Home
+          </button>
+        </div>
       </div>
     );
   }
@@ -67,12 +98,42 @@ const Profile = () => {
                 <i className="fas fa-user-edit"></i> Edit Profile
               </Link>
             )}
+            {/* Report user button - only show if logged in and not viewing own profile */}
+            {isAuthenticated && authUser._id !== user._id && (
+              <button 
+                className="btn btn-sm btn-outline-danger"
+                onClick={handleReportUser}
+              >
+                <i className="fas fa-flag"></i> Report User
+              </button>
+            )}
+            {/* Moderation actions for admins/moderators */}
+            {isAuthenticated && hasPermission(authUser, 'timeoutUser') && authUser._id !== user._id && (
+              <Link 
+                to={`/admin/users`} 
+                className="btn btn-sm btn-warning"
+              >
+                <i className="fas fa-user-shield"></i> Moderation Actions
+              </Link>
+            )}
           </div>
-          <p className="profile-role">
-            {user.currentRole && `Current: ${user.currentRole}`}
-            {user.currentRole && user.targetRole && ' → '}
-            {user.targetRole && `Target: ${user.targetRole}`}
-          </p>
+          {/* Role badge with different styling based on role */}
+          {user.role && (
+            <p className="profile-user-role">
+              <span className="user-role-label">Role: </span>
+              <span className={`user-role-badge role-${user.role}`}>
+                {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+              </span>
+            </p>
+          )}
+          {/* Display current and target roles in a separate paragraph */}
+          {(user.currentRole || user.targetRole) && (
+            <p className="profile-career-info">
+              {user.currentRole && <span>Current: {user.currentRole}</span>}
+              {user.currentRole && user.targetRole && ' → '}
+              {user.targetRole && <span>Target: {user.targetRole}</span>}
+            </p>
+          )}
           <div className="profile-stats">
             <div className="profile-stat">
               <div className="profile-stat-value">{userPosts.length}</div>
@@ -122,6 +183,15 @@ const Profile = () => {
           <p>No posts yet</p>
         )}
       </div>
+
+      {/* Report modal */}
+      <ReportModal
+        isOpen={showReportModal}
+        onClose={() => setShowReportModal(false)}
+        type="user"
+        itemId={user._id}
+        itemName={`User: ${user.name}`}
+      />
     </div>
   );
 };

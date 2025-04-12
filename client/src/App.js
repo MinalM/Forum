@@ -19,11 +19,16 @@ import CategoryPosts from './pages/CategoryPosts';
 import PostDetail from './pages/PostDetail';
 import CreatePost from './pages/CreatePost';
 import EditPost from './pages/EditPost';
+import AdminUsers from './pages/AdminUsers';
+import AdminDashboard from './pages/AdminDashboard';
+import ModeratorDashboard from './pages/ModeratorDashboard';
 import OAuthSuccess from './pages/OAuthSuccess';
 import NotFound from './pages/NotFound';
 
 // Route Protection
 import PrivateRoute from './components/routing/PrivateRoute';
+import AdminRoute from './components/routing/AdminRoute';
+import ModeratorRoute from './components/routing/ModeratorRoute';
 import { useAuth } from './context/AuthContext';
 
 const App = () => {
@@ -54,6 +59,9 @@ const App = () => {
           <Route path="/posts/:id" element={<PostDetail />} />
           <Route path="/create-post" element={<PrivateRoute><CreatePost /></PrivateRoute>} />
           <Route path="/edit-post/:id" element={<PrivateRoute><EditPost /></PrivateRoute>} />
+          <Route path="/admin/users" element={<AdminRoute><AdminUsers /></AdminRoute>} />
+          <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+          <Route path="/moderator" element={<ModeratorRoute><ModeratorDashboard /></ModeratorRoute>} />
           <Route path="/oauth-success" element={<OAuthSuccess />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
