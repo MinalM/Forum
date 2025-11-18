@@ -20,6 +20,10 @@
     "seed": "node server/seeder.js -i",
     "seed:delete": "node server/seeder.js -d",
     "ci": "npm ci && cd client && npm ci && cd ../server && npm ci",
+    "mongo:up": "docker-compose -f docker-compose.dev.yml up -d",
+    "mongo:down": "docker-compose -f docker-compose.dev.yml down",
+    "mongo:logs": "docker-compose -f docker-compose.dev.yml logs -f mongodb",
+    "mongo:status": "docker-compose -f docker-compose.dev.yml ps",
     "mongo:container": "node scripts/switch-mongo.js container",
     "mongo:atlas": "node scripts/switch-mongo.js atlas"
   },

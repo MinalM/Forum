@@ -5,6 +5,10 @@ const User = require('../models/User');
 if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET && process.env.GOOGLE_CALLBACK_URL) {
   const GoogleStrategy = require('passport-google-oauth20').Strategy;
   
+  // Log callback URL for debugging
+  console.log('Google OAuth Callback URL:', process.env.GOOGLE_CALLBACK_URL);
+  console.log('Google OAuth Client ID:', process.env.GOOGLE_CLIENT_ID ? `${process.env.GOOGLE_CLIENT_ID.substring(0, 20)}...` : 'not set');
+  
   passport.use(
     new GoogleStrategy(
       {
