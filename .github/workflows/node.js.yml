@@ -68,11 +68,16 @@ jobs:
         cache-dependency-path: |
           package-lock.json
           client/package-lock.json
+          
     - name: Clean npm Cache
-      run: npm cache clean --force
-           cd client && npm cache clean --force
-           rm -rf node_modules
-           rm -rf client/node_modules
+      run: |
+          npm cache clean --force
+          cd client && npm cache clean --force
+          
+    - name: Remove node_modules
+      run: |
+          rm -rf node_modules
+          rm -rf client/node_modules
 
     - name: Install dependencies
       run: npm run ci
