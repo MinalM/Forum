@@ -38,7 +38,12 @@
     "typescript": "^5.3.3"
   },
   "overrides": {
+    "axios": "^1.8.4",
+    "form-data": "^4.0.1",
     "formidable": "^3.5.3",
-    "form-data": "^4.0.1"
+    "superagent": {
+      "formidable": "^3.5.3",
+      "form-data": "^4.0.1"
+    }
   }
 }
