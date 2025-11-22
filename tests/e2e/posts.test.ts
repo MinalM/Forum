@@ -41,7 +41,12 @@ test('should allow user to create and view posts', async ({ page }) => {
   await page.fill('input[name="title"]', testData.post.title);
   
   // Wait for category options to be loaded before selecting
-  await page.waitForSelector('select[name="category"] option:not([value=""])', { timeout: 10000 });
+  //await page.waitForSelector('select[name="category"] option:not([value=""])', { timeout: 10000 });
+  await expect(page.locator('select[name="category"]')).toBeEnabled({ timeout: 10_000 });
+  await expect.poll(
+    async () => await page.locator('select[name="category"] option').count(),
+    { timeout: 10_000 }
+  ).toBeGreaterThan(1);
   await page.selectOption('select[name="category"]', { label: 'Machine Learning Fundamentals' });
 
   await page.fill('textarea[name="content"]', testData.post.content);
@@ -63,8 +68,8 @@ test('should allow user to create and view posts', async ({ page }) => {
   await page.waitForLoadState('networkidle');
   
   // Wait for API response to complete by waiting for the post title to appear
-  // Use a more robust selector that waits for the page to be ready
-  await expect(page.getByText(testData.post.title, { exact: false })).toBeVisible({ timeout: 15000 });
+  // Use a more specific selector for the title (heading role) to avoid strict mode violations
+  await expect(page.getByRole('heading', { name: testData.post.title })).toBeVisible({ timeout: 15000 });
   await expect(page.getByText(testData.post.content, { exact: false })).toBeVisible({ timeout: 15000 });
 
   // Add a comment - wait for comment form to be visible
