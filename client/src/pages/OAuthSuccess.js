@@ -8,7 +8,8 @@ const OAuthSuccess = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { setAlert } = useAlert();
-  const { setToken } = useAuth();
+  const auth = useAuth();
+  const { setToken } = auth || {};
   
   useEffect(() => {
     const handleOAuthSuccess = async () => {
@@ -21,8 +22,15 @@ const OAuthSuccess = () => {
           // Store token in localStorage
           localStorage.setItem('token', token);
           
-          // Update token in AuthContext
-          setToken(token);
+          // Update token in AuthContext if setToken is available
+          if (setToken && typeof setToken === 'function') {
+            setToken(token);
+          } else {
+            console.warn('setToken not available in AuthContext. Token saved to localStorage only.');
+            // Force page reload to pick up token from localStorage
+            window.location.href = '/dashboard';
+            return;
+          }
           
           // Set the token in axios headers
           axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;

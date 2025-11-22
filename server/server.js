@@ -43,8 +43,11 @@ app.use(cors({
     return callback(null, true);
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+  exposedHeaders: ['Content-Range', 'X-Content-Range'],
+  optionsSuccessStatus: 200,
+  preflightContinue: false
 }));
 
 // Session configuration with MongoDB store
@@ -62,8 +65,7 @@ app.use(session({
     httpOnly: true,
     maxAge: 24 * 60 * 60 * 1000, // 1 day
     sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-    path: '/',
-    secure: process.env.NODE_ENV === 'production'
+    path: '/'
   }
 }));
 
@@ -206,18 +208,25 @@ const connectDB = async () => {
 
   } catch (err) {
     console.error('MongoDB connection error:', err.message);
-    if (process.env.NODE_ENV !== 'test') {
-      process.exit(1);
-    }
+    // Don't exit here - let the caller handle it
+    throw err;
   }
 };
 
 // Only connect to DB and start server if not in test environment
 if (process.env.NODE_ENV !== 'test') {
-  connectDB();
-  // Use PORT from environment variable, defaulting to 5000 for CI if not set
-  const PORT = process.env.PORT || 2000;
-  app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+  // Connect to DB first, then start server
+  connectDB().then(() => {
+    // Use PORT from environment variable, defaulting to 2000 for development
+    const PORT = process.env.PORT || 2000;
+    app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+      console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+    });
+  }).catch((err) => {
+    console.error('Failed to start server:', err);
+    process.exit(1);
+  });
 }
 
 // Handle unhandled promise rejections

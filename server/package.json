@@ -10,7 +10,7 @@
     "test:watch": "jest --watch"
   },
   "dependencies": {
-    "axios": "^1.8.1",
+    "axios": "^1.13.2",
     "bcryptjs": "^3.0.2",
     "colors": "^1.4.0",
     "connect-mongo": "^5.1.0",
@@ -36,5 +36,13 @@
     "nodemon": "^3.1.9",
     "ts-jest": "^29.1.1",
     "typescript": "^5.3.3"
+  },
+  "overrides": {
+    "form-data": "^4.0.1",
+    "formidable": "^3.5.3",
+    "superagent": {
+      "formidable": "^3.5.3",
+      "form-data": "^4.0.1"
+    }
   }
 }
