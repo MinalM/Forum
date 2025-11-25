@@ -31,7 +31,8 @@ router
   .get(
     advancedResults(Post, [
       { path: 'user', select: 'name avatar' },
-      { path: 'category', select: 'name' }
+      { path: 'category', select: 'name' },
+      { path: 'comments' }
     ]),
     getPosts
   )

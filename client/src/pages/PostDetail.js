@@ -62,6 +62,10 @@ const PostDetail = () => {
       setComments([...comments, res.data.data]);
       setCommentText('');
       setAlert('Comment added successfully', 'success');
+      
+      // Refetch post to update comment count in UI
+      const postRes = await axios.get(`/api/posts/${id}`);
+      setPost(postRes.data.data);
     } catch (err) {
       setAlert('Error adding comment', 'danger');
     }

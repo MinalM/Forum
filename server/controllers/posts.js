@@ -23,7 +23,8 @@ exports.getPosts = asyncHandler(async (req, res, next) => {
         path: 'user',
         select: 'name avatar'
       })
-      .populate('category', 'name');
+      .populate('category', 'name')
+      .populate('comments');
 
     return res.status(200).json({
       success: true,
@@ -43,7 +44,8 @@ exports.getPosts = asyncHandler(async (req, res, next) => {
         path: 'user',
         select: 'name avatar'
       })
-      .populate('category', 'name');
+      .populate('category', 'name')
+      .populate('comments');
 
     return res.status(200).json({
       success: true,
