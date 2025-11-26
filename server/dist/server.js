@@ -29,7 +29,12 @@ app.use((0, express_session_1.default)({
         maxAge: 24 * 60 * 60 * 1000
     }
 }));
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
-});
+const ldClient_1 = require("./utils/ldClient");
+const startServer = async () => {
+    await (0, ldClient_1.initializeLDClient)();
+    app.listen(PORT, () => {
+        console.log(`Server is running on port ${PORT}`);
+    });
+};
+startServer();
 //# sourceMappingURL=server.js.map

@@ -29,8 +29,16 @@ app.use(session({
   }
 }));
 
+import { initializeLDClient } from './utils/ldClient';
+
 // Routes will be added here
 
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
+const startServer = async () => {
+  await initializeLDClient();
+
+  app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+  });
+};
+
+startServer();

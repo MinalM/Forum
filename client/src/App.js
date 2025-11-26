@@ -1,11 +1,13 @@
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
+import { withLDProvider } from 'launchdarkly-react-client-sdk';
 import './App.css';
 
 // Layout Components
 import Navbar from './components/layout/Navbar';
 import Footer from './components/layout/Footer';
 import Alert from './components/layout/Alert';
+import AnnouncementBanner from './components/AnnouncementBanner';
 
 // Page Components
 import Home from './pages/Home';
@@ -44,6 +46,7 @@ const App = () => {
 
   return (
     <>
+      <AnnouncementBanner />
       <Navbar />
       <div className="container">
         <Alert />
@@ -71,4 +74,9 @@ const App = () => {
   );
 };
 
-export default App;
+export default withLDProvider({
+  clientSideID: process.env.REACT_APP_LD_CLIENT_ID,
+  options: {
+    bootstrap: 'localStorage',
+  },
+})(App);
