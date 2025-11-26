@@ -4,6 +4,8 @@ import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
 import { hasPermission } from '../../utils/permissions';
 
+import { useFlags, useLDClient } from 'launchdarkly-react-client-sdk';
+
 const Navbar = () => {
   const { isAuthenticated, user, logout } = useAuth();
   const [showMobileMenu, setShowMobileMenu] = useState(false);
@@ -11,13 +13,17 @@ const Navbar = () => {
   const [showModDropdown, setShowModDropdown] = useState(false);
   const [notificationCount, setNotificationCount] = useState(0);
 
+  // LaunchDarkly hooks
+  const { navbarCreatePostCta } = useFlags();
+  const ldClient = useLDClient();
+
   // Fetch pending reports count for moderators and admins
   useEffect(() => {
     const fetchPendingReportsCount = async () => {
       if (!isAuthenticated || !user) return;
-      
+
       if (!hasPermission(user, 'viewReports')) return;
-      
+
       try {
         const res = await axios.get('/api/reports/pending/count');
         setNotificationCount(res.data.data.count);
@@ -27,10 +33,10 @@ const Navbar = () => {
     };
 
     fetchPendingReportsCount();
-    
+
     // Set up an interval to check for new reports every 2 minutes
     const interval = setInterval(fetchPendingReportsCount, 120000);
-    
+
     return () => clearInterval(interval);
   }, [isAuthenticated, user]);
 
@@ -56,35 +62,41 @@ const Navbar = () => {
     logout();
   };
 
+  const handleCreatePostClick = () => {
+    ldClient.track('navbar-create-post-click');
+  };
+
   const authLinks = (
     <>
       <li className="nav-item">
         <Link className="nav-link" to="/dashboard">Dashboard</Link>
       </li>
       <li className="nav-item">
-        <Link className="nav-link" to="/create-post">Create Post</Link>
+        <Link className="nav-link" to="/create-post" onClick={handleCreatePostClick}>
+          {navbarCreatePostCta || 'Create Post'}
+        </Link>
       </li>
       {/* Admin dropdown menu */}
       {user && hasPermission(user, 'accessAdminDashboard') && (
         <li className={`nav-item dropdown ${showAdminDropdown ? 'show' : ''}`}>
-          <a 
-            className="nav-link dropdown-toggle" 
-            href="#" 
+          <a
+            className="nav-link dropdown-toggle"
+            href="#"
             id="adminDropdown"
             onClick={toggleAdminDropdown}
           >
             <i className="fas fa-user-shield"></i> Admin
           </a>
           <div className={`dropdown-menu ${showAdminDropdown ? 'show' : ''}`} aria-labelledby="adminDropdown">
-            <Link 
-              className="dropdown-item" 
+            <Link
+              className="dropdown-item"
               to="/admin/users"
               onClick={() => setShowAdminDropdown(false)}
             >
               <i className="fas fa-users-cog"></i> User Management
             </Link>
-            <Link 
-              className="dropdown-item" 
+            <Link
+              className="dropdown-item"
               to="/admin"
               onClick={() => setShowAdminDropdown(false)}
             >
@@ -93,13 +105,13 @@ const Navbar = () => {
           </div>
         </li>
       )}
-      
+
       {/* Moderator dropdown menu */}
       {user && hasPermission(user, 'accessModeratorDashboard') && !hasPermission(user, 'admin') && (
         <li className={`nav-item dropdown ${showModDropdown ? 'show' : ''}`}>
-          <a 
-            className="nav-link dropdown-toggle" 
-            href="#" 
+          <a
+            className="nav-link dropdown-toggle"
+            href="#"
             id="modDropdown"
             onClick={toggleModDropdown}
           >
@@ -109,8 +121,8 @@ const Navbar = () => {
             )}
           </a>
           <div className={`dropdown-menu ${showModDropdown ? 'show' : ''}`} aria-labelledby="modDropdown">
-            <Link 
-              className="dropdown-item" 
+            <Link
+              className="dropdown-item"
               to="/moderator"
               onClick={() => setShowModDropdown(false)}
             >
@@ -119,7 +131,7 @@ const Navbar = () => {
           </div>
         </li>
       )}
-      
+
       <li className="nav-item">
         <Link className="nav-link" to={`/profile/${user?._id}`}>Profile</Link>
       </li>
