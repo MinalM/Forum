@@ -33,7 +33,7 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: { 
+      use: {
         ...devices['Desktop Chrome'],
         // Important for CORS and cookie handling
         contextOptions: {
@@ -57,7 +57,8 @@ export default defineConfig({
         MONGO_URI: process.env.MONGO_URI || 'mongodb://localhost:27017/ai_ml_forum',
         JWT_SECRET: process.env.JWT_SECRET || 'test-jwt-secret',
         JWT_EXPIRE: process.env.JWT_EXPIRE || '1h',
-        JWT_COOKIE_EXPIRE: process.env.JWT_COOKIE_EXPIRE || '1'
+        JWT_COOKIE_EXPIRE: process.env.JWT_COOKIE_EXPIRE || '1',
+        START_SERVER: 'true'
       },
     },
     {
