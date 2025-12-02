@@ -3,6 +3,7 @@ const asyncHandler = require('../middleware/async');
 const Post = require('../models/Post');
 const User = require('../models/User');
 const Category = require('../models/Category');
+const { trace, SpanStatusCode, metrics } = require('@opentelemetry/api');
 
 // @desc    Get all posts
 // @route   GET /api/posts
@@ -95,22 +96,46 @@ exports.getPost = asyncHandler(async (req, res, next) => {
 // @route   POST /api/posts
 // @access  Private
 exports.createPost = asyncHandler(async (req, res, next) => {
-  // Add user to req.body
-  req.body.user = req.user.id;
+  const tracer = trace.getTracer('forum-server');
 
-  // Check if category exists
-  const category = await Category.findById(req.body.category);
-  if (!category) {
-    return next(
-      new ErrorResponse(`Category not found with id of ${req.body.category}`, 404)
-    );
-  }
+  return tracer.startActiveSpan('createPost', async (span) => {
+    try {
+      // Add attributes
+      span.setAttribute('user.id', req.user.id);
+      span.setAttribute('category.id', req.body.category);
 
-  const post = await Post.create(req.body);
+      // Add user to req.body
+      req.body.user = req.user.id;
 
-  res.status(201).json({
-    success: true,
-    data: post
+      // Check if category exists
+      const category = await Category.findById(req.body.category);
+      if (!category) {
+        span.setStatus({ code: SpanStatusCode.ERROR, message: 'Category not found' });
+        span.end();
+        return next(
+          new ErrorResponse(`Category not found with id of ${req.body.category}`, 404)
+        );
+      }
+
+      const post = await Post.create(req.body);
+      span.setAttribute('post.id', post._id.toString());
+
+      // Increment metric
+      const meter = metrics.getMeter('forum-server-metrics');
+      const counter = meter.createCounter('posts.created', { description: 'Number of posts created' });
+      counter.add(1, { category: category.name });
+
+      res.status(201).json({
+        success: true,
+        data: post
+      });
+    } catch (err) {
+      span.recordException(err);
+      span.setStatus({ code: SpanStatusCode.ERROR });
+      throw err;
+    } finally {
+      span.end();
+    }
   });
 });
 
@@ -387,7 +412,7 @@ exports.moveThread = asyncHandler(async (req, res, next) => {
 // @access  Public
 exports.getPostsByLevel = asyncHandler(async (req, res, next) => {
   const { level } = req.params;
-  
+
   // Validate level
   const validLevels = ['beginner', 'intermediate', 'advanced', 'expert', 'all'];
   if (!validLevels.includes(level)) {

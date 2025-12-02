@@ -18,7 +18,7 @@ export const test = baseTest.extend<{
 test('should work on mobile screen', async ({ mobileContext, page }) => {
   // Navigate to the login page
   await page.goto('/login');
-  
+
   // Check if the mobile viewport is working
   const viewport = await page.evaluate(() => {
     return {
@@ -26,18 +26,18 @@ test('should work on mobile screen', async ({ mobileContext, page }) => {
       height: window.innerHeight
     };
   });
-  
+
   console.log('Mobile viewport:', viewport);
   // Fill login form
   await page.fill('input[name="email"]', testUserData.email);
   await page.fill('input[name="password"]', testUserData.password);
-  
+
   // Submit form
   await page.click('button[type="submit"]');
-  
-  // Wait for navigation to complete
-  await page.waitForNavigation({ waitUntil: 'networkidle' });
-  
+
+  // Wait for navigation to dashboard
+  await page.waitForURL('/dashboard', { timeout: 10000 });
+
   // Verify successful login - check if redirected to home page
   await expect(page).toHaveURL('/dashboard');
   // Test your mobile-specific functionality here
