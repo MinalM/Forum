@@ -89,6 +89,8 @@ app.use('/api/posts', posts);
 app.use('/api/posts/:postId/comments', comments);
 app.use('/api/comments', comments);
 app.use('/api/reports', reports);
+const testOtel_1 = __importDefault(require("./routes/testOtel"));
+app.use('/api/test', testOtel_1.default);
 app.get('/api/health', (req, res) => {
     res.status(200).json({
         status: 'UP',

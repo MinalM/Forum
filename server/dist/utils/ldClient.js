@@ -12,7 +12,14 @@ const initializeLDClient = async () => {
         console.warn('LaunchDarkly SDK Key not found. Feature flags will default.');
         return;
     }
-    ldClient = launchdarkly_node_server_sdk_1.default.init(sdkKey);
+    const logLevel = (process.env.LD_LOG_LEVEL || 'info');
+    const options = {
+        logger: launchdarkly_node_server_sdk_1.default.basicLogger({
+            level: logLevel,
+            destination: console.log
+        })
+    };
+    ldClient = launchdarkly_node_server_sdk_1.default.init(sdkKey, options);
     try {
         await ldClient.waitForInitialization();
         console.log('LaunchDarkly Server SDK initialized');

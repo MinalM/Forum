@@ -9,7 +9,16 @@ export const initializeLDClient = async (): Promise<void> => {
         return;
     }
 
-    ldClient = LaunchDarkly.init(sdkKey);
+    // Enable debug logging for LaunchDarkly
+    const logLevel = (process.env.LD_LOG_LEVEL || 'info') as 'debug' | 'info' | 'warn' | 'error';
+    const options: LaunchDarkly.LDOptions = {
+        logger: LaunchDarkly.basicLogger({
+            level: logLevel,
+            destination: console.log
+        })
+    };
+
+    ldClient = LaunchDarkly.init(sdkKey, options);
 
     try {
         await ldClient.waitForInitialization();
