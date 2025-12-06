@@ -32,7 +32,7 @@
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "express-session": "^1.18.1",
-    "jsonwebtoken": "^9.0.2",
+    "jsonwebtoken": "^9.0.3",
     "launchdarkly-node-server-sdk": "^7.0.4",
     "mongoose": "^8.11.0",
     "passport": "^0.7.0",
@@ -58,6 +58,7 @@
     "superagent": {
       "formidable": "^3.5.3",
       "form-data": "^4.0.1"
-    }
+    },
+    "ejs": "^3.1.10"
   }
 }

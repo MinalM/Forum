@@ -50,6 +50,7 @@
     "@svgr/webpack": "^6.5.1",
     "resolve-url-loader": "^5.0.0",
     "form-data": "^4.0.1",
-    "formidable": "^3.5.3"
+    "formidable": "^3.5.3",
+    "ejs": "^3.1.10"
   }
 }
