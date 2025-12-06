@@ -1,5 +1,5 @@
 import { getLDClient } from './ldClient';
-import { trace, SpanStatusCode } from '@opentelemetry/api';
+import { trace } from '@opentelemetry/api';
 import { flagEvaluationCounter } from '../instrumentation/metrics';
 
 export const evaluateFlag = async (
@@ -18,19 +18,15 @@ export const evaluateFlag = async (
     }
 
     try {
+        // The TracingHook will automatically create spans and add attributes
         const detail = await client.variationDetail(flagKey, context, defaultValue);
 
+        // We still keep our custom metric for now
         flagEvaluationCounter.add(1, {
             flag_key: flagKey,
             variation: String(detail.variationIndex),
             reason: detail.reason.kind
         });
-
-        if (span) {
-            span.setAttribute(`feature_flag.${flagKey}.value`, String(detail.value));
-            span.setAttribute(`feature_flag.${flagKey}.variation`, String(detail.variationIndex));
-            span.setAttribute(`feature_flag.${flagKey}.reason`, String(detail.reason.kind));
-        }
 
         return detail.value;
     } catch (error) {

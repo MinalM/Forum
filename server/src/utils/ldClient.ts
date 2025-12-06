@@ -1,4 +1,5 @@
 import LaunchDarkly from 'launchdarkly-node-server-sdk';
+import { TracingHook } from '@launchdarkly/node-server-sdk-otel';
 
 let ldClient: LaunchDarkly.LDClient;
 
@@ -12,6 +13,9 @@ export const initializeLDClient = async (): Promise<void> => {
     // Enable debug logging for LaunchDarkly
     const logLevel = (process.env.LD_LOG_LEVEL || 'info') as 'debug' | 'info' | 'warn' | 'error';
     const options: LaunchDarkly.LDOptions = {
+        hooks: {
+            beforeEvaluation: [new TracingHook()],
+        },
         logger: LaunchDarkly.basicLogger({
             level: logLevel,
             destination: console.log
