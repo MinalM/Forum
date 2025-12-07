@@ -1,7 +1,7 @@
-import LaunchDarkly from 'launchdarkly-node-server-sdk';
+import { init, LDClient, LDOptions } from '@launchdarkly/node-server-sdk';
 import { TracingHook } from '@launchdarkly/node-server-sdk-otel';
 
-let ldClient: LaunchDarkly.LDClient;
+let ldClient: LDClient;
 
 export const initializeLDClient = async (): Promise<void> => {
     const sdkKey = process.env.LD_SDK_KEY;
@@ -10,13 +10,13 @@ export const initializeLDClient = async (): Promise<void> => {
         return;
     }
 
-    const options: LaunchDarkly.LDOptions = {
-        hooks: {
-            beforeEvaluation: [new TracingHook()],
-        },
+    const options: LDOptions = {
+        hooks: [
+            new TracingHook(),
+        ],
     };
 
-    ldClient = LaunchDarkly.init(sdkKey, options);
+    ldClient = init(sdkKey, options);
 
     try {
         await ldClient.waitForInitialization();
@@ -26,6 +26,6 @@ export const initializeLDClient = async (): Promise<void> => {
     }
 };
 
-export const getLDClient = (): LaunchDarkly.LDClient => {
+export const getLDClient = (): LDClient => {
     return ldClient;
 };

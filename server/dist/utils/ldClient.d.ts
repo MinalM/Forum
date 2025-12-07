@@ -1,3 +1,3 @@
-import LaunchDarkly from 'launchdarkly-node-server-sdk';
+import { LDClient } from '@launchdarkly/node-server-sdk';
 export declare const initializeLDClient: () => Promise<void>;
-export declare const getLDClient: () => LaunchDarkly.LDClient;
+export declare const getLDClient: () => LDClient;

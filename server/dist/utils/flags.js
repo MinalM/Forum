@@ -20,11 +20,6 @@ const evaluateFlag = async (flagKey, defaultValue, context) => {
             variation: String(detail.variationIndex),
             reason: detail.reason.kind
         });
-        if (span) {
-            span.setAttribute(`feature_flag.${flagKey}.value`, String(detail.value));
-            span.setAttribute(`feature_flag.${flagKey}.variation`, String(detail.variationIndex));
-            span.setAttribute(`feature_flag.${flagKey}.reason`, String(detail.reason.kind));
-        }
         return detail.value;
     }
     catch (error) {
