@@ -104,10 +104,6 @@ app.use('/api/posts/:postId/comments', comments);
 app.use('/api/comments', comments);
 app.use('/api/reports', reports);
 
-// Test routes (for OTel/LD verification)
-import testOtelRoutes from './routes/testOtel';
-app.use('/api/test', testOtelRoutes);
-
 // Health Check
 app.get('/api/health', (req, res) => {
   res.status(200).json({
