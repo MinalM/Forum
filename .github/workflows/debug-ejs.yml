@@ -1,0 +1,43 @@
+name: Debug EJS resolution
+
+on:
+  workflow_dispatch:
+
+jobs:
+  debug-ejs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install root deps & list resolved ejs
+        run: |
+          if [ -f package.json ]; then
+            npm ci || true
+            echo "Root ejs:"
+            npm ls ejs --all || true
+          else
+            echo "No root package.json"
+          fi
+
+      - name: Install server deps & list resolved ejs
+        run: |
+          if [ -d server ]; then
+            cd server
+            npm ci || true
+            echo "Server ejs:"
+            npm ls ejs --all || true
+          else
+            echo "No server directory"
+          fi
+
+      - name: Install client deps & list resolved ejs
+        run: |
+          if [ -d client ]; then
+            cd client
+            npm ci || true
+            echo "Client ejs:"
+            npm ls ejs --all || true
+          else
+            echo "No client directory"
+          fi
