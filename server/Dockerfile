@@ -11,4 +11,5 @@ ENV NODE_ENV=production
 
 EXPOSE 5000
 
-CMD ["node", "server.js"]
+# Start with the compiled TypeScript entry point
+CMD ["node", "dist/index.js"]
