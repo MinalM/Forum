@@ -16,6 +16,13 @@ const connect_mongo_1 = __importDefault(require("connect-mongo"));
 const path_1 = __importDefault(require("path"));
 const ldClient_1 = require("./utils/ldClient");
 dotenv_1.default.config();
+// Set default values for required environment variables
+if (!process.env.JWT_EXPIRE) {
+    process.env.JWT_EXPIRE = '24h';
+}
+if (!process.env.JWT_SECRET) {
+    throw new Error('JWT_SECRET environment variable is required');
+}
 const users = require('../routes/users');
 const posts = require('../routes/posts');
 const comments = require('../routes/comments');

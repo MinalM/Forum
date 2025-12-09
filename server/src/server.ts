@@ -12,6 +12,14 @@ import { initializeLDClient } from './utils/ldClient';
 
 dotenv.config();
 
+// Set default values for required environment variables
+if (!process.env.JWT_EXPIRE) {
+  process.env.JWT_EXPIRE = '24h';
+}
+if (!process.env.JWT_SECRET) {
+  throw new Error('JWT_SECRET environment variable is required');
+}
+
 // Import existing JS modules
 const users = require('../routes/users');
 const posts = require('../routes/posts');
