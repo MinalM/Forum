@@ -108,15 +108,6 @@ UserSchema.methods.getSignedJwtToken = function() {
   // Ensure JWT_EXPIRE is properly formatted
   const expiresIn = process.env.JWT_EXPIRE || '24h';
   
-  // Convert to number if it's a string representation of a number
-  const expiresInNum = parseInt(expiresIn);
-  if (!isNaN(expiresInNum)) {
-    return jwt.sign({ id: this._id }, process.env.JWT_SECRET, {
-      expiresIn: expiresInNum
-    });
-  }
-  
-  // Otherwise use the string format directly
   return jwt.sign({ id: this._id }, process.env.JWT_SECRET, {
     expiresIn: expiresIn
   });

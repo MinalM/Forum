@@ -63,6 +63,25 @@ export const initTelemetry = () => {
         console.log('📊 OTEL SDK ready - waiting for trace exports...');
     }, 100);
 
+    // Graceful shutdown
+    process.on('SIGTERM', async () => {
+        console.log('🔌 SIGTERM received - flushing telemetry...');
+        if (sdk) {
+            await sdk.shutdown();
+            console.log('✓ Telemetry flushed and SDK shut down');
+        }
+        process.exit(0);
+    });
+
+    process.on('SIGINT', async () => {
+        console.log('🔌 SIGINT received - flushing telemetry...');
+        if (sdk) {
+            await sdk.shutdown();
+            console.log('✓ Telemetry flushed and SDK shut down');
+        }
+        process.exit(0);
+    });
+
     return { sdk };
 };
 
