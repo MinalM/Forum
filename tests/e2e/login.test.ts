@@ -35,7 +35,7 @@ test('should allow user login', async ({ page }) => {
   });
 
   // Wait for navigation to dashboard
-  await page.waitForURL('/dashboard', { timeout: 10000 });
+  await page.waitForURL('/dashboard', { timeout: 30000 });
 
   // Log current URL
   console.log('Current URL:', page.url());

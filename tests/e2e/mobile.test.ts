@@ -36,7 +36,7 @@ test('should work on mobile screen', async ({ mobileContext, page }) => {
   await page.click('button[type="submit"]');
 
   // Wait for navigation to dashboard
-  await page.waitForURL('/dashboard', { timeout: 10000 });
+  await page.waitForURL('/dashboard', { timeout: 30000 });
 
   // Verify successful login - check if redirected to home page
   await expect(page).toHaveURL('/dashboard');

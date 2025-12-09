@@ -8,13 +8,29 @@ import { WinstonInstrumentation } from '@opentelemetry/instrumentation-winston';
 let sdk: NodeSDK | null = null;
 
 export const initTelemetry = () => {
+    // Parse headers from OTEL_EXPORTER_OTLP_HEADERS env var
+    const headerString = process.env.OTEL_EXPORTER_OTLP_HEADERS || '';
+    const headers: Record<string, string> = {};
+    
+    if (headerString) {
+        // Parse "Authorization=Basic XXX,Custom=Value" format
+        headerString.split(',').forEach(header => {
+            const [key, value] = header.trim().split('=');
+            if (key && value) {
+                headers[key] = value;
+            }
+        });
+    }
+
     const traceExporter = new OTLPTraceExporter({
         url: process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://localhost:4318/v1/traces',
+        headers: headers,
     });
 
     const metricReader = new PeriodicExportingMetricReader({
         exporter: new OTLPMetricExporter({
             url: process.env.OTEL_EXPORTER_OTLP_METRICS_ENDPOINT || 'http://localhost:4318/v1/metrics',
+            headers: headers,
         }),
         exportIntervalMillis: 60000,
     });
@@ -39,7 +55,13 @@ export const initTelemetry = () => {
     console.log(`  - Exporter: ${process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://localhost:4318/v1/traces'}`);
     console.log(`  - Service: ${process.env.OTEL_SERVICE_NAME || 'forum-server'}`);
     console.log(`  - Environment: ${process.env.NODE_ENV || 'development'}`);
-    console.log('✅ OpenTelemetry initialized');
+    console.log(`  - Auth Headers: ${Object.keys(headers).length > 0 ? 'Configured ✓' : 'None'}`);
+    console.log('✅ OpenTelemetry initialized - spans will be exported on each request');
+    
+    // Log after small delay to ensure SDK is ready
+    setTimeout(() => {
+        console.log('📊 OTEL SDK ready - waiting for trace exports...');
+    }, 100);
 
     return { sdk };
 };

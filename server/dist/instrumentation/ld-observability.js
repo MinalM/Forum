@@ -23,8 +23,7 @@ const initLD_Observability = () => {
     try {
         console.log('✅ LaunchDarkly Observability Integration Active');
         console.log('  - Flag evaluations create OTEL spans');
-        console.log('  - Spans sent to Grafana Cloud (OTEL_EXPORTER_OTLP_ENDPOINT)');
-        console.log('  - Flag events sent to LaunchDarkly Dashboard');
+        console.log('  - Events will be sent to LaunchDarkly Dashboard');
         console.log('  - Service: forum-server');
         console.log('  - Environment:', process.env.NODE_ENV || 'development');
         return client;
