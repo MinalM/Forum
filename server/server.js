@@ -1,3 +1,6 @@
+// This file redirects to the compiled TypeScript output
+// ensuring that legacy imports (like in tests) get the new code.
+
 // Initialize OpenTelemetry only if not already initialized
 if (!global.__OTEL_INITIALIZED__) {
   try {
@@ -9,19 +12,5 @@ if (!global.__OTEL_INITIALIZED__) {
   }
 }
 
-// Set default values for required environment variables before loading app
-if (!process.env.JWT_EXPIRE) {
-  process.env.JWT_EXPIRE = '24h';
-}
-
-let app;
-try {
-  // Try to load compiled TypeScript version first
-  app = require('./dist/server').default;
-} catch (error) {
-  console.warn('Failed to load compiled server, falling back to alternative', error.message);
-  // This shouldn't normally happen, but just in case
-  process.exit(1);
-}
-
+const app = require('./dist/server').default;
 module.exports = app;
