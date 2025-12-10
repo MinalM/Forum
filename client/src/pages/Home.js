@@ -16,7 +16,8 @@ const Home = () => {
         // Fetch recent posts
         try {
           const postsRes = await axios.get('/api/posts?sort=-createdAt&limit=5');
-          setPosts(postsRes.data.data || []);
+          const validPosts = (postsRes.data.data || []).filter(post => post && post.user && post.category);
+          setPosts(validPosts);
         } catch (err) {
           console.log('Error fetching posts:', err.message);
           // Don't set an alert, just continue with empty posts

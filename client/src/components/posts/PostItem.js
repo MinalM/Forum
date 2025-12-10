@@ -44,10 +44,10 @@ const PostItem = ({ post }) => {
             </h3>
             <div className="post-meta">
               <div className="post-meta-item">
-                <i className="fas fa-user"></i> {user.name}
+                <i className="fas fa-user"></i> {user?.name || 'Unknown User'}
               </div>
               <div className="post-meta-item">
-                <i className="fas fa-folder"></i> {category.name}
+                <i className="fas fa-folder"></i> {category?.name || 'Uncategorized'}
               </div>
               <div className="post-meta-item">
                 <i className="fas fa-clock"></i> {formattedDate}
