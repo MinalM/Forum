@@ -6,8 +6,11 @@ const User = require('../models/User');
 // Protect routes
 exports.protect = asyncHandler(async (req, res, next) => {
   let token;
-  
+
   console.log('Auth Debug:', {
+    path: req.path,
+    method: req.method,
+    origin: req.headers.origin,
     hasAuthHeader: !!req.headers.authorization,
     hasCookies: !!req.cookies,
     cookies: req.cookies,
@@ -29,7 +32,7 @@ exports.protect = asyncHandler(async (req, res, next) => {
 
   // Make sure token exists
   if (!token) {
-    console.log('No token found in request');
+    console.log('No token found in request for path:', req.path);
     return next(new ErrorResponse('Not authorized to access this route', 401));
   }
 
@@ -46,7 +49,7 @@ exports.protect = asyncHandler(async (req, res, next) => {
       console.log('User not found in database');
       return next(new ErrorResponse('User not found', 401));
     }
-    
+
     // Check if user is banned
     if (user.isBanned) {
       // Check if the ban is temporary and has expired
@@ -60,10 +63,10 @@ exports.protect = asyncHandler(async (req, res, next) => {
         await user.save();
       } else {
         // User is still banned
-        const bannedMessage = user.bannedUntil 
+        const bannedMessage = user.bannedUntil
           ? `Your account is temporarily restricted until ${user.bannedUntil.toLocaleString()}. Reason: ${user.banReason || 'Violation of forum rules'}`
           : `Your account has been permanently banned. Reason: ${user.banReason || 'Violation of forum rules'}`;
-        
+
         return next(new ErrorResponse(bannedMessage, 403));
       }
     }

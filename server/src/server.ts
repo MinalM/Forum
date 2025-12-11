@@ -121,6 +121,10 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// OTEL Diagnostics (for troubleshooting)
+import otelDiagnostics from './routes/otel-diagnostics';
+app.use('/api', otelDiagnostics);
+
 // Error Handler
 app.use(errorMiddleware);
 
