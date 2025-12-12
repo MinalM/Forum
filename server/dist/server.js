@@ -13,10 +13,8 @@ const express_2 = require("express");
 const mongoose_1 = __importDefault(require("mongoose"));
 const passport_1 = __importDefault(require("passport"));
 const connect_mongo_1 = __importDefault(require("connect-mongo"));
-const path_1 = __importDefault(require("path"));
 const ldClient_1 = require("./utils/ldClient");
 dotenv_1.default.config();
-// Set default values for required environment variables
 if (!process.env.JWT_EXPIRE) {
     process.env.JWT_EXPIRE = '24h';
 }
@@ -103,6 +101,8 @@ app.get('/api/health', (req, res) => {
         dbState: mongoose_1.default.connection.readyState
     });
 });
+const otel_diagnostics_1 = __importDefault(require("./routes/otel-diagnostics"));
+app.use('/api', otel_diagnostics_1.default);
 app.use(errorMiddleware);
 const logger_1 = require("./utils/logger");
 const startServer = async () => {

@@ -9,15 +9,13 @@ const sdk_metrics_1 = require("@opentelemetry/sdk-metrics");
 const instrumentation_winston_1 = require("@opentelemetry/instrumentation-winston");
 let sdk = null;
 const initTelemetry = () => {
-    // Parse headers from OTEL_EXPORTER_OTLP_HEADERS env var
     const headerString = process.env.OTEL_EXPORTER_OTLP_HEADERS || '';
     const headers = {};
     if (headerString) {
-        // Parse "Authorization=Basic XXX,Custom=Value" format
         headerString.split(',').forEach(header => {
-            const parts = header.trim().split('=');
-            if (parts[0] && parts[1]) {
-                headers[parts[0]] = parts[1];
+            const [key, value] = header.trim().split('=');
+            if (key && value) {
+                headers[key] = value;
             }
         });
     }
@@ -52,10 +50,25 @@ const initTelemetry = () => {
     console.log(`  - Environment: ${process.env.NODE_ENV || 'development'}`);
     console.log(`  - Auth Headers: ${Object.keys(headers).length > 0 ? 'Configured ✓' : 'None'}`);
     console.log('✅ OpenTelemetry initialized - spans will be exported on each request');
-    // Log after small delay to ensure SDK is ready
     setTimeout(() => {
         console.log('📊 OTEL SDK ready - waiting for trace exports...');
     }, 100);
+    process.on('SIGTERM', async () => {
+        console.log('🔌 SIGTERM received - flushing telemetry...');
+        if (sdk) {
+            await sdk.shutdown();
+            console.log('✓ Telemetry flushed and SDK shut down');
+        }
+        process.exit(0);
+    });
+    process.on('SIGINT', async () => {
+        console.log('🔌 SIGINT received - flushing telemetry...');
+        if (sdk) {
+            await sdk.shutdown();
+            console.log('✓ Telemetry flushed and SDK shut down');
+        }
+        process.exit(0);
+    });
     return { sdk };
 };
 exports.initTelemetry = initTelemetry;
