@@ -15,6 +15,33 @@ export const flagEvaluationCounter = meter.createCounter('feature_flag.evaluatio
     description: 'Number of feature flag evaluations',
 });
 
+// User Authentication Counters
+export const userSignupCounter = meter.createCounter('user.signup', {
+    description: 'Number of user signups (regular registration)',
+});
+
+export const userLoginCounter = meter.createCounter('user.login', {
+    description: 'Number of user logins',
+});
+
+export const userLoginOAuthCounter = meter.createCounter('user.login.oauth', {
+    description: 'Number of OAuth logins',
+});
+
+// Content Counters
+export const commentCreatedCounter = meter.createCounter('comments.created', {
+    description: 'Number of comments created',
+});
+
+export const postViewCounter = meter.createCounter('posts.views', {
+    description: 'Number of post views',
+});
+
+// Session Counters
+export const userSessionCounter = meter.createCounter('user.sessions', {
+    description: 'Number of user sessions created',
+});
+
 // Histograms
 export const requestDuration = meter.createHistogram('http.server.duration', {
     description: 'Duration of HTTP requests',

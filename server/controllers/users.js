@@ -2,6 +2,7 @@ const ErrorResponse = require('../utils/errorResponse');
 const asyncHandler = require('../middleware/async');
 const passport = require('passport');
 const User = require('../models/User');
+const { userSignupCounter, userLoginCounter, userLoginOAuthCounter, userSessionCounter } = require('../dist/instrumentation/metrics');
 
 // @desc    Register user
 // @route   POST /api/users/register
@@ -15,6 +16,12 @@ exports.registerUser = asyncHandler(async (req, res, next) => {
     email,
     password,
     role: role || 'user'
+  });
+
+  // Increment signup counter
+  userSignupCounter.add(1, {
+    auth_method: 'regular',
+    role: user.role
   });
 
   sendTokenResponse(user, 200, res);
@@ -53,6 +60,12 @@ exports.loginUser = asyncHandler(async (req, res, next) => {
     console.log('Password does not match for user:', user._id);
     return next(new ErrorResponse('Invalid credentials', 401));
   }
+
+  // Increment login counter
+  userLoginCounter.add(1, {
+    auth_method: 'regular',
+    role: user.role
+  });
 
   sendTokenResponse(user, 200, res);
 });
@@ -363,7 +376,7 @@ exports.banUser = asyncHandler(async (req, res, next) => {
   user.bannedUntil = null; // Permanent ban
   user.bannedBy = req.user.id;
   user.bannedAt = Date.now();
-  
+
   await user.save();
 
   res.status(200).json({
@@ -396,8 +409,8 @@ exports.timeoutUser = asyncHandler(async (req, res, next) => {
 
   // Cannot timeout yourself, admins, or other moderators if you're a moderator
   if (
-    user._id.toString() === req.user.id || 
-    user.role === 'admin' || 
+    user._id.toString() === req.user.id ||
+    user.role === 'admin' ||
     (user.role === 'moderator' && req.user.role === 'moderator')
   ) {
     return next(
@@ -414,7 +427,7 @@ exports.timeoutUser = asyncHandler(async (req, res, next) => {
   user.bannedUntil = timeoutUntil;
   user.bannedBy = req.user.id;
   user.bannedAt = Date.now();
-  
+
   await user.save();
 
   res.status(200).json({
@@ -460,7 +473,7 @@ exports.unbanUser = asyncHandler(async (req, res, next) => {
   user.bannedUntil = null;
   user.unbannedBy = req.user.id;
   user.unbannedAt = Date.now();
-  
+
   await user.save();
 
   res.status(200).json({
@@ -482,10 +495,17 @@ exports.googleCallback = (req, res, next) => {
     if (err) {
       return next(new ErrorResponse('Authentication error', 500));
     }
-    
+
     if (!user) {
       return next(new ErrorResponse('Authentication failed', 401));
     }
+
+    // Increment OAuth login counter
+    userLoginOAuthCounter.add(1, {
+      auth_method: 'oauth',
+      provider: 'google',
+      role: user.role
+    });
 
     // Create token
     const token = user.getSignedJwtToken();
@@ -504,7 +524,7 @@ exports.googleCallback = (req, res, next) => {
 
     // Set cookie with token
     res.cookie('token', token, options);
-    
+
     // Redirect to frontend with token in query params
     const frontendUrl = process.env.CORS_ORIGIN || 'http://localhost:3000';
     res.redirect(`${frontendUrl}/oauth-success?token=${token}`);
@@ -527,6 +547,11 @@ exports.googleSuccess = asyncHandler(async (req, res, next) => {
 
 // Get token from model, create cookie and send response
 const sendTokenResponse = (user, statusCode, res) => {
+  // Increment session counter
+  userSessionCounter.add(1, {
+    role: user.role
+  });
+
   // Create token
   const token = user.getSignedJwtToken();
 

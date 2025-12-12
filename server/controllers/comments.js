@@ -2,6 +2,7 @@ const ErrorResponse = require('../utils/errorResponse');
 const asyncHandler = require('../middleware/async');
 const Comment = require('../models/Comment');
 const Post = require('../models/Post');
+const { commentCreatedCounter } = require('../dist/instrumentation/metrics');
 
 // @desc    Get comments
 // @route   GET /api/comments
@@ -30,11 +31,11 @@ exports.getComments = asyncHandler(async (req, res, next) => {
 // @access  Public
 exports.getComment = asyncHandler(async (req, res, next) => {
   console.log('Getting comment with ID:', req.params.id);
-  
+
   try {
     // Use lean() to get a plain JavaScript object instead of a Mongoose document
     const comment = await Comment.findById(req.params.id).lean();
-    
+
     console.log('Found comment:', comment);
 
     if (!comment) {
@@ -71,6 +72,13 @@ exports.addComment = asyncHandler(async (req, res, next) => {
 
   const comment = await Comment.create(req.body);
 
+  // Increment comment counter metric
+  commentCreatedCounter.add(1, {
+    is_reply: 'false',
+    user_role: req.user.role,
+    post_id: req.params.postId
+  });
+
   res.status(201).json({
     success: true,
     data: comment
@@ -100,8 +108,8 @@ exports.updateComment = asyncHandler(async (req, res, next) => {
   }
 
   // If moderator or admin is updating, record moderation details
-  if (['admin', 'moderator'].includes(req.user.role) && 
-      comment.user.toString() !== req.user.id) {
+  if (['admin', 'moderator'].includes(req.user.role) &&
+    comment.user.toString() !== req.user.id) {
     req.body.lastModeratedBy = req.user.id;
     req.body.lastModeratedAt = Date.now();
   }
@@ -289,7 +297,7 @@ exports.addReply = asyncHandler(async (req, res, next) => {
       new ErrorResponse(`Comment not found with id of ${req.params.id}`, 404)
     );
   }
-  
+
   // Check if the post is locked and user is not moderator or admin
   const post = await Post.findById(parentComment.post);
   if (post.isLocked && !['admin', 'moderator'].includes(req.user.role)) {
@@ -306,6 +314,13 @@ exports.addReply = asyncHandler(async (req, res, next) => {
   req.body.user = req.user.id;
 
   const reply = await Comment.create(req.body);
+
+  // Increment comment counter metric (for replies)
+  commentCreatedCounter.add(1, {
+    is_reply: 'true',
+    user_role: req.user.role,
+    parent_comment_id: req.params.id
+  });
 
   res.status(201).json({
     success: true,
@@ -339,7 +354,7 @@ exports.hideComment = asyncHandler(async (req, res, next) => {
   comment.moderationReason = req.body.moderationReason || 'Content moderation';
   comment.lastModeratedBy = req.user.id;
   comment.lastModeratedAt = Date.now();
-  
+
   await comment.save();
 
   res.status(200).json({

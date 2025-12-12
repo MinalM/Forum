@@ -3,7 +3,8 @@ const asyncHandler = require('../middleware/async');
 const Post = require('../models/Post');
 const User = require('../models/User');
 const Category = require('../models/Category');
-const { trace, SpanStatusCode, metrics } = require('@opentelemetry/api');
+const { trace, SpanStatusCode } = require('@opentelemetry/api');
+const { postCreatedCounter, postViewCounter } = require('../dist/instrumentation/metrics');
 
 // @desc    Get all posts
 // @route   GET /api/posts
@@ -86,6 +87,12 @@ exports.getPost = asyncHandler(async (req, res, next) => {
   post.views += 1;
   await post.save();
 
+  // Increment post view counter metric
+  postViewCounter.add(1, {
+    category: post.category?.name || 'unknown',
+    post_id: post._id.toString()
+  });
+
   res.status(200).json({
     success: true,
     data: post
@@ -120,10 +127,11 @@ exports.createPost = asyncHandler(async (req, res, next) => {
       const post = await Post.create(req.body);
       span.setAttribute('post.id', post._id.toString());
 
-      // Increment metric
-      const meter = metrics.getMeter('forum-server-metrics');
-      const counter = meter.createCounter('posts.created', { description: 'Number of posts created' });
-      counter.add(1, { category: category.name });
+      // Increment metric using centralized counter
+      postCreatedCounter.add(1, {
+        category: category.name,
+        user_role: req.user.role
+      });
 
       res.status(201).json({
         success: true,
