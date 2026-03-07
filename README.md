@@ -192,3 +192,35 @@ npm run dev
 ## License
 
 This project is licensed under the MIT License.
+
+## Deployment & Observability
+
+For how this forum is monitored and deployed in both local and production environments, see:
+
+- `OBSERVABILITY.md` – OpenTelemetry metrics/traces, local Docker stack (Prometheus, Jaeger, Grafana), and metric reference
+- `DEPLOYMENT.md` – Production deployment checklist, Render/Grafana Cloud/LaunchDarkly configuration, and verification steps
+
+At a high level:
+
+- The backend is instrumented with OpenTelemetry for HTTP, MongoDB, and business metrics (signups, posts, comments, etc.)
+- Locally you can run a full observability stack via `docker-compose.observability.yml` and query all `forum_*` metrics
+- In production, traces and metrics can be exported to Grafana Cloud (or another OTEL backend), and feature flag analytics go to LaunchDarkly
+
+## Testing
+
+The test suite is Jest-based with Supertest and an in-memory MongoDB.
+
+- Unit tests cover models, middleware, and utilities
+- Integration tests cover all main REST endpoints (auth, posts, comments, categories)
+
+Common commands:
+
+```bash
+# Run all tests
+npm test
+
+# Run with coverage
+npm test -- --coverage
+```
+
+Target coverage is ~80%+ across statements, branches, functions, and lines.
