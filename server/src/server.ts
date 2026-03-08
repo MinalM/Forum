@@ -58,9 +58,14 @@ app.use(urlencoded({ extended: true }));
 app.use(cookieParser());
 
 import { requestCounter, requestDuration } from './instrumentation/metrics';
+import { recordForSentinel } from './instrumentation/sentinel-reporter';
 
-app.use((req, res, next) => {
+app.use(async (req, res, next) => {
   const startTime = Date.now();
+  const artificialDelay = parseInt(process.env.ARTIFICIAL_LATENCY_MS || '0');
+  if (artificialDelay > 0) {
+    await new Promise(resolve => setTimeout(resolve, artificialDelay));
+  }
   res.on('finish', () => {
     const duration = Date.now() - startTime;
     const route = req.route ? req.route.path : req.path;
@@ -76,6 +81,8 @@ app.use((req, res, next) => {
       route: route,
       status_code: res.statusCode.toString()
     });
+
+    recordForSentinel(duration);
   });
   next();
 });
