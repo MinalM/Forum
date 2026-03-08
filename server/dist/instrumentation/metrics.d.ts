@@ -1,6 +1,5 @@
 export declare const requestCounter: import("@opentelemetry/api").Counter<import("@opentelemetry/api").Attributes>;
 export declare const postCreatedCounter: import("@opentelemetry/api").Counter<import("@opentelemetry/api").Attributes>;
-export declare const flagEvaluationCounter: import("@opentelemetry/api").Counter<import("@opentelemetry/api").Attributes>;
 export declare const userSignupCounter: import("@opentelemetry/api").Counter<import("@opentelemetry/api").Attributes>;
 export declare const userLoginCounter: import("@opentelemetry/api").Counter<import("@opentelemetry/api").Attributes>;
 export declare const userLoginOAuthCounter: import("@opentelemetry/api").Counter<import("@opentelemetry/api").Attributes>;

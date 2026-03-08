@@ -1,6 +1,5 @@
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
-import { withLDProvider } from 'launchdarkly-react-client-sdk';
 import './App.css';
 
 // Layout Components
@@ -74,9 +73,4 @@ const App = () => {
   );
 };
 
-export default withLDProvider({
-  clientSideID: process.env.REACT_APP_LD_CLIENT_ID,
-  options: {
-    bootstrap: 'localStorage',
-  },
-})(App);
+export default App;

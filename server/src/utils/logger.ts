@@ -10,11 +10,7 @@ const otelFormat = winston.format((info) => {
         info.trace_id = spanContext.traceId;
         info.span_id = spanContext.spanId;
 
-        // Add LaunchDarkly context if available in the active span attributes
-        // Note: Attributes are not directly accessible from the span object in the API
-        // We rely on the fact that we added them to the span, but for logging, 
-        // we might need to pass them explicitly or rely on the fact that they are in the trace.
-        // However, for this requirement, we'll ensure trace_id and span_id are present.
+        // trace_id and span_id are present for correlation with OTEL traces.
     }
     return info;
 })();

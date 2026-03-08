@@ -13,7 +13,6 @@ const express_2 = require("express");
 const mongoose_1 = __importDefault(require("mongoose"));
 const passport_1 = __importDefault(require("passport"));
 const connect_mongo_1 = __importDefault(require("connect-mongo"));
-const ldClient_1 = require("./utils/ldClient");
 dotenv_1.default.config();
 if (!process.env.JWT_EXPIRE) {
     process.env.JWT_EXPIRE = '24h';
@@ -53,11 +52,11 @@ app.use((0, cookie_parser_1.default)());
 const metrics_1 = require("./instrumentation/metrics");
 const sentinel_reporter_1 = require("./instrumentation/sentinel-reporter");
 app.use(async (req, res, next) => {
+    const startTime = Date.now();
     const artificialDelay = parseInt(process.env.ARTIFICIAL_LATENCY_MS || '0');
     if (artificialDelay > 0) {
         await new Promise(resolve => setTimeout(resolve, artificialDelay));
     }
-    const startTime = Date.now();
     res.on('finish', () => {
         const duration = Date.now() - startTime;
         const route = req.route ? req.route.path : req.path;
@@ -112,7 +111,6 @@ app.use('/api', otel_diagnostics_1.default);
 app.use(errorMiddleware);
 const logger_1 = require("./utils/logger");
 const startServer = async () => {
-    await (0, ldClient_1.initializeLDClient)();
     try {
         const mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017/ai_ml_forum';
         await mongoose_1.default.connect(mongoUri);
