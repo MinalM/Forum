@@ -51,7 +51,12 @@ app.use((0, express_2.json)());
 app.use((0, express_2.urlencoded)({ extended: true }));
 app.use((0, cookie_parser_1.default)());
 const metrics_1 = require("./instrumentation/metrics");
-app.use((req, res, next) => {
+const sentinel_reporter_1 = require("./instrumentation/sentinel-reporter");
+app.use(async (req, res, next) => {
+    const artificialDelay = parseInt(process.env.ARTIFICIAL_LATENCY_MS || '0');
+    if (artificialDelay > 0) {
+        await new Promise(resolve => setTimeout(resolve, artificialDelay));
+    }
     const startTime = Date.now();
     res.on('finish', () => {
         const duration = Date.now() - startTime;
@@ -66,6 +71,7 @@ app.use((req, res, next) => {
             route: route,
             status_code: res.statusCode.toString()
         });
+        (0, sentinel_reporter_1.recordForSentinel)(duration);
     });
     next();
 });
