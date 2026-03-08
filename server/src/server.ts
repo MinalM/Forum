@@ -134,6 +134,7 @@ app.use('/api', otelDiagnostics);
 app.use(errorMiddleware);
 
 import { logger } from './utils/logger';
+import { initExperimentation, shutdownExperimentation } from './services/experimentation';
 
 const startServer = async () => {
   // Connect to Mongo
@@ -146,8 +147,16 @@ const startServer = async () => {
     process.exit(1);
   }
 
+  await initExperimentation();
+  logger.info('Experimentation service initialized');
+
   app.listen(PORT, () => {
     logger.info(`Server is running on port ${PORT}`);
+  });
+
+  process.on('SIGTERM', async () => {
+    await shutdownExperimentation();
+    process.exit(0);
   });
 };
 
