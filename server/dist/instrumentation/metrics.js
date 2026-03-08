@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.updateActiveConnections = exports.activeConnectionsGauge = exports.dbQueryDuration = exports.requestDuration = exports.userSessionCounter = exports.postViewCounter = exports.commentCreatedCounter = exports.userLoginOAuthCounter = exports.userLoginCounter = exports.userSignupCounter = exports.flagEvaluationCounter = exports.postCreatedCounter = exports.requestCounter = void 0;
+exports.updateActiveConnections = exports.activeConnectionsGauge = exports.dbQueryDuration = exports.requestDuration = exports.userSessionCounter = exports.postViewCounter = exports.commentCreatedCounter = exports.userLoginOAuthCounter = exports.userLoginCounter = exports.userSignupCounter = exports.postCreatedCounter = exports.requestCounter = void 0;
 const api_1 = require("@opentelemetry/api");
 const meter = api_1.metrics.getMeter('forum-server-metrics');
 exports.requestCounter = meter.createCounter('http.server.requests', {
@@ -8,9 +8,6 @@ exports.requestCounter = meter.createCounter('http.server.requests', {
 });
 exports.postCreatedCounter = meter.createCounter('posts.created', {
     description: 'Number of posts created',
-});
-exports.flagEvaluationCounter = meter.createCounter('feature_flag.evaluations', {
-    description: 'Number of feature flag evaluations',
 });
 exports.userSignupCounter = meter.createCounter('user.signup', {
     description: 'Number of user signups (regular registration)',

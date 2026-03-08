@@ -198,13 +198,13 @@ This project is licensed under the MIT License.
 For how this forum is monitored and deployed in both local and production environments, see:
 
 - `OBSERVABILITY.md` – OpenTelemetry metrics/traces, local Docker stack (Prometheus, Jaeger, Grafana), and metric reference
-- `DEPLOYMENT.md` – Production deployment checklist, Render/Grafana Cloud/LaunchDarkly configuration, and verification steps
+- `DEPLOYMENT.md` – Production deployment checklist, Render/Grafana Cloud configuration, and verification steps
 
 At a high level:
 
 - The backend is instrumented with OpenTelemetry for HTTP, MongoDB, and business metrics (signups, posts, comments, etc.)
 - Locally you can run a full observability stack via `docker-compose.observability.yml` and query all `forum_*` metrics
-- In production, traces and metrics can be exported to Grafana Cloud (or another OTEL backend), and feature flag analytics go to LaunchDarkly
+- In production, traces and metrics can be exported to Grafana Cloud (or another OTEL backend)
 
 ## Testing
 

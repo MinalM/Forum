@@ -11,10 +11,6 @@ export const postCreatedCounter = meter.createCounter('posts.created', {
     description: 'Number of posts created',
 });
 
-export const flagEvaluationCounter = meter.createCounter('feature_flag.evaluations', {
-    description: 'Number of feature flag evaluations',
-});
-
 // User Authentication Counters
 export const userSignupCounter = meter.createCounter('user.signup', {
     description: 'Number of user signups (regular registration)',

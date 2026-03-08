@@ -29,7 +29,10 @@ async function flush() {
         console.warn('Sentinel flush failed:', err.message);
     }
 }
-setInterval(flush, FLUSH_INTERVAL_MS);
+const isTest = process.env.NODE_ENV === 'test' || typeof process.env.JEST_WORKER_ID !== 'undefined';
+if (!isTest) {
+    setInterval(flush, FLUSH_INTERVAL_MS);
+}
 function recordForSentinel(durationMs) {
     if (!SENTINEL_EXPERIMENT_ID || !SENTINEL_TOKEN)
         return;

@@ -37,7 +37,12 @@ async function flush(): Promise<void> {
   }
 }
 
-setInterval(flush, FLUSH_INTERVAL_MS);
+// Don't start the interval under Jest or when NODE_ENV=test so Jest can exit (no open handles)
+const isTest =
+  process.env.NODE_ENV === 'test' || typeof process.env.JEST_WORKER_ID !== 'undefined';
+if (!isTest) {
+  setInterval(flush, FLUSH_INTERVAL_MS);
+}
 
 export function recordForSentinel(durationMs: number): void {
   if (!SENTINEL_EXPERIMENT_ID || !SENTINEL_TOKEN) return;

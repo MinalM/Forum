@@ -4,18 +4,12 @@ import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
 import { hasPermission } from '../../utils/permissions';
 
-import { useFlags, useLDClient } from 'launchdarkly-react-client-sdk';
-
 const Navbar = () => {
   const { isAuthenticated, user, logout } = useAuth();
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showAdminDropdown, setShowAdminDropdown] = useState(false);
   const [showModDropdown, setShowModDropdown] = useState(false);
   const [notificationCount, setNotificationCount] = useState(0);
-
-  // LaunchDarkly hooks
-  const { navbarCreatePostCta } = useFlags();
-  const ldClient = useLDClient();
 
   // Fetch pending reports count for moderators and admins
   useEffect(() => {
@@ -62,18 +56,14 @@ const Navbar = () => {
     logout();
   };
 
-  const handleCreatePostClick = () => {
-    ldClient.track('navbar-create-post-click');
-  };
-
   const authLinks = (
     <>
       <li className="nav-item">
         <Link className="nav-link" to="/dashboard">Dashboard</Link>
       </li>
       <li className="nav-item">
-        <Link className="nav-link" to="/create-post" onClick={handleCreatePostClick}>
-          {navbarCreatePostCta || 'Create Post'}
+        <Link className="nav-link" to="/create-post">
+          Create Post
         </Link>
       </li>
       {/* Admin dropdown menu */}

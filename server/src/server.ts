@@ -8,8 +8,6 @@ import mongoose from 'mongoose';
 import passport from 'passport';
 import MongoStore from 'connect-mongo';
 import path from 'path';
-import { initializeLDClient } from './utils/ldClient';
-
 dotenv.config();
 
 // Set default values for required environment variables
@@ -138,8 +136,6 @@ app.use(errorMiddleware);
 import { logger } from './utils/logger';
 
 const startServer = async () => {
-  await initializeLDClient();
-
   // Connect to Mongo
   try {
     const mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017/ai_ml_forum';

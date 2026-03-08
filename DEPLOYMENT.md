@@ -5,7 +5,6 @@ This doc replaces and consolidates:
 - `DEPLOYMENT_CHECKLIST.md`
 - `QUICK_PRODUCTION_SETUP.md`
 - `OTEL_PRODUCTION_DEPLOYMENT.md`
-- `LAUNCHDARKLY_OBSERVABILITY.md`
 - `RENDER_DEPLOYMENT_INSTRUCTIONS.md`
 - Other deployment / fix / summary markdowns
 
@@ -18,13 +17,6 @@ Use this as the single source of truth for deploying the forum and wiring up obs
 - **Backend**: Render.com (`forum-server`)
 - **Frontend**: (Netlify or equivalent SPA host)
 - **Traces / Metrics**: typically **Grafana Cloud** (OTLP), or another OTEL backend
-- **Feature Flags / Flag Analytics**: **LaunchDarkly**
-
-You can run:
-
-- OTEL only (Grafana/DataDog/New Relic/self‑hosted Jaeger), or
-- LaunchDarkly Observability only, or
-- **Both** (recommended).
 
 ---
 
@@ -35,14 +27,12 @@ You can run:
    - Local OTEL stack works (see `OBSERVABILITY.md`)
 2. **Grafana Cloud account exists**
    - You have an OTLP endpoint + API token
-3. **LaunchDarkly project exists**
-   - You have a **server‑side SDK key**
-4. **Render service configured**
-   - All OTEL + LD env vars set
-5. **Deploy**
+3. **Render service configured**
+   - All OTEL env vars set
+4. **Deploy**
    - Push to main, Render auto‑deploys or manual redeploy
-6. **Verify**
-   - Health endpoint, Grafana traces, LD analytics
+5. **Verify**
+   - Health endpoint, Grafana traces
 
 Details below.
 
@@ -81,30 +71,11 @@ You will use this value as `Authorization: Basic <base64>` in Render.
 
 ---
 
-## Step 2 – LaunchDarkly
-
-1. Go to `https://app.launchdarkly.com`
-2. Get your **Server‑side SDK key**:
-   - Account settings → Authorization → SDK Keys
-   - Copy the server‑side key (`sdk-xxxxx`)
-3. Optional: create initial flags you care about; the backend already integrates with LaunchDarkly for:
-   - Flag evaluations (via LD Node SDK + LD OTEL hooks)
-   - Optionally, LD observability SDK (flag analytics sent directly to LD)
-
-You only need to provide:
-
-```bash
-LD_SDK_KEY=sdk-xxxxx
-LD_LOG_LEVEL=info
-```
-
----
-
-## Step 3 – Render.com Backend Configuration
+## Step 2 – Render.com Backend Configuration
 
 In the Render dashboard for your `forum-server` service:
 
-### 3.1 Core env vars (app + auth)
+### 2.1 Core env vars (app + auth)
 
 ```bash
 NODE_ENV=production
@@ -119,7 +90,7 @@ GOOGLE_CALLBACK_URL=https://<your-domain>/api/users/auth/google/callback
 
 For local dev callback setup details, see the quick reference at the end.
 
-### 3.2 OTEL → Grafana Cloud
+### 2.2 OTEL → Grafana Cloud
 
 ```bash
 OTEL_EXPORTER_OTLP_ENDPOINT=https://otlp-gateway-prod-xx.grafana.net/otlp
@@ -133,22 +104,9 @@ Notes:
 - `%20` is a literal space; Render env UI can’t store spaces in values, so keep it URL‑encoded.
 - If your backend only supports traces, leave `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT` pointed at the same OTLP endpoint; OTEL SDK will send both traces and metrics.
 
-### 3.3 LaunchDarkly
-
-```bash
-LD_SDK_KEY=sdk-xxxxx
-LD_LOG_LEVEL=info
-```
-
-That’s it — the code already:
-
-- Initializes OTEL on startup
-- Initializes LD SDK and, if enabled, LD observability hooks
-- Enriches spans with flag attributes
-
 ---
 
-## Step 4 – Deploy
+## Step 3 – Deploy
 
 From your local repo:
 
@@ -171,7 +129,7 @@ This is the fix path for “old Docker image” style problems (e.g. stale JWT o
 
 After deployment:
 
-### 5.1 Health endpoint
+### 4.1 Health endpoint
 
 ```bash
 curl https://<your-render-app>.onrender.com/api/health
@@ -179,19 +137,18 @@ curl https://<your-render-app>.onrender.com/api/health
 
 You should see a JSON payload with at least `status: "UP"` and a healthy DB state.
 
-### 5.2 Render logs
+### 4.2 Render logs
 
 In the Render UI, check logs for lines like:
 
 - `✅ OpenTelemetry initialized`
-- `✅ LaunchDarkly Observability Integration Active` (if LD observability is enabled)
 
 You should **not** see:
 
 - “Failed to export spans”
 - `expiresIn should be a number of seconds or string representing a timespan`
 
-### 5.3 Grafana
+### 4.3 Grafana
 
 In Grafana:
 
@@ -200,14 +157,6 @@ In Grafana:
   - You should see traces for hitting `/api/health`, `/api/posts`, etc.
 - Prometheus / Metrics:
   - Query `forum_user_signup_total` and other `forum_*` metrics
-
-### 5.4 LaunchDarkly
-
-In LaunchDarkly:
-
-- Analytics / Experimentation:
-  - Flag evaluations should appear after you exercise code paths that call LD.
-- If using the LD observability SDK, you’ll also see additional performance / evaluation data.
 
 ---
 
@@ -229,12 +178,6 @@ If needed, temporarily remove headers and point at a public/test collector to is
   - backend ingestion
 
 Locally, see `OBSERVABILITY.md` for Prometheus target debugging.
-
-### No LaunchDarkly events
-
-- Ensure `LD_SDK_KEY` is set and valid on Render.
-- Confirm code paths actually call the LD client (e.g. `evaluateFlag`, `track`).
-- Check logs for LD SDK initialization messages.
 
 ### OAuth 500s / redirect issues
 
@@ -262,9 +205,7 @@ If you don’t want Grafana Cloud:
 
 - **DataDog** – set `OTEL_EXPORTER_OTLP_ENDPOINT` and headers to DataDog’s OTLP intake URL + API key.
 - **Self‑hosted Jaeger** on Render – run `jaegertracing/all-in-one:latest` as a separate service, expose OTLP and UI, and point `OTEL_EXPORTER_OTLP_ENDPOINT` at it.
-- **LD Observability only** – skip OTEL export, install and init `@launchdarkly/observability-sdk-node` and send events directly to LD (traces will be LD‑centric, not full system traces).
-
-The application code is already structured to support OTEL + LD together; you mostly swap endpoints/keys.
+The application code is structured to support OTEL; you mostly swap endpoints/keys.
 
 ---
 
@@ -276,11 +217,4 @@ The application code is already structured to support OTEL + LD together; you mo
 - Business metrics (`forum_*`)
 - Logs (if wired up)
 
-**LaunchDarkly**
-
-- Flag evaluations and variation splits
-- Custom LD events
-- User/segment analytics
-
-Use Grafana to answer **“what happened technically?”** and LaunchDarkly to answer **“what did this feature flag do?”**.
-
+Use Grafana (or your OTEL backend) to answer **“what happened technically?”**.

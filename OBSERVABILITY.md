@@ -1,6 +1,6 @@
 ## Observability & Metrics
 
-This project is fully instrumented with OpenTelemetry for **traces, metrics, and logs**, plus optional LaunchDarkly observability. This doc replaces:
+This project is fully instrumented with OpenTelemetry for **traces, metrics, and logs**. This doc replaces:
 
 - `METRICS_README.md`
 - `QUICK_START_METRICS.md`
@@ -9,7 +9,7 @@ This project is fully instrumented with OpenTelemetry for **traces, metrics, and
 - `DOCUMENTATION_INDEX.md`
 - `server/README_OBSERVABILITY.md`
 - `server/METRICS_DOCUMENTATION.md`
-- OTEL/LD/JAEGER-related *.md helpers
+- OTEL/JAEGER-related *.md helpers
 
 If you only remember one thing: **Jaeger is for traces; Prometheus is for metrics.**
 
@@ -222,11 +222,6 @@ docker-compose -f docker-compose.observability.yml logs otel-collector
 Full production details live in `DEPLOYMENT.md`. TL;DR:
 
 - Backend exports OTEL data over HTTPS to a managed backend (typically **Grafana Cloud** via OTLP gateway).
-- Feature flag analytics and LaunchDarkly‑specific observability go to **LaunchDarkly** directly.
-- You can:
-  - Run **OTEL only** (Grafana/DataDog/New Relic/Self‑hosted Jaeger)
-  - Run **LaunchDarkly Observability only**
-  - Or run **both** (recommended)
 
 Key production env vars (Render):
 
@@ -236,11 +231,7 @@ OTEL_EXPORTER_OTLP_ENDPOINT=https://otlp-gateway-prod-xx.grafana.net/otlp
 OTEL_EXPORTER_OTLP_METRICS_ENDPOINT=https://otlp-gateway-prod-xx.grafana.net/otlp
 OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic%20<base64-username:token>
 OTEL_SERVICE_NAME=forum-server-prod
-
-# LaunchDarkly
-LD_SDK_KEY=sdk-xxxxx
-LD_LOG_LEVEL=info
 ```
 
-For Grafana/DataDog/self‑hosted Jaeger options, LD observability SDK, and end‑to‑end checklists, see `DEPLOYMENT.md`.
+For Grafana/DataDog/self‑hosted Jaeger options and end‑to‑end checklists, see `DEPLOYMENT.md`.
 
