@@ -106,8 +106,8 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
-import { ldContextMiddleware } from './middleware/ldContext';
-app.use(ldContextMiddleware);
+import { experimentContextMiddleware } from './middleware/experimentContext';
+app.use(experimentContextMiddleware);
 
 // Routes
 app.use('/api/users', users);
