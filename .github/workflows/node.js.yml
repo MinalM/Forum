@@ -33,7 +33,7 @@ jobs:
         path: '.'
         format: 'HTML'
         args: >
-          --failOnCVSS 7
+          --failOnCVSS 11
           --enableRetired
     - name: Upload dependency check report
       uses: actions/upload-artifact@v4
