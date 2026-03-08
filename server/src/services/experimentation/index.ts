@@ -11,6 +11,7 @@ export const getExperimentationService = (): ExperimentationService => {
 };
 
 export const initExperimentation = async (): Promise<void> => {
+  if (_service) return;
   const secretKey = process.env.STATSIG_SERVER_SECRET_KEY;
   if (!secretKey) {
     return;
