@@ -26,6 +26,14 @@ describe('StatsigAdapter', () => {
     await adapter.shutdown();
   });
 
+  describe('initialize', () => {
+    it('logs warning and does not throw when statsig.initialize fails', async () => {
+      (statsig.initialize as jest.Mock).mockRejectedValueOnce(new Error('init failed'));
+      const failAdapter = new StatsigAdapter('bad-key');
+      await expect(failAdapter.initialize()).resolves.toBeUndefined();
+    });
+  });
+
   describe('evaluateFlag', () => {
     it('returns true when gate is enabled', async () => {
       (statsig.checkGate as jest.Mock).mockResolvedValue(true);

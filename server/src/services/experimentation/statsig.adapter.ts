@@ -21,7 +21,7 @@ export class StatsigAdapter implements ExperimentationService {
 
   async evaluateFlag(key: string, user: ExperimentUser, defaultValue: boolean): Promise<boolean> {
     try {
-      return await (statsig.checkGate(user as any, key) as any);
+      return await statsig.checkGate(user as any, key);
     } catch (err) {
       logger.warn('Statsig evaluateFlag failed', { key, err });
       return defaultValue;
@@ -48,7 +48,7 @@ export class StatsigAdapter implements ExperimentationService {
 
   async shutdown(): Promise<void> {
     try {
-      await (statsig.shutdown() as any);
+      await statsig.shutdown();
     } catch (err) {
       logger.warn('Statsig shutdown failed', { err });
     }
