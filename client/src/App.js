@@ -31,9 +31,11 @@ import PrivateRoute from './components/routing/PrivateRoute';
 import AdminRoute from './components/routing/AdminRoute';
 import ModeratorRoute from './components/routing/ModeratorRoute';
 import { useAuth } from './context/AuthContext';
+import { useSyncStatsigUser } from './hooks/useSyncStatsigUser';
 
 const App = () => {
   const { loading } = useAuth();
+  useSyncStatsigUser();
 
   if (loading) {
     return (
