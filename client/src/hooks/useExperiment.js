@@ -3,7 +3,7 @@ import { useExperiment as useStatsigExperiment } from '@statsig/react-bindings';
 export const useExperiment = (experimentKey) => {
   try {
     const experiment = useStatsigExperiment(experimentKey);
-    return experiment.get('variant', 'control');
+    return experiment.groupName ?? 'control';
   } catch {
     return 'control';
   }
