@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useFeatureFlag } from '../../hooks/useFeatureFlag';
+import './Footer.css';
 
 const Footer = () => {
   const showShortcuts = useFeatureFlag('keyboard_shortcuts_modal', false);
