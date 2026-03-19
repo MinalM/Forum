@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import './App.css';
 
@@ -32,10 +32,26 @@ import AdminRoute from './components/routing/AdminRoute';
 import ModeratorRoute from './components/routing/ModeratorRoute';
 import { useAuth } from './context/AuthContext';
 import { useSyncStatsigUser } from './hooks/useSyncStatsigUser';
+import KeyboardShortcutsModal from './components/KeyboardShortcutsModal';
+import { useFeatureFlag } from './hooks/useFeatureFlag';
 
 const App = () => {
   const { loading } = useAuth();
   useSyncStatsigUser();
+
+  const showShortcuts = useFeatureFlag('keyboard_shortcuts_modal', false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+
+  useEffect(() => {
+    if (!showShortcuts) return;
+    const handler = (e) => {
+      if (e.key === '?' && !['INPUT', 'TEXTAREA'].includes(e.target.tagName)) {
+        setShortcutsOpen(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [showShortcuts]);
 
   if (loading) {
     return (
@@ -71,6 +87,12 @@ const App = () => {
         </Routes>
       </div>
       <Footer />
+      {showShortcuts && (
+        <KeyboardShortcutsModal
+          isOpen={shortcutsOpen}
+          onClose={() => setShortcutsOpen(false)}
+        />
+      )}
     </>
   );
 };
