@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import PropTypes from 'prop-types';
 import './KeyboardShortcutsModal.css';
 
 const SHORTCUTS = [
@@ -51,6 +52,11 @@ const KeyboardShortcutsModal = ({ isOpen, onClose }) => {
       </div>
     </div>
   );
+};
+
+KeyboardShortcutsModal.propTypes = {
+  isOpen: PropTypes.bool.isRequired,
+  onClose: PropTypes.func.isRequired,
 };
 
 export default KeyboardShortcutsModal;
