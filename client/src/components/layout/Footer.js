@@ -1,7 +1,9 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { useFeatureFlag } from '../../hooks/useFeatureFlag';
 
 const Footer = () => {
+  const showShortcuts = useFeatureFlag('keyboard_shortcuts_modal', false);
   return (
     <footer className="footer">
       <div className="container">
@@ -73,6 +75,11 @@ const Footer = () => {
 
         <div className="footer-bottom">
           <p>&copy; {new Date().getFullYear()} AI/ML Career Forum. All rights reserved.</p>
+          {showShortcuts && (
+            <p className="shortcuts-hint">
+              Press <kbd>?</kbd> for keyboard shortcuts
+            </p>
+          )}
         </div>
       </div>
     </footer>
