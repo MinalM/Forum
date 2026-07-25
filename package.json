@@ -42,10 +42,7 @@
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.0.1",
     "passport": "^0.7.0",
-    "passport-google-oauth20": "^2.0.0",
-    "react": "^19.2.1",
-    "react-dom": "^19.2.1",
-    "react-router-dom": "^7.10.1"
+    "passport-google-oauth20": "^2.0.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.57.0",
@@ -59,6 +56,7 @@
   },
   "overrides": {
     "form-data": "^4.0.1",
-    "formidable": "^3.5.3"
+    "formidable": "^3.5.3",
+    "brace-expansion": "^5.0.8"
   }
 }

@@ -104,6 +104,15 @@ Notes:
 - `%20` is a literal space; Render env UI can’t store spaces in values, so keep it URL‑encoded.
 - If your backend only supports traces, leave `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT` pointed at the same OTLP endpoint; OTEL SDK will send both traces and metrics.
 
+### Statsig Experimentation
+
+| Variable | Required | Description |
+|---|---|---|
+| `STATSIG_SERVER_SECRET_KEY` | Yes (if using flags) | Server SDK secret from Statsig dashboard (Settings → Keys & Environments) |
+| `REACT_APP_STATSIG_CLIENT_KEY` | Yes (if using flags) | Client SDK key from Statsig dashboard (Settings → Keys & Environments) |
+
+If these variables are not set, the ExperimentationService will not initialize and all flags will return their default values. The app continues to function normally.
+
 ---
 
 ## Step 3 – Deploy

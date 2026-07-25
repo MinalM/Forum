@@ -1,7 +1,10 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
+import { useFeatureFlag } from '../../hooks/useFeatureFlag';
+import './Footer.css';
 
 const Footer = () => {
+  const showShortcuts = useFeatureFlag('keyboard_shortcuts_modal', false);
   return (
     <footer className="footer">
       <div className="container">
@@ -24,7 +27,7 @@ const Footer = () => {
                 <Link to="/categories">Categories</Link>
               </li>
               <li className="footer-link">
-                <Link to="/categories/aiml">AI/ML Resources</Link>
+                <Link to="/categories">AI/ML Resources</Link>
               </li>
             </ul>
           </div>
@@ -73,6 +76,11 @@ const Footer = () => {
 
         <div className="footer-bottom">
           <p>&copy; {new Date().getFullYear()} AI/ML Career Forum. All rights reserved.</p>
+          {showShortcuts && (
+            <p className="shortcuts-hint">
+              Press <kbd>?</kbd> for keyboard shortcuts
+            </p>
+          )}
         </div>
       </div>
     </footer>

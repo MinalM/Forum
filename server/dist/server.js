@@ -91,8 +91,8 @@ app.use((0, express_session_1.default)({
 }));
 app.use(passport_1.default.initialize());
 app.use(passport_1.default.session());
-const ldContext_1 = require("./middleware/ldContext");
-app.use(ldContext_1.ldContextMiddleware);
+const experimentContext_1 = require("./middleware/experimentContext");
+app.use(experimentContext_1.experimentContextMiddleware);
 app.use('/api/users', users);
 app.use('/api/categories', categories);
 app.use('/api/posts', posts);
@@ -110,6 +110,7 @@ const otel_diagnostics_1 = __importDefault(require("./routes/otel-diagnostics"))
 app.use('/api', otel_diagnostics_1.default);
 app.use(errorMiddleware);
 const logger_1 = require("./utils/logger");
+const experimentation_1 = require("./services/experimentation");
 const startServer = async () => {
     try {
         const mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017/ai_ml_forum';
@@ -120,8 +121,14 @@ const startServer = async () => {
         logger_1.logger.error('MongoDB connection error:', err);
         process.exit(1);
     }
+    await (0, experimentation_1.initExperimentation)();
+    logger_1.logger.info('Experimentation service initialized');
     app.listen(PORT, () => {
         logger_1.logger.info(`Server is running on port ${PORT}`);
+    });
+    process.on('SIGTERM', async () => {
+        await (0, experimentation_1.shutdownExperimentation)();
+        process.exit(0);
     });
 };
 exports.startServer = startServer;

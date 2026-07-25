@@ -1,21 +1,28 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import axios from 'axios';
 import PostItem from '../components/posts/PostItem';
 import { useAlert } from '../context/AlertContext';
+import { useFeatureFlag } from '../hooks/useFeatureFlag';
+import { useExperiment } from '../hooks/useExperiment';
+import TrendingPosts from '../components/TrendingPosts';
 
 const Home = () => {
   const [posts, setPosts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const { setAlert } = useAlert();
+  const showTrending = useFeatureFlag('trending_posts_section', false);
+  const sortVariant = useExperiment('default_sort_order');
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch recent posts
+        // Fetch recent posts — sort order determined by A/B experiment
         try {
-          const postsRes = await axios.get('/api/posts?sort=-createdAt&limit=5');
+          const sortParam = sortVariant === 'treatment' ? '-upvotes' : '-createdAt';
+          const postsRes = await axios.get(`/api/posts?sort=${sortParam}&limit=5`);
+
           const validPosts = (postsRes.data.data || []).filter(post => post && post.user && post.category);
           setPosts(validPosts);
         } catch (err) {
@@ -40,7 +47,7 @@ const Home = () => {
     };
 
     fetchData();
-  }, [setAlert]);
+  }, [setAlert, sortVariant]);
 
   if (loading) {
     return (
@@ -127,6 +134,7 @@ const Home = () => {
           </div>
 
           <div className="col-md-4">
+            {showTrending && <TrendingPosts />}
             <h2 className="mb-4">Popular Categories</h2>
             <div className="categories-sidebar">
               {categories.length > 0 ? (

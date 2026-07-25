@@ -106,8 +106,8 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
-import { ldContextMiddleware } from './middleware/ldContext';
-app.use(ldContextMiddleware);
+import { experimentContextMiddleware } from './middleware/experimentContext';
+app.use(experimentContextMiddleware);
 
 // Routes
 app.use('/api/users', users);
@@ -134,6 +134,7 @@ app.use('/api', otelDiagnostics);
 app.use(errorMiddleware);
 
 import { logger } from './utils/logger';
+import { initExperimentation, shutdownExperimentation } from './services/experimentation';
 
 const startServer = async () => {
   // Connect to Mongo
@@ -146,8 +147,16 @@ const startServer = async () => {
     process.exit(1);
   }
 
+  await initExperimentation();
+  logger.info('Experimentation service initialized');
+
   app.listen(PORT, () => {
     logger.info(`Server is running on port ${PORT}`);
+  });
+
+  process.on('SIGTERM', async () => {
+    await shutdownExperimentation();
+    process.exit(0);
   });
 };
 

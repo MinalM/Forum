@@ -5,6 +5,7 @@ const User = require('../models/User');
 const Category = require('../models/Category');
 const { trace, SpanStatusCode } = require('@opentelemetry/api');
 const { postCreatedCounter, postViewCounter } = require('../dist/instrumentation/metrics');
+const { getExperimentationService } = require('../dist/services/experimentation');
 
 // @desc    Get all posts
 // @route   GET /api/posts
@@ -92,6 +93,16 @@ exports.getPost = asyncHandler(async (req, res, next) => {
     category: post.category?.name || 'unknown',
     post_id: post._id.toString()
   });
+
+  // Forward outcome metric to experimentation service
+  try {
+    const experimentationService = getExperimentationService();
+    if (req.experimentUser) {
+      experimentationService.logOutcome('posts_views', req.experimentUser, 1);
+    }
+  } catch (err) {
+    // Never block the response if experimentation is unavailable
+  }
 
   res.status(200).json({
     success: true,
