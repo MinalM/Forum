@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen, act } from '@testing-library/react';
-import { MemoryRouter, Routes, Route } from 'react-router-dom';
+import { MemoryRouter, Routes, Route } from 'react-router';
 import axios from 'axios';
 import CategoryPosts from '../CategoryPosts';
 import { AlertProvider, useAlert } from '../../context/AlertContext';

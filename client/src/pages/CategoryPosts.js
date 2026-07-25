@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link } from 'react-router';
 import axios from 'axios';
 import { useAlert } from '../context/AlertContext';
 import { useAuth } from '../context/AuthContext';

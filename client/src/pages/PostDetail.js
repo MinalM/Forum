@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router';
 import axios from 'axios';
 import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '../context/AuthContext';
