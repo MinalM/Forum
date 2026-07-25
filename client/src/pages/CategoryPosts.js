@@ -38,6 +38,8 @@ const CategoryPosts = () => {
 
         setLoading(false);
       } catch (err) {
+        setCategory(null);
+        setPosts([]);
         setAlert('Error fetching category data', 'danger');
         setLoading(false);
       }

@@ -27,7 +27,7 @@ const Footer = () => {
                 <Link to="/categories">Categories</Link>
               </li>
               <li className="footer-link">
-                <Link to="/categories/aiml">AI/ML Resources</Link>
+                <Link to="/categories">AI/ML Resources</Link>
               </li>
             </ul>
           </div>
