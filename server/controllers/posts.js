@@ -1,5 +1,6 @@
 const ErrorResponse = require('../utils/errorResponse');
 const asyncHandler = require('../middleware/async');
+const escapeRegex = require('../utils/escapeRegex');
 const Post = require('../models/Post');
 const User = require('../models/User');
 const Category = require('../models/Category');
@@ -423,6 +424,57 @@ exports.moveThread = asyncHandler(async (req, res, next) => {
   res.status(200).json({
     success: true,
     data: post
+  });
+});
+
+// @desc    Search posts by title/content, case-insensitive
+// @route   GET /api/posts/search?q=
+// @access  Public
+exports.searchPosts = asyncHandler(async (req, res, next) => {
+  const q = req.query.q?.trim();
+
+  if (!q) {
+    return next(new ErrorResponse('Please provide a search query', 400));
+  }
+
+  const searchRegex = new RegExp(escapeRegex(q), 'i');
+  const filter = { $or: [{ title: searchRegex }, { content: searchRegex }] };
+
+  const page = parseInt(req.query.page, 10) || 1;
+  const limit = parseInt(req.query.limit, 10) || 10;
+  const startIndex = (page - 1) * limit;
+  const endIndex = page * limit;
+
+  const total = await Post.countDocuments(filter);
+
+  const posts = await Post.find(filter)
+    .sort('-createdAt')
+    .skip(startIndex)
+    .limit(limit)
+    .populate({ path: 'user', select: 'name avatar' })
+    .populate('category', 'name')
+    .populate('comments');
+
+  const pagination = {
+    total,
+    limit,
+    page,
+    pages: Math.ceil(total / limit)
+  };
+
+  if (endIndex < total) {
+    pagination.next = { page: page + 1, limit };
+  }
+
+  if (startIndex > 0) {
+    pagination.prev = { page: page - 1, limit };
+  }
+
+  res.status(200).json({
+    success: true,
+    count: posts.length,
+    pagination,
+    data: posts
   });
 });
 
