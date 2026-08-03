@@ -324,12 +324,27 @@ describe('Posts API', () => {
     it('should return posts matching the query in the title', async () => {
       const res = await request(server)
         .get('/api/posts/search')
-        .query({ q: 'Neural' });
+        .query({ q: 'Understanding' });
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
       expect(res.body.count).toBe(1);
       expect(res.body.data[0].title).toBe('Understanding Neural Networks');
+    });
+
+    it('should match across both title and content', async () => {
+      // 'Neural' appears in one post's title and another post's content
+      const res = await request(server)
+        .get('/api/posts/search')
+        .query({ q: 'Neural' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.count).toBe(2);
+      const titles = res.body.data.map(p => p.title).sort();
+      expect(titles).toEqual([
+        'Getting Started with C++',
+        'Understanding Neural Networks'
+      ]);
     });
 
     it('should return posts matching the query in the content', async () => {
