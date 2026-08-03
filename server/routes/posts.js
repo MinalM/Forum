@@ -8,7 +8,8 @@ const {
   upvotePost,
   downvotePost,
   solvePost,
-  getPostsByLevel
+  getPostsByLevel,
+  searchPosts
 } = require('../controllers/posts');
 
 const Post = require('../models/Post');
@@ -21,6 +22,7 @@ const advancedResults = require('../middleware/advancedResults');
 // Comments router will be mounted at the app level
 
 // Special routes
+router.get('/search', searchPosts);
 router.get('/level/:level', getPostsByLevel);
 router.put('/:id/upvote', protect, upvotePost);
 router.put('/:id/downvote', protect, downvotePost);

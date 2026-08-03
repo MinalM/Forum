@@ -14,11 +14,12 @@ Rules for items:
 
 ## Items
 
-- [ ] **Backend search endpoint for posts.** Add `GET /api/posts/search?q=`
+- [x] **Backend search endpoint for posts.** Add `GET /api/posts/search?q=`
   performing a case-insensitive search over post title/content (MongoDB text
   index or regex), returning the standard post list shape with pagination.
   Acceptance: integration tests cover match, no-match, pagination, and
   injection-safety (regex escaping); documented in the route file.
+  Done: #23.
 
 - [ ] **Navbar search UI.** Add a search input to the navbar that hits the
   search endpoint and renders results as a page reusing `PostItem`.
@@ -55,3 +56,15 @@ Rules for items:
   (Vitest vs keeping Jest), env-var mapping (`REACT_APP_*`), proxy config,
   CI changes. Output: `docs/vite-migration-design.md` reviewed via PR.
   Implementation gets split into follow-up items from that doc.
+
+- [ ] **`npm run install-all` doesn't install `server/`'s dependencies.**
+  `install-all` runs `npm install` (root) then `npm run prepare`
+  (`cd client && npm install`), but never installs `server/`'s own
+  `package.json` deps (e.g. `connect-mongo`, required directly by
+  `dist/server.js`). The documented `ci` script does install them
+  (`cd server && npm ci`), so this only bites local/manual setup, but a
+  fresh clone following CLAUDE.md's "Running locally" steps with
+  `install-all` fails to start the server or run `npm test`.
+  Acceptance: `install-all` (or an equivalent documented step) installs
+  `server/`'s deps too; a fresh clone can run `npm run server` and
+  `npm test` without a manual `cd server && npm install`.
