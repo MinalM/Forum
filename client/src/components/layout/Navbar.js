@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
 import { hasPermission } from '../../utils/permissions';
 
 const Navbar = () => {
   const { isAuthenticated, user, logout } = useAuth();
+  const navigate = useNavigate();
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showAdminDropdown, setShowAdminDropdown] = useState(false);
   const [showModDropdown, setShowModDropdown] = useState(false);
   const [notificationCount, setNotificationCount] = useState(0);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Fetch pending reports count for moderators and admins
   useEffect(() => {
@@ -54,6 +56,14 @@ const Navbar = () => {
 
   const handleLogout = () => {
     logout();
+  };
+
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    const trimmedQuery = searchQuery.trim();
+    if (!trimmedQuery) return;
+    navigate(`/search?q=${encodeURIComponent(trimmedQuery)}`);
+    setShowMobileMenu(false);
   };
 
   const authLinks = (
@@ -154,6 +164,20 @@ const Navbar = () => {
         <button className="mobile-menu-toggle" onClick={toggleMobileMenu}>
           <i className={`fas ${showMobileMenu ? 'fa-times' : 'fa-bars'}`}></i>
         </button>
+
+        <form className="navbar-search" onSubmit={handleSearchSubmit} role="search">
+          <input
+            type="search"
+            className="navbar-search-input"
+            placeholder="Search posts..."
+            aria-label="Search posts"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          <button type="submit" className="navbar-search-btn" aria-label="Submit search">
+            <i className="fas fa-search"></i>
+          </button>
+        </form>
 
         <ul className={`navbar-nav ${showMobileMenu ? 'show' : ''}`}>
           <li className="nav-item">
