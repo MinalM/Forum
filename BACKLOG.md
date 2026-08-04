@@ -21,10 +21,11 @@ Rules for items:
   injection-safety (regex escaping); documented in the route file.
   Done: #23.
 
-- [ ] **Navbar search UI.** Add a search input to the navbar that hits the
+- [x] **Navbar search UI.** Add a search input to the navbar that hits the
   search endpoint and renders results as a page reusing `PostItem`.
   Acceptance: component tests for input → results → empty state; works
   logged-in and logged-out; keyboard accessible (Enter submits).
+  Done: #24.
 
 - [ ] **Newest-first sorting and a Solved/Unsolved filter on category pages.**
   Category post lists currently render oldest-first. Default to newest-first
