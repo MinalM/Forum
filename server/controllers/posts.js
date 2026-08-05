@@ -22,7 +22,15 @@ exports.getPosts = asyncHandler(async (req, res, next) => {
       );
     }
 
-    const posts = await Post.find({ category: req.params.categoryId })
+    const filter = { category: req.params.categoryId };
+    if (req.query.solved === 'true') {
+      filter.isSolved = true;
+    } else if (req.query.solved === 'false') {
+      filter.isSolved = false;
+    }
+
+    const posts = await Post.find(filter)
+      .sort('-createdAt')
       .populate({
         path: 'user',
         select: 'name avatar'

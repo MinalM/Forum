@@ -100,6 +100,60 @@ describe('Posts API', () => {
     });
   });
 
+  describe('Get Posts by Category — sorting and solved filter', () => {
+    let older, newer;
+
+    beforeEach(async () => {
+      older = await Post.create({
+        title: 'Older Post',
+        content: 'Older content',
+        user: user._id,
+        category: category._id,
+        isSolved: true,
+        createdAt: new Date('2026-01-01')
+      });
+      newer = await Post.create({
+        title: 'Newer Post',
+        content: 'Newer content',
+        user: user._id,
+        category: category._id,
+        isSolved: false,
+        createdAt: new Date('2026-06-01')
+      });
+    });
+
+    it('should return category posts newest-first by default', async () => {
+      const res = await request(server).get(`/api/categories/${category._id}/posts`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.length).toBe(2);
+      expect(res.body.data[0]._id).toBe(newer._id.toString());
+      expect(res.body.data[1]._id).toBe(older._id.toString());
+    });
+
+    it('should filter category posts to solved only', async () => {
+      const res = await request(server).get(
+        `/api/categories/${category._id}/posts?solved=true`
+      );
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.length).toBe(1);
+      expect(res.body.data[0]._id).toBe(older._id.toString());
+      expect(res.body.data[0].isSolved).toBe(true);
+    });
+
+    it('should filter category posts to unsolved only', async () => {
+      const res = await request(server).get(
+        `/api/categories/${category._id}/posts?solved=false`
+      );
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.length).toBe(1);
+      expect(res.body.data[0]._id).toBe(newer._id.toString());
+      expect(res.body.data[0].isSolved).toBe(false);
+    });
+  });
+
   describe('Create Post', () => {
     const newPost = {
       title: 'New Test Post',
