@@ -17,6 +17,7 @@ import Profile from './pages/Profile';
 import EditProfile from './pages/EditProfile';
 import Categories from './pages/Categories';
 import CategoryPosts from './pages/CategoryPosts';
+import SearchResults from './pages/SearchResults';
 import PostDetail from './pages/PostDetail';
 import CreatePost from './pages/CreatePost';
 import EditPost from './pages/EditPost';
@@ -76,6 +77,7 @@ const App = () => {
           <Route path="/edit-profile" element={<PrivateRoute><EditProfile /></PrivateRoute>} />
           <Route path="/categories" element={<Categories />} />
           <Route path="/categories/:categoryId" element={<CategoryPosts />} />
+          <Route path="/search" element={<SearchResults />} />
           <Route path="/posts/:id" element={<PostDetail />} />
           <Route path="/create-post" element={<PrivateRoute><CreatePost /></PrivateRoute>} />
           <Route path="/edit-post/:id" element={<PrivateRoute><EditPost /></PrivateRoute>} />
