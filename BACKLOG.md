@@ -70,7 +70,7 @@ Rules for items:
   `server/`'s deps too; a fresh clone can run `npm run server` and
   `npm test` without a manual `cd server && npm install`.
 
-- [ ] **Root `brace-expansion` override breaks `nodemon` and fails a new
+- [x] **Root `brace-expansion` override breaks `nodemon` and fails a new
   audit advisory.** Root `package.json`'s `overrides` pins
   `brace-expansion@^5.0.8` globally (added to fix an earlier CVE). npm
   overrides apply everywhere, including under `minimatch@3.1.5` (a
@@ -90,3 +90,27 @@ Rules for items:
   Acceptance: `npm run server` survives nodemon restarts/file events
   without crashing; root `npm audit` and `cd client && npm audit
   --omit=dev` both pass in CI; Playwright e2e suite green.
+  Done: #28 (also fixed the js-yaml item below in the same PR at the
+  user's request; root `npm audit` and client `npm audit --omit=dev`
+  both clean now).
+
+- [x] **`js-yaml` 3.x high-severity advisory via `jest` (root `npm audit`
+  still red).** Discovered while verifying #28: root's plain `npm audit`
+  flags `js-yaml` 3.0.0–3.15.0 as high severity ("Quadratic CPU
+  consumption in `!!omap` resolution", GHSA-5p4m-2wfm-xmqj, "CVE-2026-59870
+  fix not backported"), resolved via `jest > @jest/core > @jest/reporters
+  > @istanbuljs/load-nyc-config > js-yaml@3.15.0`. It's a transitive dev
+  dependency of `jest` with no direct top-level requirement to bump, and a
+  patched `3.15.1` exists upstream but isn't reachable without an
+  override. This is unrelated to brace-expansion/nodemon and wasn't fixed
+  in #28 to keep that PR scoped — it still leaves the `security` CI job
+  red (`npm audit` at root fails on this finding even with brace-expansion
+  fixed, since `bash -e` aborts the step before reaching the client audit
+  line).
+  Acceptance: root `npm audit` passes in CI without breaking `jest`
+  itself; test suite still green.
+  Done: #28 (added directly to that PR at the user's request instead of a
+  separate PR — `js-yaml` has exactly one consumer in the tree,
+  `@istanbuljs/load-nyc-config`, which already declares `^3.13.1`, so
+  `js-yaml: "^3.15.1"` needed no nested scoping; root `npm audit` now
+  reports 0 vulnerabilities).

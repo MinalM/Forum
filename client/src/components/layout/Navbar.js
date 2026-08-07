@@ -174,7 +174,13 @@ const Navbar = () => {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
-          <button type="submit" className="navbar-search-btn" aria-label="Submit search">
+          {/* type="button" (not "submit"): this form is the only place in the
+              app where a bare `button[type="submit"]` selector would be
+              ambiguous, since Navbar renders on every page alongside each
+              page's own form. Enter still submits via the form's onSubmit -
+              a lone text field triggers implicit submission with no default
+              button needed. */}
+          <button type="button" className="navbar-search-btn" aria-label="Submit search" onClick={handleSearchSubmit}>
             <i className="fas fa-search"></i>
           </button>
         </form>
