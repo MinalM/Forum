@@ -90,10 +90,11 @@ Rules for items:
   Acceptance: `npm run server` survives nodemon restarts/file events
   without crashing; root `npm audit` and `cd client && npm audit
   --omit=dev` both pass in CI; Playwright e2e suite green.
-  Done: #28 (brace-expansion fixed; js-yaml split out as a new item below —
-  root `npm audit` in CI still needs that fix to go fully green).
+  Done: #28 (also fixed the js-yaml item below in the same PR at the
+  user's request; root `npm audit` and client `npm audit --omit=dev`
+  both clean now).
 
-- [ ] **`js-yaml` 3.x high-severity advisory via `jest` (root `npm audit`
+- [x] **`js-yaml` 3.x high-severity advisory via `jest` (root `npm audit`
   still red).** Discovered while verifying #28: root's plain `npm audit`
   flags `js-yaml` 3.0.0–3.15.0 as high severity ("Quadratic CPU
   consumption in `!!omap` resolution", GHSA-5p4m-2wfm-xmqj, "CVE-2026-59870
@@ -108,3 +109,8 @@ Rules for items:
   line).
   Acceptance: root `npm audit` passes in CI without breaking `jest`
   itself; test suite still green.
+  Done: #28 (added directly to that PR at the user's request instead of a
+  separate PR — `js-yaml` has exactly one consumer in the tree,
+  `@istanbuljs/load-nyc-config`, which already declares `^3.13.1`, so
+  `js-yaml: "^3.15.1"` needed no nested scoping; root `npm audit` now
+  reports 0 vulnerabilities).
