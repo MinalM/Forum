@@ -33,10 +33,11 @@ Rules for items:
   Acceptance: tests for sort order and filter; UI control reflects state.
   Done: #25.
 
-- [ ] **Session-aware homepage hero.** Logged-in users still see
+- [x] **Session-aware homepage hero.** Logged-in users still see
   "Join the Community" / Register CTAs. Show "Create Post" and a Dashboard
   link instead when authenticated.
   Acceptance: component tests for both auth states.
+  Done: #26.
 
 - [ ] **Server survives MongoDB connection blips.** The server exits on any
   mongoose monitor timeout (observed when Docker Desktop restarted), killing

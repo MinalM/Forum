@@ -6,12 +6,14 @@ import { useAlert } from '../context/AlertContext';
 import { useFeatureFlag } from '../hooks/useFeatureFlag';
 import { useExperiment } from '../hooks/useExperiment';
 import TrendingPosts from '../components/TrendingPosts';
+import { useAuth } from '../context/AuthContext';
 
 const Home = () => {
   const [posts, setPosts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const { setAlert } = useAlert();
+  const { isAuthenticated } = useAuth();
   const showTrending = useFeatureFlag('trending_posts_section', false);
   const sortVariant = useExperiment('default_sort_order');
 
@@ -67,12 +69,25 @@ const Home = () => {
             and Machine Learning. Share knowledge, ask questions, and grow together.
           </p>
           <div>
-            <Link to="/register" className="btn btn-lg">
-              Join the Community
-            </Link>
-            <Link to="/categories" className="btn btn-lg btn-secondary ml-3">
-              Browse Topics
-            </Link>
+            {isAuthenticated ? (
+              <>
+                <Link to="/create-post" className="btn btn-lg">
+                  Create Post
+                </Link>
+                <Link to="/dashboard" className="btn btn-lg btn-secondary ml-3">
+                  Go to Dashboard
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link to="/register" className="btn btn-lg">
+                  Join the Community
+                </Link>
+                <Link to="/categories" className="btn btn-lg btn-secondary ml-3">
+                  Browse Topics
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </section>
