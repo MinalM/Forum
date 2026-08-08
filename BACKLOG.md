@@ -39,13 +39,14 @@ Rules for items:
   Acceptance: component tests for both auth states.
   Done: #26.
 
-- [ ] **Server survives MongoDB connection blips.** The server exits on any
+- [x] **Server survives MongoDB connection blips.** The server exits on any
   mongoose monitor timeout (observed when Docker Desktop restarted), killing
   the API instead of letting the driver reconnect. Remove the fatal handler
   for post-startup connection errors; rely on mongoose auto-reconnect and
   surface state via `/api/health` `dbState`.
   Acceptance: unit test for the health endpoint under disconnected state;
   manual repro note in the PR (stop/start mongo container).
+  Done: #27.
 
 - [ ] **Fix dead footer social links.** The Twitter/LinkedIn/GitHub links in
   `client/src/components/layout/Footer.js` are `#!` placeholders. Point them

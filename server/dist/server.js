@@ -111,6 +111,9 @@ app.use('/api', otel_diagnostics_1.default);
 app.use(errorMiddleware);
 const logger_1 = require("./utils/logger");
 const experimentation_1 = require("./services/experimentation");
+mongoose_1.default.connection.on('error', (err) => {
+    logger_1.logger.error('MongoDB connection error:', err);
+});
 const startServer = async () => {
     try {
         const mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017/ai_ml_forum';

@@ -136,6 +136,14 @@ app.use(errorMiddleware);
 import { logger } from './utils/logger';
 import { initExperimentation, shutdownExperimentation } from './services/experimentation';
 
+// Without a listener, Node's EventEmitter throws on an unhandled 'error'
+// event, so a post-startup blip (e.g. a mongoose monitor timeout when Docker
+// Desktop restarts) took down the whole API instead of letting the driver
+// auto-reconnect. Log it and let /api/health's dbState reflect the state.
+mongoose.connection.on('error', (err) => {
+  logger.error('MongoDB connection error:', err);
+});
+
 const startServer = async () => {
   // Connect to Mongo
   try {
