@@ -27,10 +27,11 @@ Rules for items:
   logged-in and logged-out; keyboard accessible (Enter submits).
   Done: #24.
 
-- [ ] **Newest-first sorting and a Solved/Unsolved filter on category pages.**
+- [x] **Newest-first sorting and a Solved/Unsolved filter on category pages.**
   Category post lists currently render oldest-first. Default to newest-first
   and add a filter using the existing `isSolved` concept.
   Acceptance: tests for sort order and filter; UI control reflects state.
+  Done: #25.
 
 - [ ] **Session-aware homepage hero.** Logged-in users still see
   "Join the Community" / Register CTAs. Show "Create Post" and a Dashboard

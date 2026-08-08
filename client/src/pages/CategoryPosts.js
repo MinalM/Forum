@@ -14,6 +14,7 @@ const CategoryPosts = () => {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [filter, setFilter] = useState('all');
 
   useEffect(() => {
     const fetchCategoryData = async () => {
@@ -22,13 +23,20 @@ const CategoryPosts = () => {
         const categoryRes = await axios.get(`/api/categories/${categoryId}`);
         setCategory(categoryRes.data.data);
 
-        // Fetch posts in this category
+        // Fetch posts in this category, newest-first, optionally filtered by solved status
+        const params = { page, limit: 10 };
+        if (filter === 'solved') {
+          params.solved = true;
+        } else if (filter === 'unsolved') {
+          params.solved = false;
+        }
+
         const postsRes = await axios.get(`/api/categories/${categoryId}/posts`, {
-          params: { page, limit: 10 }
+          params
         });
-        
+
         setPosts(postsRes.data.data);
-        
+
         // Calculate total pages if pagination info is available
         if (postsRes.data.pagination) {
           const total = postsRes.data.pagination.total || postsRes.data.count;
@@ -46,13 +54,18 @@ const CategoryPosts = () => {
     };
 
     fetchCategoryData();
-  }, [categoryId, page, setAlert]);
+  }, [categoryId, page, filter, setAlert]);
 
   const handlePageChange = (newPage) => {
     if (newPage > 0 && newPage <= totalPages) {
       setPage(newPage);
       window.scrollTo(0, 0);
     }
+  };
+
+  const handleFilterChange = (e) => {
+    setFilter(e.target.value);
+    setPage(1);
   };
 
   if (loading) {
@@ -85,6 +98,15 @@ const CategoryPosts = () => {
             </Link>
           </div>
         )}
+      </div>
+
+      <div className="category-controls">
+        <label htmlFor="post-filter">Filter</label>
+        <select id="post-filter" value={filter} onChange={handleFilterChange}>
+          <option value="all">All</option>
+          <option value="unsolved">Unsolved</option>
+          <option value="solved">Solved</option>
+        </select>
       </div>
 
       <div className="post-list">
