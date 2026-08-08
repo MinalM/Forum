@@ -18,4 +18,17 @@ describe('Footer', () => {
     const link = screen.getByRole('link', { name: 'AI/ML Resources' });
     expect(link).toHaveAttribute('href', '/categories');
   });
+
+  it('has no placeholder "#!" hrefs', () => {
+    render(
+      <MemoryRouter>
+        <Footer />
+      </MemoryRouter>
+    );
+
+    const links = screen.getAllByRole('link');
+    links.forEach((link) => {
+      expect(link).not.toHaveAttribute('href', '#!');
+    });
+  });
 });

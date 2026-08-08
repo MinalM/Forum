@@ -48,10 +48,13 @@ Rules for items:
   manual repro note in the PR (stop/start mongo container).
   Done: #27.
 
-- [ ] **Fix dead footer social links.** The Twitter/LinkedIn/GitHub links in
+- [x] **Fix dead footer social links.** The Twitter/LinkedIn/GitHub links in
   `client/src/components/layout/Footer.js` are `#!` placeholders. Point them
   at real destinations or remove them.
   Acceptance: no `#!` hrefs remain in the footer; test asserts targets.
+  Done: #29 (removed the "Connect" section — this project has no real
+  Twitter/LinkedIn/GitHub accounts to link to, so a placeholder would be
+  as misleading as `#!`).
 
 - [ ] **Design doc: migrate client from CRA to Vite.** react-scripts is
   unmaintained; its dev tree carries unfixable advisories (webpack-dev-server

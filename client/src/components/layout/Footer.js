@@ -58,20 +58,6 @@ const Footer = () => {
             </ul>
           </div>
 
-          <div className="footer-section">
-            <h3 className="footer-heading">Connect</h3>
-            <div className="social-links">
-              <a href="#!" className="social-link">
-                <i className="fab fa-twitter"></i>
-              </a>
-              <a href="#!" className="social-link">
-                <i className="fab fa-linkedin"></i>
-              </a>
-              <a href="#!" className="social-link">
-                <i className="fab fa-github"></i>
-              </a>
-            </div>
-          </div>
         </div>
 
         <div className="footer-bottom">
