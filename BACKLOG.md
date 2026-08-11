@@ -53,13 +53,15 @@ Rules for items:
   at real destinations or remove them.
   Acceptance: no `#!` hrefs remain in the footer; test asserts targets.
 
-- [ ] **Design doc: migrate client from CRA to Vite.** react-scripts is
+- [x] **Design doc: migrate client from CRA to Vite.** react-scripts is
   unmaintained; its dev tree carries unfixable advisories (webpack-dev-server
   4.x) and required custom Jest shims for ESM deps (axios, react-router 8).
   This item is the design/plan only: migration steps, test-runner choice
   (Vitest vs keeping Jest), env-var mapping (`REACT_APP_*`), proxy config,
   CI changes. Output: `docs/vite-migration-design.md` reviewed via PR.
   Implementation gets split into follow-up items from that doc.
+  Done: see PR for this item (docs/vite-migration-design.md). Follow-up
+  implementation items appended below.
 
 - [ ] **`npm run install-all` doesn't install `server/`'s dependencies.**
   `install-all` runs `npm install` (root) then `npm run prepare`
@@ -117,3 +119,61 @@ Rules for items:
   `@istanbuljs/load-nyc-config`, which already declares `^3.13.1`, so
   `js-yaml: "^3.15.1"` needed no nested scoping; root `npm audit` now
   reports 0 vulnerabilities).
+
+- [ ] **Vite migration step 1: add Vite tooling and dev/build scripts.**
+  From `docs/vite-migration-design.md`: add `vite` + `@vitejs/plugin-react`
+  as client devDeps, add `client/vite.config.js` (proxy `/api` →
+  `localhost:2000`, port 3000, `build.outDir: 'build'`,
+  `envPrefix: 'REACT_APP_'`), move `client/public/index.html` to
+  `client/index.html` and drop `%PUBLIC_URL%` templating, replace
+  `start`/`build` scripts (`vite` / `vite build`), drop `eject`.
+  Acceptance: `npm run client` serves the app on port 3000 with `/api`
+  proxying working; `cd client && npm run build` produces `client/build/`.
+  Client test suite not expected to pass yet (Jest config untouched by this
+  item, dealt with in the next item) — note actual state in the PR.
+
+- [ ] **Vite migration step 2: env vars.** From
+  `docs/vite-migration-design.md`: update `client/src/config.js` and
+  `client/src/index.js` from `process.env.REACT_APP_*` /`process.env.CI` to
+  `import.meta.env.REACT_APP_*`; resolve the CI-branch API URL logic without
+  `process.env.CI` (Vite doesn't expose it under a `REACT_APP_`/custom
+  prefix). Depends on the previous item's `vite.config.js` existing.
+  Acceptance: app resolves the correct API URL in dev, CI, and production
+  builds; existing `.env.production` and the CI workflow's
+  `client/.env` injection keep working unmodified.
+
+- [ ] **Vite migration step 3: Jest under the post-CRA transform chain.**
+  From `docs/vite-migration-design.md`: `client/jest.babelTransform.js`
+  currently builds on `babel-preset-react-app` (a react-scripts package).
+  Replace with direct `@babel/preset-env` + `@babel/preset-react` (or
+  equivalent), keeping the existing `import.meta`→`({})` strip plugin
+  (react-router 8 needs it under Jest regardless of bundler) and the
+  `axios` `moduleNameMapper`/`transformIgnorePatterns` allowlist as-is.
+  Acceptance: full client Jest suite green without `react-scripts` in the
+  transform path.
+
+- [ ] **Vite migration step 4: replace CRA's ESLint config.** From
+  `docs/vite-migration-design.md`: `client/package.json`'s
+  `"eslintConfig": {"extends": ["react-app", "react-app/jest"]}` depends on
+  `eslint-config-react-app`. Do a rule-by-rule comparison and replace with a
+  standalone config (hooks rules, JSX a11y rules) so lint coverage doesn't
+  silently regress.
+  Acceptance: `npx eslint src` (or equivalent) runs clean under the new
+  config with parity to the prior rule set, documented in the PR.
+
+- [ ] **Vite migration step 5: prune CRA-only `overrides` and re-audit.**
+  From `docs/vite-migration-design.md`: `client/package.json`'s `overrides`
+  (`nth-check`, `postcss`, `svgo`, `@svgr/webpack`, `resolve-url-loader`)
+  exist to patch react-scripts's webpack/SVG transitive CVEs; drop whichever
+  no longer apply once react-scripts is gone (verify `form-data`/
+  `formidable` are still needed by remaining deps before dropping those too).
+  Acceptance: `cd client && npm audit --omit=dev` stays clean after pruning.
+
+- [ ] **Vite migration step 6: CI workflow verification.** From
+  `docs/vite-migration-design.md`: confirm `.github/workflows/node.js.yml`
+  needs no structural changes beyond possibly dropping `CI=false` from the
+  build step (a CRA-only convention); re-verify `build-and-test` (including
+  Playwright against the Vite dev server) and `deploy` (Netlify
+  `publish-dir: './client/build'`) end-to-end.
+  Acceptance: full CI green on a PR built against the migrated client from
+  the prior steps.
