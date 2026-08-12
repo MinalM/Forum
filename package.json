@@ -4,7 +4,7 @@
   "main": "index.js",
   "scripts": {
     "prepare": "cd client && npm install",
-    "install-all": "npm install && npm run prepare",
+    "install-all": "npm install && npm run prepare && cd server && npm install",
     "test": "jest --config server/jest.config.js --detectOpenHandles",
     "test:watch": "jest --config server/jest.config.js --watch",
     "test:coverage": "jest --config server/jest.config.js --coverage",
