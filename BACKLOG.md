@@ -66,7 +66,7 @@ Rules for items:
   Done: see PR for this item (docs/vite-migration-design.md). Follow-up
   implementation items appended below.
 
-- [ ] **`npm run install-all` doesn't install `server/`'s dependencies.**
+- [x] **`npm run install-all` doesn't install `server/`'s dependencies.**
   `install-all` runs `npm install` (root) then `npm run prepare`
   (`cd client && npm install`), but never installs `server/`'s own
   `package.json` deps (e.g. `connect-mongo`, required directly by
@@ -77,6 +77,7 @@ Rules for items:
   Acceptance: `install-all` (or an equivalent documented step) installs
   `server/`'s deps too; a fresh clone can run `npm run server` and
   `npm test` without a manual `cd server && npm install`.
+  Done: #31.
 
 - [x] **Root `brace-expansion` override breaks `nodemon` and fails a new
   audit advisory.** Root `package.json`'s `overrides` pins
