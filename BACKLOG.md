@@ -49,16 +49,26 @@ Rules for items:
   `vite.config.js` also sets `exclude: []` to opt them back in. Client
   Jest suite (still running via `react-scripts test`, untouched by this
   item) passes as-is: 8 suites, 27 tests.
+  Step 2 (env vars) got pulled into this same PR — see below; step 1 alone
+  left the live app throwing `process is not defined` and rendering a
+  blank page (caught via a local Playwright/headless-browser check after
+  CI's e2e job failed the same way), so shipping step 1 without it wasn't
+  an option.
 
-- [ ] **Vite migration step 2: env vars.** From
-  `docs/vite-migration-design.md`: update `client/src/config.js` and
-  `client/src/index.js` from `process.env.REACT_APP_*` /`process.env.CI` to
-  `import.meta.env.REACT_APP_*`; resolve the CI-branch API URL logic without
-  `process.env.CI` (Vite doesn't expose it under a `REACT_APP_`/custom
-  prefix). Depends on the previous item's `vite.config.js` existing.
-  Acceptance: app resolves the correct API URL in dev, CI, and production
-  builds; existing `.env.production` and the CI workflow's
-  `client/.env` injection keep working unmodified.
+- [x] **Vite migration step 2: env vars.** Done: #34 (folded into the same
+  PR as step 1 — see note above). Updated `client/src/config.js` and
+  `client/src/index.js` from `process.env.REACT_APP_*`/`process.env.CI` to
+  `import.meta.env.REACT_APP_*`; dropped the CI-branch API URL logic
+  entirely rather than replacing it, since CI already sets
+  `REACT_APP_API_URL` directly (the workflow's `echo ... > client/.env`
+  step and Playwright's `webServer` env), making the CI-specific branch
+  redundant (and its hardcoded `localhost:5000` never matched CI's actual
+  server port 2000 anyway). Also needed: `client/jest.babelTransform.js`'s
+  `import.meta` → `({})` strip plugin now replaces with
+  `({ env: process.env })` instead — application code reading
+  `import.meta.env.REACT_APP_*` needs that to resolve under Jest too, not
+  just react-router's `import.meta` usage. `.env.production` and CI's env
+  injection unchanged. Client Jest suite: 8 suites, 28 tests, all passing.
 
 - [ ] **Vite migration step 3: Jest under the post-CRA transform chain.**
   From `docs/vite-migration-design.md`: `client/jest.babelTransform.js`
