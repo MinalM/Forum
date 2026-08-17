@@ -1,6 +1,7 @@
 const ErrorResponse = require('../utils/errorResponse');
 const asyncHandler = require('../middleware/async');
 const escapeRegex = require('../utils/escapeRegex');
+const { normalizeTags } = require('../utils/normalizeTags');
 const Post = require('../models/Post');
 const User = require('../models/User');
 const Category = require('../models/Category');
@@ -134,6 +135,10 @@ exports.createPost = asyncHandler(async (req, res, next) => {
       // Add user to req.body
       req.body.user = req.user.id;
 
+      if (req.body.tags) {
+        req.body.tags = normalizeTags(req.body.tags);
+      }
+
       // Check if category exists
       const category = await Category.findById(req.body.category);
       if (!category) {
@@ -191,6 +196,10 @@ exports.updatePost = asyncHandler(async (req, res, next) => {
 
   // Update the updatedAt field
   req.body.updatedAt = Date.now();
+
+  if (req.body.tags) {
+    req.body.tags = normalizeTags(req.body.tags);
+  }
 
   post = await Post.findByIdAndUpdate(req.params.id, req.body, {
     new: true,
