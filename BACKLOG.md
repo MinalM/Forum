@@ -17,7 +17,7 @@ Rules for items:
 ## Items
 
 - [x] **Post tags are polluted with category-description fragments.**
-  Done: PR TBD. `server/seeder.js`, `scripts/generate-seed.js`, and
+  Done: #33. `server/seeder.js`, `scripts/generate-seed.js`, and
   `scripts/seed-mongo.js` were audited and already produce clean, short
   tags (no code change needed there — the join-category-description root
   cause named in this item's original text was not present in any
