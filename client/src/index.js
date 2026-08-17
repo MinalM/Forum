@@ -19,7 +19,7 @@ root.render(
         <AuthProvider>
           <AlertProvider>
             <StatsigProvider
-              sdkKey={process.env.REACT_APP_STATSIG_CLIENT_KEY || ''}
+              sdkKey={import.meta.env.REACT_APP_STATSIG_CLIENT_KEY || ''}
               user={{ userID: 'anonymous' }}
               waitForInitialization={false}
             >

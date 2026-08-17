@@ -34,27 +34,41 @@ Rules for items:
   (dry run by default, `--apply` to persist) to strip already-polluted
   tags from existing rows.
 
-- [ ] **Vite migration step 1: add Vite tooling and dev/build scripts.**
-  From `docs/vite-migration-design.md`: add `vite` + `@vitejs/plugin-react`
-  as client devDeps, add `client/vite.config.js` (proxy `/api` →
-  `localhost:2000`, port 3000, `build.outDir: 'build'`,
-  `envPrefix: 'REACT_APP_'`), move `client/public/index.html` to
-  `client/index.html` and drop `%PUBLIC_URL%` templating, replace
-  `start`/`build` scripts (`vite` / `vite build`), drop `eject`.
-  Acceptance: `npm run client` serves the app on port 3000 with `/api`
-  proxying working; `cd client && npm run build` produces `client/build/`.
-  Client test suite not expected to pass yet (Jest config untouched by this
-  item, dealt with in the next item) — note actual state in the PR.
+- [x] **Vite migration step 1: add Vite tooling and dev/build scripts.**
+  Done: #34. Added `vite` + `@vitejs/plugin-react` as client devDeps,
+  `client/vite.config.js` (proxy `/api` → `localhost:2000`, port 3000,
+  `build.outDir: 'build'`, `envPrefix: 'REACT_APP_'`), moved
+  `client/public/index.html` to `client/index.html` dropping
+  `%PUBLIC_URL%` templating, replaced `start`/`build` scripts with
+  `vite`/`vite build`, dropped `eject`. Pinned `vite@^6.4.3` +
+  `@vitejs/plugin-react@^4.7.0` (not their current latest majors) since
+  Vite 7 / plugin-react 5+ require Node ≥20.19 and CI is pinned to Node
+  18.x. Undocumented snag not covered by the design doc: all `client/src`
+  uses JSX in `.js` files (CRA convention), and Vite's esbuild plugin
+  excludes `.js` by default even with a custom `include`, so
+  `vite.config.js` also sets `exclude: []` to opt them back in. Client
+  Jest suite (still running via `react-scripts test`, untouched by this
+  item) passes as-is: 8 suites, 27 tests.
+  Step 2 (env vars) got pulled into this same PR — see below; step 1 alone
+  left the live app throwing `process is not defined` and rendering a
+  blank page (caught via a local Playwright/headless-browser check after
+  CI's e2e job failed the same way), so shipping step 1 without it wasn't
+  an option.
 
-- [ ] **Vite migration step 2: env vars.** From
-  `docs/vite-migration-design.md`: update `client/src/config.js` and
-  `client/src/index.js` from `process.env.REACT_APP_*` /`process.env.CI` to
-  `import.meta.env.REACT_APP_*`; resolve the CI-branch API URL logic without
-  `process.env.CI` (Vite doesn't expose it under a `REACT_APP_`/custom
-  prefix). Depends on the previous item's `vite.config.js` existing.
-  Acceptance: app resolves the correct API URL in dev, CI, and production
-  builds; existing `.env.production` and the CI workflow's
-  `client/.env` injection keep working unmodified.
+- [x] **Vite migration step 2: env vars.** Done: #34 (folded into the same
+  PR as step 1 — see note above). Updated `client/src/config.js` and
+  `client/src/index.js` from `process.env.REACT_APP_*`/`process.env.CI` to
+  `import.meta.env.REACT_APP_*`; dropped the CI-branch API URL logic
+  entirely rather than replacing it, since CI already sets
+  `REACT_APP_API_URL` directly (the workflow's `echo ... > client/.env`
+  step and Playwright's `webServer` env), making the CI-specific branch
+  redundant (and its hardcoded `localhost:5000` never matched CI's actual
+  server port 2000 anyway). Also needed: `client/jest.babelTransform.js`'s
+  `import.meta` → `({})` strip plugin now replaces with
+  `({ env: process.env })` instead — application code reading
+  `import.meta.env.REACT_APP_*` needs that to resolve under Jest too, not
+  just react-router's `import.meta` usage. `.env.production` and CI's env
+  injection unchanged. Client Jest suite: 8 suites, 28 tests, all passing.
 
 - [ ] **Vite migration step 3: Jest under the post-CRA transform chain.**
   From `docs/vite-migration-design.md`: `client/jest.babelTransform.js`
@@ -144,3 +158,18 @@ Rules for items:
   explicitly out of scope; static site-level defaults only.
   Acceptance: `og:title`, `og:description`, `og:type`, `og:url`, and
   `twitter:card` present in the built HTML; documented in the PR.
+
+- [ ] **CI's Node 18.x pin blocks newer Vite/plugin-react majors.**
+  Discovered while implementing Vite migration step 1 (#34): Vite 7 and
+  `@vitejs/plugin-react` 5+ both require Node `^20.19.0 || >=22.12.0`, so
+  that PR pinned to Vite 6 / plugin-react 4 (both support Node 18)
+  instead of current latest. `.github/workflows/node.js.yml`'s
+  `build-and-test` matrix is `node-version: [18.x]`. Not fixed inline
+  since bumping the CI Node matrix is unrelated to the migration itself
+  and touches `.github/workflows/`, which the autonomous cycle's ground
+  rules say not to modify without it being the item's explicit scope.
+  Acceptance: decide whether to bump CI's Node matrix (and re-verify the
+  full suite + Playwright under the new version) or stay on Vite
+  6/plugin-react 4 long-term; document the decision. Low priority —
+  current pins aren't blocking anything else in the migration steps
+  already scoped.

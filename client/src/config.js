@@ -1,10 +1,6 @@
-// Determine if we're running in CI
-const isCI = process.env.CI === 'true';
-
-// Set API URL based on environment
-const API_URL = isCI 
-  ? 'http://localhost:5000'  // CI environment
-  : (process.env.REACT_APP_API_URL || 'http://localhost:2000'); // Local development
+// CI sets REACT_APP_API_URL directly (see .github/workflows/node.js.yml),
+// so no separate CI-detection branch is needed here.
+const API_URL = import.meta.env.REACT_APP_API_URL || 'http://localhost:2000'; // Local development
 
 export const config = {
   apiUrl: API_URL,
