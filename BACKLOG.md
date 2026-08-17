@@ -70,15 +70,23 @@ Rules for items:
   just react-router's `import.meta` usage. `.env.production` and CI's env
   injection unchanged. Client Jest suite: 8 suites, 28 tests, all passing.
 
-- [ ] **Vite migration step 3: Jest under the post-CRA transform chain.**
-  From `docs/vite-migration-design.md`: `client/jest.babelTransform.js`
-  currently builds on `babel-preset-react-app` (a react-scripts package).
-  Replace with direct `@babel/preset-env` + `@babel/preset-react` (or
-  equivalent), keeping the existing `import.meta`→`({})` strip plugin
-  (react-router 8 needs it under Jest regardless of bundler) and the
-  `axios` `moduleNameMapper`/`transformIgnorePatterns` allowlist as-is.
-  Acceptance: full client Jest suite green without `react-scripts` in the
-  transform path.
+- [x] **Vite migration step 3: Jest under the post-CRA transform chain.**
+  Done: #35. Replaced `babel-preset-react-app` in
+  `client/jest.babelTransform.js` with `@babel/preset-env`
+  (`targets: { node: 'current' }`) + `@babel/preset-react`
+  (`runtime: 'automatic'`) configured directly, added as direct
+  devDependencies (`@babel/core`, `@babel/preset-env`,
+  `@babel/preset-react`, `babel-jest`) rather than relying on them being
+  resolvable transitively through `react-scripts`. Kept the
+  `import.meta`→`({ env: process.env })` strip plugin, `axios`
+  `moduleNameMapper`, and `transformIgnorePatterns` allowlist unchanged.
+  `react-scripts` (and its transitive `babel-preset-react-app`) stays in
+  the tree — it's still the `test` script's runner wrapper; dropping it
+  entirely is a separate, not-yet-scoped step. Full client Jest suite: 9
+  suites, 31 tests, all passing (up from 8/28 — the delta is 3 new
+  regression tests added in this PR guarding the transform's dependency
+  and behavior). `npm run build` (Vite) and
+  `npm audit --omit=dev` both re-verified clean.
 
 - [ ] **Vite migration step 4: replace CRA's ESLint config.** From
   `docs/vite-migration-design.md`: `client/package.json`'s
