@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { MAX_TAG_LENGTH, MAX_TAGS } = require('../utils/normalizeTags');
 
 const PostSchema = new mongoose.Schema({
   title: {
@@ -25,7 +26,19 @@ const PostSchema = new mongoose.Schema({
     ref: 'Category',
     required: true
   },
-  tags: [String],
+  tags: {
+    type: [String],
+    validate: [
+      {
+        validator: tags => tags.length <= MAX_TAGS,
+        message: `A post cannot have more than ${MAX_TAGS} tags`
+      },
+      {
+        validator: tags => tags.every(tag => tag.length <= MAX_TAG_LENGTH),
+        message: `Each tag must be ${MAX_TAG_LENGTH} characters or fewer`
+      }
+    ]
+  },
   upvotes: [{
     type: mongoose.Schema.ObjectId,
     ref: 'User'
