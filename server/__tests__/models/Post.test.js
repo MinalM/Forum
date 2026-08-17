@@ -95,6 +95,52 @@ describe('Post Model Test', () => {
     expect(post.voteCount).toBe(0);
   });
 
+  it('should reject more than 10 tags', async () => {
+    const postWithTooManyTags = new Post({
+      title: 'Test Post',
+      content: 'Test content',
+      user: user._id,
+      category: category._id,
+      tags: Array.from({ length: 11 }, (_, i) => `tag${i}`)
+    });
+
+    try {
+      await postWithTooManyTags.validate();
+    } catch (error) {
+      expect(error.errors.tags).toBeDefined();
+      expect(error.errors.tags.message).toBe('A post cannot have more than 10 tags');
+    }
+  });
+
+  it('should reject a tag longer than 30 characters', async () => {
+    const postWithLongTag = new Post({
+      title: 'Test Post',
+      content: 'Test content',
+      user: user._id,
+      category: category._id,
+      tags: ['a'.repeat(31)]
+    });
+
+    try {
+      await postWithLongTag.validate();
+    } catch (error) {
+      expect(error.errors.tags).toBeDefined();
+      expect(error.errors.tags.message).toBe('Each tag must be 30 characters or fewer');
+    }
+  });
+
+  it('should accept tags within the count and length caps', async () => {
+    const post = new Post({
+      title: 'Test Post',
+      content: 'Test content',
+      user: user._id,
+      category: category._id,
+      tags: ['python', 'career advice']
+    });
+
+    await expect(post.validate()).resolves.toBeUndefined();
+  });
+
   it('should validate aiMlLevel enum values', async () => {
     const postWithInvalidLevel = new Post({
       title: 'Test Post',

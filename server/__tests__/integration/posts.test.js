@@ -195,6 +195,48 @@ describe('Posts API', () => {
 
       expect(res.status).toBe(404);
     });
+
+    it('should reject a post with more than 10 tags', async () => {
+      const res = await request(server)
+        .post('/api/posts')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          ...newPost,
+          category: category._id,
+          tags: Array.from({ length: 11 }, (_, i) => `tag${i}`)
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.success).toBe(false);
+    });
+
+    it('should reject a post with a tag longer than 30 characters', async () => {
+      const res = await request(server)
+        .post('/api/posts')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          ...newPost,
+          category: category._id,
+          tags: ['a'.repeat(31)]
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.success).toBe(false);
+    });
+
+    it('should trim whitespace and drop duplicate/empty tags', async () => {
+      const res = await request(server)
+        .post('/api/posts')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          ...newPost,
+          category: category._id,
+          tags: ['  Python ', 'python', '', '   ', 'ML']
+        });
+
+      expect(res.status).toBe(201);
+      expect(res.body.data.tags).toEqual(['Python', 'ML']);
+    });
   });
 
   describe('Update Post', () => {
@@ -243,6 +285,42 @@ describe('Posts API', () => {
         });
 
       expect(res.status).toBe(401);
+    });
+
+    it('should reject an update with more than 10 tags', async () => {
+      const res = await request(server)
+        .put(`/api/posts/${post._id}`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          tags: Array.from({ length: 11 }, (_, i) => `tag${i}`)
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.success).toBe(false);
+    });
+
+    it('should reject an update with a tag longer than 30 characters', async () => {
+      const res = await request(server)
+        .put(`/api/posts/${post._id}`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          tags: ['a'.repeat(31)]
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.success).toBe(false);
+    });
+
+    it('should trim whitespace and drop duplicate/empty tags on update', async () => {
+      const res = await request(server)
+        .put(`/api/posts/${post._id}`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          tags: ['  Python ', 'python', '', '   ', 'ML']
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.tags).toEqual(['Python', 'ML']);
     });
 
     it('should allow admin to update any post', async () => {
