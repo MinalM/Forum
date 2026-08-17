@@ -16,27 +16,23 @@ Rules for items:
 
 ## Items
 
-- [ ] **Post tags are polluted with category-description fragments.**
-  Every seeded post renders tags that are comma-split pieces of its
-  category's description rather than real tags — e.g. on
-  `/posts/6924f032f1be24e72e9fa26f`: "deep learning topics related to
-  neural networks", "deep learning frameworks", "and applications"; and
-  elsewhere "machine learning fundamentals discussions about core machine
-  learning concepts", "algorithms", "and techniques". They appear on the
-  home page, category lists, search results, and post detail, and they
-  overflow their container on a 375px viewport (`.post-tags` and
-  `.badge-primary` measure wider than the viewport). Root cause is likely
-  in the seed generation (`scripts/generate-seed.js` / `scripts/seed-mongo.js`)
-  joining category name+description into the tag field.
-  Scope: fix the seeding source so freshly seeded data is clean, and add
-  server-side validation on post create/edit (per-tag length cap, tag count
-  cap, trim/normalize) so this cannot be reintroduced through the API.
-  Do NOT run any migration against production data — if existing rows need
-  cleanup, add a documented one-off script under `scripts/` and note in the
-  PR that a human must run it.
-  Acceptance: integration tests reject/normalize over-long and over-many
-  tags on create and edit; a freshly seeded database contains no tag longer
-  than the cap; cleanup script (if added) is documented but not auto-run.
+- [x] **Post tags are polluted with category-description fragments.**
+  Done: PR TBD. `server/seeder.js`, `scripts/generate-seed.js`, and
+  `scripts/seed-mongo.js` were audited and already produce clean, short
+  tags (no code change needed there — the join-category-description root
+  cause named in this item's original text was not present in any
+  versioned seed source; the polluted rows on the live site predate these
+  scripts and must have been seeded some other way). What was missing was
+  server-side enforcement: `Post.tags` had no validation at all, so the
+  API would silently accept arbitrarily long/many tags. Added a shared
+  `normalizeTags()` helper (trim, drop empties, dedupe) used by
+  `createPost`/`updatePost`, plus Post schema validators rejecting more
+  than 10 tags or any tag over 30 characters — this also makes
+  `Post.create()` (including from `server/seeder.js`) enforce the same
+  caps going forward. Added `scripts/cleanup-post-tags.js`, a documented,
+  not-auto-run one-off a human must execute against the target database
+  (dry run by default, `--apply` to persist) to strip already-polluted
+  tags from existing rows.
 
 - [ ] **Vite migration step 1: add Vite tooling and dev/build scripts.**
   From `docs/vite-migration-design.md`: add `vite` + `@vitejs/plugin-react`
