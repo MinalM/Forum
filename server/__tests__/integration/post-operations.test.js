@@ -73,6 +73,20 @@ describe('Additional Post Operations', () => {
       expect(res.status).toBe(404);
       expect(res.body.success).toBe(false);
     });
+
+    it('should get a post with an oversized tag (pre-existing data) without failing on the view-count save', async () => {
+      // Bypass write-path validators to simulate a row seeded before tag
+      // length enforcement existed, matching what's currently in production.
+      post.tags = ['a'.repeat(31)];
+      await post.save({ validateBeforeSave: false });
+
+      const res = await request(server).get(`/api/posts/${post._id}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data._id).toBe(post._id.toString());
+      expect(res.body.data.views).toBe(1);
+    });
   });
 
   describe('Post Downvoting', () => {
