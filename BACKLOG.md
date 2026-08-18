@@ -146,26 +146,30 @@ Rules for items:
   `postcss`, `svgo`, `@svgr/webpack`, `resolve-url-loader`, and
   `form-data` are all still needed and untouched.
 
-- [ ] **`GET /api/posts/:id` returns 400 for 29 of 32 live posts, making
-  them unreadable.** Verified 2026-08-17: `curl
-  https://aiml-forum.onrender.com/api/posts/6924f058f1be24e72e9fa294` →
-  `{"success":false,"error":"Each tag must be 30 characters or fewer"}`.
-  Fetching all 32 posts and filtering confirms 29 have at least one tag
-  over 30 chars. Root cause: `server/controllers/posts.js:98–99` increments
-  the view counter with `post.views += 1; await post.save()`, and
-  `post.save()` triggers the Mongoose tag validators added in PR #33. Those
-  validators were designed to enforce tag-length on *writes*; they also fire
-  on any `save()` call, including this read-path view-count bump. Fix:
-  replace the two-line increment with a targeted
-  `Post.findByIdAndUpdate({ _id: post._id }, { $inc: { views: 1 } })` so
-  validators are not invoked on the read path. Note: this unblocks the API;
-  the existing oversized tags in the DB still need `scripts/cleanup-post-tags.js
-  --apply` (the one-off from PR #33) to be run by a human against the live
-  database — that step is outside this item's scope.
-  Acceptance: `GET /api/posts/:id` for a post seeded with a tag > 30 chars
-  returns 200 and the full post document; `POST /api/posts` and
-  `PUT /api/posts/:id` with an oversized tag still return 4xx (validator
-  still enforced on writes); existing integration tests remain green.
+- [x] **`GET /api/posts/:id` returns 400 for 29 of 32 live posts, making
+  them unreadable.** Done: #39. Replaced `post.views += 1; await
+  post.save()` in `server/controllers/posts.js`'s `getPost` with
+  `await Post.findByIdAndUpdate(post._id, { $inc: { views: 1 } });
+  post.views += 1;` (the in-memory bump keeps the already-populated
+  response document in sync without a second `findById`/populate
+  round-trip). `findByIdAndUpdate` does not run document validators by
+  default, so the read path no longer re-triggers the write-path tag
+  validators added in PR #33. Added a regression test in
+  `server/__tests__/integration/post-operations.test.js` ("Get Single
+  Post › should get a post with an oversized tag ... without failing on
+  the view-count save") that saves a post with a 31-char tag via
+  `validateBeforeSave: false` (simulating a pre-existing row) and asserts
+  the detail route still returns 200. Caveat: could not execute the
+  server test suite in this environment — `mongodb-memory-server`'s
+  binary download to `fastdl.mongodb.org` is blocked by this sandbox's
+  network policy (403 on CONNECT, confirmed via the proxy status
+  endpoint), unrelated to the code change. `node --check` on the modified
+  file passes; the fix and test were written test-first but not run
+  end-to-end here — CI's `build-and-test` job (unaffected by this
+  sandbox's egress policy) is the first real execution.
+  The existing oversized tags in the live DB still need
+  `scripts/cleanup-post-tags.js --apply` run by a human against the live
+  database — that remains outside this item's scope.
 
 - [ ] **Vite migration step 5a: drop react-scripts, run client tests via
   plain Jest.** New prerequisite for step 5b below, split out of the
