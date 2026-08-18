@@ -197,19 +197,25 @@ Rules for items:
   from 47 to 2 vulnerabilities (both pre-existing, from vite's
   postcss → nanoid chain, unrelated to react-scripts).
 
-- [ ] **Vite migration step 5b: prune CRA-only `overrides` and re-audit.**
-  Blocked on step 5a above — only meaningful once react-scripts (and thus
-  its vulnerable transitive `nth-check`/`postcss`/`svgo`/`@svgr/webpack`/
-  `resolve-url-loader` deps) is actually out of the tree. From
-  `docs/vite-migration-design.md`: `client/package.json`'s `overrides`
-  exist to patch react-scripts's webpack/SVG transitive CVEs; once
-  react-scripts is gone, drop whichever overrides no longer resolve to
-  anything in the tree (verify with `npm ls <pkg> --all` before dropping
-  each one, the way this item's first slice did for `formidable`) — keep
-  `form-data` as long as `axios` still pulls it in.
-  Acceptance: `cd client && npm audit --omit=dev` stays clean after
-  pruning, and full `npm audit` vulnerability count does not increase
-  relative to pre-pruning.
+- [x] **Vite migration step 5b: prune CRA-only `overrides` and re-audit.**
+  Done: this PR. With react-scripts gone (step 5a, #40), re-checked each
+  override with `npm ls <pkg> --all`: `nth-check`, `svgo`,
+  `@svgr/webpack`, and `resolve-url-loader` no longer resolve anywhere in
+  the tree (all `(empty)`) — dropped. `postcss` (pulled in by `vite`) and
+  `form-data` (pulled in by `axios`) still resolve — kept, unchanged.
+  `client/package.json`'s `overrides` block is now just
+  `{ postcss, form-data }`. Added two regression tests to
+  `client/src/__tests__/packageJson.test.js` asserting the pruned
+  overrides are absent and the still-needed ones remain, written
+  test-first (confirmed failing before the `package.json` edit). Verified:
+  `npm install` reproduces 897 packages (unchanged from pre-prune);
+  `npm audit --omit=dev` → 0 vulnerabilities; full `npm audit` → 2 high
+  severity (unchanged from pre-prune — pre-existing `brace-expansion` and
+  `nanoid` transitive advisories, both already present before this PR and
+  unrelated to the pruned overrides). Full client Jest suite: 11 suites,
+  38 tests, all passing (up from 36 — the 2 new tests). `vite build` and
+  `npm run lint` both re-verified clean of regressions (lint's 9
+  pre-existing problems, from step 4's baseline, are unchanged).
 
 - [ ] **Vite migration step 6: CI workflow verification.** From
   `docs/vite-migration-design.md`: confirm `.github/workflows/node.js.yml`
