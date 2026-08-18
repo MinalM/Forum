@@ -69,7 +69,6 @@
     "svgo": "^2.8.0",
     "@svgr/webpack": "^6.5.1",
     "resolve-url-loader": "^5.0.0",
-    "form-data": "^4.0.1",
-    "formidable": "^3.5.3"
+    "form-data": "^4.0.1"
   }
 }

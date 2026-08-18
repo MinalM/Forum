@@ -97,13 +97,72 @@ Rules for items:
   Acceptance: `npx eslint src` (or equivalent) runs clean under the new
   config with parity to the prior rule set, documented in the PR.
 
-- [ ] **Vite migration step 5: prune CRA-only `overrides` and re-audit.**
-  From `docs/vite-migration-design.md`: `client/package.json`'s `overrides`
-  (`nth-check`, `postcss`, `svgo`, `@svgr/webpack`, `resolve-url-loader`)
-  exist to patch react-scripts's webpack/SVG transitive CVEs; drop whichever
-  no longer apply once react-scripts is gone (verify `form-data`/
-  `formidable` are still needed by remaining deps before dropping those too).
-  Acceptance: `cd client && npm audit --omit=dev` stays clean after pruning.
+- [x] **Vite migration step 5, first slice: drop the unused `formidable`
+  override.** Done: this PR. Attempted the full item below ("prune CRA-only
+  `overrides`") and found it doesn't hold together as scoped: the item's
+  premise is "once react-scripts is gone", but react-scripts is *not* gone
+  — step 3's PR note already flagged that dropping it entirely is "a
+  separate, not-yet-scoped step," and `client/package.json`'s `"test"`
+  script still runs `react-scripts test` (jest itself isn't even a direct
+  client devDependency yet — it's pulled in transitively via
+  `react-scripts@5.0.1` → `jest@27.5.1`). Verified concretely: with
+  `nth-check`/`postcss`/`svgo`/`@svgr/webpack`/`resolve-url-loader`
+  removed from `overrides` and `npm install` re-run, `npm audit --omit=dev`
+  does stay clean (0 vulnerabilities, satisfying this item's literal
+  acceptance criterion as written) — but the *full* `npm audit` goes from
+  25 to 32 vulnerabilities, because those overrides are the only thing
+  patching known CVEs inside react-scripts's own (still-installed, still
+  in daily use for `npm test`) dev toolchain. Pruning them now would be a
+  real, if CI-invisible, security regression, not a cleanup — so this PR
+  reverts that experiment and splits the item instead (see the two
+  entries below) rather than declaring it done. The one part of the
+  original item that *is* unconditionally safe regardless of
+  react-scripts's presence: `formidable` doesn't resolve anywhere in
+  `client/package-lock.json` (confirmed via `npm ls formidable --all` and
+  `grep -c '"formidable"' package-lock.json` → 0 both before and after);
+  its override was dead weight. Dropped it; `npm audit --omit=dev` stays
+  at 0 vulnerabilities (unchanged) and `npm install` reproduces an
+  identical dependency tree for every other package. `nth-check`,
+  `postcss`, `svgo`, `@svgr/webpack`, `resolve-url-loader`, and
+  `form-data` are all still needed and untouched.
+
+- [ ] **Vite migration step 5a: drop react-scripts, run client tests via
+  plain Jest.** New prerequisite for step 5b below, split out of the
+  original "step 5" item (see the "first slice" note above for why).
+  `client/package.json`'s `"test"` script is still `react-scripts test`,
+  and jest is not a direct client devDependency — it comes transitively
+  from `react-scripts@5.0.1` (jest 27.5.1, an old major). Replacing it
+  needs: `jest` + `jest-environment-jsdom` added as direct devDependencies
+  (pick and document a target Jest major); `testEnvironment: 'jsdom'` and
+  `setupFilesAfterEach: ['<rootDir>/src/setupTests.js']` added explicitly
+  to `client/package.json`'s `"jest"` block (both currently supplied
+  implicitly by react-scripts' CRA-flavored jest config); a CSS-import
+  mock (e.g. `identity-obj-proxy` or an inline `moduleNameMapper` stub) —
+  `src/` has 8 `.css` imports (`App.css`, `index.css`,
+  `AnnouncementBanner.css`, `Footer.css`, `ReportModal.css`,
+  `KeyboardShortcutsModal.css`, `AdminUsers.css`, plus one more) that
+  react-scripts currently stubs automatically and plain Jest will not;
+  and a check for any static asset imports (images/svgs) needing the same
+  treatment. Once done, `react-scripts` can be dropped from
+  `devDependencies` entirely.
+  Acceptance: `client/package.json`'s `"test"` script no longer invokes
+  `react-scripts`; `react-scripts` is removed from `devDependencies`;
+  full client Jest suite passes with no test files changed; a design note
+  in the PR documents the chosen Jest major and config additions.
+
+- [ ] **Vite migration step 5b: prune CRA-only `overrides` and re-audit.**
+  Blocked on step 5a above — only meaningful once react-scripts (and thus
+  its vulnerable transitive `nth-check`/`postcss`/`svgo`/`@svgr/webpack`/
+  `resolve-url-loader` deps) is actually out of the tree. From
+  `docs/vite-migration-design.md`: `client/package.json`'s `overrides`
+  exist to patch react-scripts's webpack/SVG transitive CVEs; once
+  react-scripts is gone, drop whichever overrides no longer resolve to
+  anything in the tree (verify with `npm ls <pkg> --all` before dropping
+  each one, the way this item's first slice did for `formidable`) — keep
+  `form-data` as long as `axios` still pulls it in.
+  Acceptance: `cd client && npm audit --omit=dev` stays clean after
+  pruning, and full `npm audit` vulnerability count does not increase
+  relative to pre-pruning.
 
 - [ ] **Vite migration step 6: CI workflow verification.** From
   `docs/vite-migration-design.md`: confirm `.github/workflows/node.js.yml`
