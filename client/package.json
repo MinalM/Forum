@@ -23,7 +23,7 @@
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.5.2",
     "@vitejs/plugin-react": "^4.7.0",
-    "babel-jest": "^27.5.1",
+    "babel-jest": "^30.4.1",
     "confusing-browser-globals": "^1.0.11",
     "eslint": "^9.39.5",
     "eslint-plugin-import": "^2.32.0",
@@ -33,14 +33,15 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-testing-library": "^7.16.2",
     "globals": "^17.11.0",
-    "react-scripts": "^5.0.1",
+    "jest": "^30.4.2",
+    "jest-environment-jsdom": "^30.4.1",
     "vite": "^6.4.3"
   },
   "scripts": {
     "start": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "react-scripts test",
+    "test": "jest",
     "lint": "eslint src"
   },
   "browserslist": {
@@ -56,11 +57,19 @@
     ]
   },
   "jest": {
+    "testEnvironment": "jsdom",
+    "roots": [
+      "<rootDir>/src"
+    ],
+    "setupFilesAfterEnv": [
+      "<rootDir>/src/setupTests.js"
+    ],
     "moduleNameMapper": {
       "^axios$": "axios/dist/node/axios.cjs"
     },
     "transform": {
-      "^.+\\.(js|jsx|mjs|cjs|ts|tsx)$": "<rootDir>/jest.babelTransform.js"
+      "^.+\\.(js|jsx|mjs|cjs|ts|tsx)$": "<rootDir>/jest.babelTransform.js",
+      "^.+\\.css$": "<rootDir>/jest.cssTransform.js"
     },
     "transformIgnorePatterns": [
       "[/\\\\]node_modules[/\\\\](?!(react-router|cookie-es)[/\\\\]).+\\.(js|mjs|cjs|jsx|ts|tsx)$",
