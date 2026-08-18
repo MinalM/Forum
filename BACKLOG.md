@@ -146,6 +146,27 @@ Rules for items:
   `postcss`, `svgo`, `@svgr/webpack`, `resolve-url-loader`, and
   `form-data` are all still needed and untouched.
 
+- [ ] **`GET /api/posts/:id` returns 400 for 29 of 32 live posts, making
+  them unreadable.** Verified 2026-08-17: `curl
+  https://aiml-forum.onrender.com/api/posts/6924f058f1be24e72e9fa294` →
+  `{"success":false,"error":"Each tag must be 30 characters or fewer"}`.
+  Fetching all 32 posts and filtering confirms 29 have at least one tag
+  over 30 chars. Root cause: `server/controllers/posts.js:98–99` increments
+  the view counter with `post.views += 1; await post.save()`, and
+  `post.save()` triggers the Mongoose tag validators added in PR #33. Those
+  validators were designed to enforce tag-length on *writes*; they also fire
+  on any `save()` call, including this read-path view-count bump. Fix:
+  replace the two-line increment with a targeted
+  `Post.findByIdAndUpdate({ _id: post._id }, { $inc: { views: 1 } })` so
+  validators are not invoked on the read path. Note: this unblocks the API;
+  the existing oversized tags in the DB still need `scripts/cleanup-post-tags.js
+  --apply` (the one-off from PR #33) to be run by a human against the live
+  database — that step is outside this item's scope.
+  Acceptance: `GET /api/posts/:id` for a post seeded with a tag > 30 chars
+  returns 200 and the full post document; `POST /api/posts` and
+  `PUT /api/posts/:id` with an oversized tag still return 4xx (validator
+  still enforced on writes); existing integration tests remain green.
+
 - [ ] **Vite migration step 5a: drop react-scripts, run client tests via
   plain Jest.** New prerequisite for step 5b below, split out of the
   original "step 5" item (see the "first slice" note above for why).
@@ -192,6 +213,23 @@ Rules for items:
   `publish-dir: './client/build'`) end-to-end.
   Acceptance: full CI green on a PR built against the migrated client from
   the prior steps.
+
+- [ ] **PostDetail crashes the entire React app when a post's author has
+  been deleted (`post.user` is null).** Verified 2026-08-17: navigating to
+  `https://cerulean-marshmallow-003d16.netlify.app/posts/6936910651a7c355b934d878`
+  (a live post with `user: null`) produces `pageerror: Cannot read properties
+  of null (reading '_id')` and unmounts the entire app — the page falls back
+  to the `<noscript>` shell. Root cause: `client/src/pages/PostDetail.js`
+  line 244 renders `<Link to={/profile/${post.user._id}}>{post.user.name}</Link>`
+  without guarding `post.user`. The API already supports orphaned posts
+  (populate returns `null` when the referenced user is deleted) and one such
+  post is live in production now. Fix: guard the author block with
+  `post.user ? <Link …/> : <span>Deleted user</span>` (or equivalent) so the
+  component degrades gracefully instead of crashing.
+  Acceptance: a unit test renders PostDetail with a post where `user` is
+  `null`; the component mounts without throwing, shows a "Deleted user"
+  placeholder or similar, and the rest of the post (content, comments,
+  voting) is still visible.
 
 - [ ] **Post content renders raw markdown.** Post bodies are stored with
   markdown but rendered as plain text, so users see the literal syntax —
