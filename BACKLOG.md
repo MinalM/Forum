@@ -171,29 +171,31 @@ Rules for items:
   `scripts/cleanup-post-tags.js --apply` run by a human against the live
   database — that remains outside this item's scope.
 
-- [ ] **Vite migration step 5a: drop react-scripts, run client tests via
-  plain Jest.** New prerequisite for step 5b below, split out of the
-  original "step 5" item (see the "first slice" note above for why).
-  `client/package.json`'s `"test"` script is still `react-scripts test`,
-  and jest is not a direct client devDependency — it comes transitively
-  from `react-scripts@5.0.1` (jest 27.5.1, an old major). Replacing it
-  needs: `jest` + `jest-environment-jsdom` added as direct devDependencies
-  (pick and document a target Jest major); `testEnvironment: 'jsdom'` and
-  `setupFilesAfterEach: ['<rootDir>/src/setupTests.js']` added explicitly
-  to `client/package.json`'s `"jest"` block (both currently supplied
-  implicitly by react-scripts' CRA-flavored jest config); a CSS-import
-  mock (e.g. `identity-obj-proxy` or an inline `moduleNameMapper` stub) —
-  `src/` has 8 `.css` imports (`App.css`, `index.css`,
-  `AnnouncementBanner.css`, `Footer.css`, `ReportModal.css`,
-  `KeyboardShortcutsModal.css`, `AdminUsers.css`, plus one more) that
-  react-scripts currently stubs automatically and plain Jest will not;
-  and a check for any static asset imports (images/svgs) needing the same
-  treatment. Once done, `react-scripts` can be dropped from
-  `devDependencies` entirely.
-  Acceptance: `client/package.json`'s `"test"` script no longer invokes
-  `react-scripts`; `react-scripts` is removed from `devDependencies`;
-  full client Jest suite passes with no test files changed; a design note
-  in the PR documents the chosen Jest major and config additions.
+- [x] **Vite migration step 5a: drop react-scripts, run client tests via
+  plain Jest.** Done: #40. Added `jest@^30.4.2` +
+  `jest-environment-jsdom@^30.4.1` as direct devDependencies (matching the
+  server's Jest 30 major per `CLAUDE.md`), bumped `babel-jest` from
+  `^27.5.1` to `^30.4.1` to match. Added `testEnvironment: "jsdom"`,
+  `roots: ["<rootDir>/src"]`, and
+  `setupFilesAfterEnv: ["<rootDir>/src/setupTests.js"]` (the correct Jest
+  config key — not `setupFilesAfterEach`, which doesn't exist) to
+  `client/package.json`'s `"jest"` block. Added `jest.cssTransform.js`
+  mirroring react-scripts' `config/jest/cssTransform.js`, but returning
+  `{ code }` per Jest 28+'s transformer protocol (react-scripts' bundled
+  version predates that break and returns a bare string — caught by a
+  regression test, not just manual verification). Only 7 plain
+  (non-CSS-Module) `.css` imports exist in `src/`, so no
+  `identity-obj-proxy` was needed; no image/svg imports exist either (only
+  plain public-folder URL strings), so no file transform was needed
+  either. Deliberately did not carry over CRA's `resetMocks: true` default
+  — every test using `jest.fn()`/`jest.mock()` already resets mocks
+  explicitly in `beforeEach`. `react-scripts` removed from
+  `devDependencies` entirely. Full client Jest suite: 11 suites, 36 tests,
+  all passing (up from 9/31 — the delta is 5 new regression tests guarding
+  this PR's acceptance criteria). `vite build` and `npm audit --omit=dev`
+  (0 vulnerabilities) both re-verified clean. Full `npm audit` dropped
+  from 47 to 2 vulnerabilities (both pre-existing, from vite's
+  postcss → nanoid chain, unrelated to react-scripts).
 
 - [ ] **Vite migration step 5b: prune CRA-only `overrides` and re-audit.**
   Blocked on step 5a above — only meaningful once react-scripts (and thus
