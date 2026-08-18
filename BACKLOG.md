@@ -88,14 +88,34 @@ Rules for items:
   and behavior). `npm run build` (Vite) and
   `npm audit --omit=dev` both re-verified clean.
 
-- [ ] **Vite migration step 4: replace CRA's ESLint config.** From
-  `docs/vite-migration-design.md`: `client/package.json`'s
-  `"eslintConfig": {"extends": ["react-app", "react-app/jest"]}` depends on
-  `eslint-config-react-app`. Do a rule-by-rule comparison and replace with a
-  standalone config (hooks rules, JSX a11y rules) so lint coverage doesn't
-  silently regress.
-  Acceptance: `npx eslint src` (or equivalent) runs clean under the new
-  config with parity to the prior rule set, documented in the PR.
+- [x] **Vite migration step 4: replace CRA's ESLint config.** Done: #36.
+  Replaced `client/package.json`'s `"eslintConfig": {"extends": ["react-app",
+  "react-app/jest"]}` with a standalone flat config
+  (`client/eslint.config.mjs`, ESLint 9 — the latest major whose engines
+  range still covers CI's Node 18.x pin, consistent with the Vite/plugin-react
+  version choices from step 1) that ports `eslint-config-react-app`'s
+  `base.js` + `index.js` + `jest.js` rule sets rule-by-rule, at the same
+  severities, via `eslint-plugin-react`, `eslint-plugin-react-hooks`,
+  `eslint-plugin-jsx-a11y`, `eslint-plugin-import`, `eslint-plugin-jest`,
+  `eslint-plugin-testing-library`, and `confusing-browser-globals` (the same
+  package CRA's config used for `no-restricted-globals`). Deliberately
+  dropped: the TypeScript override block and `flowtype` plugin/rules (no
+  .ts/.tsx or Flow syntax in this codebase) and `import/no-webpack-loader-syntax`
+  (Vite, not webpack). Three `eslint-plugin-testing-library` rules and one
+  `eslint-plugin-jest` rule were renamed/removed upstream since CRA pinned
+  its version; ported under current names (documented in the config file).
+  Also pinned `no-unused-vars`'s `caughtErrors: 'none'` explicitly — ESLint
+  9 changed that option's default from `"none"` to `"all"`, which would have
+  newly warned on ~13 pre-existing `catch (err) {}` blocks. Verified parity
+  against a real baseline: ran the old `eslint-config-react-app` config
+  under the still-installed ESLint 8 (via react-scripts) for comparison —
+  baseline was 9 problems (4 errors, 5 warnings); the new flat config
+  produces the identical 9 problems (same files, same rules) on the
+  unmodified `src/` tree. Added `"lint": "eslint src"` script (not wired
+  into CI — out of scope for this item). Client Jest suite: 9 suites, 31
+  tests, all passing (unaffected — Jest doesn't consume `eslintConfig`).
+  `vite build` and `npm audit --omit=dev` (0 vulnerabilities) both
+  re-verified clean.
 
 - [ ] **Vite migration step 5: prune CRA-only `overrides` and re-audit.**
   From `docs/vite-migration-design.md`: `client/package.json`'s `overrides`
