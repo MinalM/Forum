@@ -94,9 +94,11 @@ exports.getPost = asyncHandler(async (req, res, next) => {
     );
   }
 
-  // Increment view count
+  // Increment view count without triggering full-document validators
+  // (post.save() would re-run the tag validators on every read, rejecting
+  // pre-existing rows whose tags predate those validators)
+  await Post.findByIdAndUpdate(post._id, { $inc: { views: 1 } });
   post.views += 1;
-  await post.save();
 
   // Increment post view counter metric
   postViewCounter.add(1, {
