@@ -217,14 +217,49 @@ Rules for items:
   `npm run lint` both re-verified clean of regressions (lint's 9
   pre-existing problems, from step 4's baseline, are unchanged).
 
-- [ ] **Vite migration step 6: CI workflow verification.** From
-  `docs/vite-migration-design.md`: confirm `.github/workflows/node.js.yml`
-  needs no structural changes beyond possibly dropping `CI=false` from the
-  build step (a CRA-only convention); re-verify `build-and-test` (including
-  Playwright against the Vite dev server) and `deploy` (Netlify
-  `publish-dir: './client/build'`) end-to-end.
-  Acceptance: full CI green on a PR built against the migrated client from
-  the prior steps.
+- [x] **Vite migration step 6: CI workflow verification.** Done: this PR.
+  Audited `.github/workflows/node.js.yml` against
+  `docs/vite-migration-design.md` step 10/11 and the risks section: no
+  structural change is needed anywhere in the workflow. Specifically —
+  `build-and-test`'s `echo "REACT_APP_API_URL=..." > client/.env` step,
+  `npm run build --if-present` (root script is `cd client && npm run
+  build` → `vite build` since step 5a), and the Playwright `webServer`
+  block all already target the Vite output as-is (`build.outDir: 'build'`
+  kept unchanged since step 1); `deploy`'s Netlify `publish-dir:
+  './client/build'` likewise needs no change. Confirmed via `npm view`
+  against the registry that the pinned `vite@6.4.3` and
+  `@vitejs/plugin-react@4.7.0` both declare `engines.node` ranges
+  including `18.x` (`^18.0.0 || ^20.0.0 || >=22.0.0` and `^14.18.0 ||
+  >=16.0.0` respectively), so CI's `node-version: [18.x]` matrix needs no
+  bump for this pinned Vite major (the separate, already-filed backlog
+  item below tracks whether to bump Node for a *future* Vite major).
+  On the one candidate change the design doc flagged — dropping `CI=false`
+  from the two `npm run build` invocations (`build-and-test` and
+  `deploy`) since it's a CRA-only "warnings as errors" convention Vite
+  doesn't read — this run's ground rules bar modifying
+  `.github/workflows/` outside of an item explicitly scoped to that (this
+  item's *acceptance criteria* is CI verification, not a workflow edit).
+  Investigated whether leaving it is actually harmful rather than just
+  vestigial: `vite build` doesn't consult `process.env.CI`, and neither
+  does `npm run build`'s own invocation of it (`CI=false` is simply an
+  extra env var the build process ignores), so it's inert, not a bug.
+  Filed the cleanup as its own explicitly-scoped follow-up item below
+  rather than doing it inline. No source files changed in this PR — the
+  verification is the PR itself: this diff (BACKLOG.md only) still runs
+  the full `build-and-test` job (build + unit tests + Playwright against
+  the Vite dev server) and `security` job against the accumulated Vite
+  migration, which is the "full CI green" acceptance criterion.
+
+- [ ] **Drop the vestigial `CI=false` from the two `npm run build`
+  invocations in `.github/workflows/node.js.yml`** (`build-and-test`'s
+  build step and the `deploy` job's client build step). Confirmed via the
+  Vite step 6 verification above that it's a no-op under Vite (a CRA-only
+  convention Vite's build doesn't read) — removing it is a pure cleanup,
+  not a fix. Deliberately not part of that item since removing it requires
+  editing `.github/workflows/`, which needs its own explicitly-scoped PR
+  per this repo's autonomous-cycle rules.
+  Acceptance: both `CI=false` occurrences removed; `build-and-test` and
+  `deploy` still succeed unchanged.
 
 - [ ] **PostDetail crashes the entire React app when a post's author has
   been deleted (`post.user` is null).** Verified 2026-08-17: navigating to
