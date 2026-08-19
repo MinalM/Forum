@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router';
 import PropTypes from 'prop-types';
 import { formatDistanceToNow } from 'date-fns';
+import { markdownToPlainText } from '../../utils/markdown';
 
 const PostItem = ({ post }) => {
   const {
@@ -27,9 +28,12 @@ const PostItem = ({ post }) => {
   // Calculate vote count
   const voteCount = upvotes.length - downvotes.length;
 
-  // Truncate content for excerpt
+  // Truncate content for excerpt (plain text, markdown syntax stripped)
+  const plainContent = markdownToPlainText(content);
   const excerpt =
-    content.length > 200 ? content.substring(0, 200) + '...' : content;
+    plainContent.length > 200
+      ? plainContent.substring(0, 200) + '...'
+      : plainContent;
 
   return (
     <div className="card post-card">

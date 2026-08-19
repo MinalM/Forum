@@ -7,6 +7,8 @@
     "@statsig/react-bindings": "^3.32.0",
     "axios": "^1.13.2",
     "date-fns": "^3.3.1",
+    "dompurify": "^3.4.14",
+    "marked": "^15.0.12",
     "prop-types": "^15.8.1",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",

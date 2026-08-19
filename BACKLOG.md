@@ -277,19 +277,57 @@ Rules for items:
   pre-existing problems as the step 4 baseline). `vite build` re-verified
   clean.
 
-- [ ] **Post content renders raw markdown.** Post bodies are stored with
-  markdown but rendered as plain text, so users see the literal syntax —
-  e.g. `/posts/6924f058f1be24e72e9fa294` displays
-  "\*\*Title:\*\* Image Classification Model in Python \*\*Description:\*\*"
-  on the detail page and in every excerpt. Either render markdown (a
-  sanitized renderer — never `dangerouslySetInnerHTML` with unsanitized
-  input, since post content is user-supplied) or strip the syntax for
-  excerpts. Decide and justify the choice in the PR; if rendering, cover at
-  minimum bold/italic/links/code/lists and escape raw HTML.
-  Deliberately sequenced after the Vite steps: this adds a client
-  dependency, and doing that mid-migration muddies both changes.
-  Acceptance: component tests render markdown correctly AND prove XSS
-  payloads in post content are neutralized; excerpts show no raw syntax.
+- [x] **Post content renders raw markdown.** Done: this PR. Chose to render
+  markdown rather than strip it, since post bodies are meant to hold
+  formatted markdown (the backlog item's own example content —
+  `**Title:** ... **Description:**` — reads like intentionally-formatted
+  markdown a user wrote, not accidental syntax noise). Added
+  `client/src/utils/markdown.js`: `renderMarkdown()` runs `marked.parse()`
+  then always pipes the output through `DOMPurify.sanitize()` before it's
+  used with `dangerouslySetInnerHTML` in
+  `client/src/pages/PostDetail.js`'s `.post-content` (marked does not
+  sanitize its own HTML output, so this ordering is load-bearing, not
+  incidental); `markdownToPlainText()` reuses the same sanitized-HTML path
+  and reduces it to `textContent` via a detached `div`, so
+  `client/src/components/posts/PostItem.js`'s 200-char excerpt now
+  truncates plain text instead of raw markdown (fixing mid-syntax splits
+  like a `**` pair torn across the truncation boundary as a side effect).
+  Picked `marked` + `dompurify` over `react-markdown`/`remark`/`rehype`:
+  both are zero-dependency, CJS/ESM-dual packages (`require`-resolvable
+  under Jest, unlike the ESM-only `unified` ecosystem), so no
+  `transformIgnorePatterns` whitelist changes were needed in
+  `client/jest.babelTransform.js`/`client/package.json`. Version-pinned
+  for CI's Node 18.x matrix: `marked`'s latest majors (16-18) require Node
+  ≥20, so pinned `marked@^15.0.12` (last major supporting Node ≥18, same
+  constraint pattern as the Vite-migration version pins);
+  `dompurify@^3.4.14` has no `engines` restriction. `npm audit --omit=dev`
+  stays at 0 vulnerabilities after adding both (full `npm audit` unchanged
+  at 2, the same pre-existing `brace-expansion`/`nanoid` dev-tree
+  advisories noted in the Vite migration steps — unrelated to this PR).
+  Tests: `client/src/utils/__tests__/markdown.test.js` (new, 12 tests) —
+  bold/italic/links/code/lists render correctly, and `<script>` tags,
+  `onerror`-style event-handler attributes, and `javascript:` URIs (both
+  in markdown links and raw `<a>` HTML) are all neutralized.
+  `client/src/components/posts/__tests__/PostItem.test.js` (new, 4 tests)
+  — excerpts show no raw markdown syntax, links/code strip to visible
+  text, truncation still caps at 200 chars, and a script-tag payload
+  doesn't survive into the excerpt. Extended
+  `client/src/pages/__tests__/PostDetail.test.js` (+3 tests) with the same
+  markdown-renders / script-neutralized / onerror-neutralized coverage on
+  the detail page. All new assertions use `screen` queries only (no
+  `document.querySelector`/`container` access), matching this repo's
+  `testing-library/no-node-access` and `testing-library/no-container`
+  lint rules (both `error`). Full client Jest suite: 14 suites, 59 tests,
+  all passing (up from 40 — the 19 new tests above). `npm run lint`:
+  same 4 pre-existing errors / 5 pre-existing warnings as the step-4
+  baseline, plus 2 new `no-script-url` warnings from the XSS-payload test
+  fixtures themselves (`javascript:alert(1)` string literals) — no new
+  errors. `vite build` re-verified clean.
+  Deliberately out of scope: `client/src/pages/PostDetail.js`'s
+  `.comment-content` block has the identical raw-markdown-rendering issue
+  for comment bodies (not post bodies) — filed as its own item below
+  rather than folded in here, since the backlog item as written scoped
+  only to "post content"/"post bodies".
 
 - [ ] **Per-page document titles.** Every route sets the same
   `<title>AI/ML Career Forum</title>` — verified on `/`, `/login`, a post
@@ -344,3 +382,21 @@ Rules for items:
   6/plugin-react 4 long-term; document the decision. Low priority —
   current pins aren't blocking anything else in the migration steps
   already scoped.
+
+- [ ] **Comment content renders raw markdown too.** Discovered while
+  fixing post-content markdown rendering (see the item above, done in the
+  same PR that introduced `client/src/utils/markdown.js`'s
+  `renderMarkdown()`/`markdownToPlainText()`). `client/src/pages/PostDetail.js`'s
+  `.comment-content` block (`{comment.content}`) has the exact same
+  raw-markdown/no-sanitization pattern the post-content item fixed, just
+  for comment bodies instead of post bodies — left alone there since the
+  backlog item as originally written scoped only to "post content"/"post
+  bodies", and comments weren't mentioned in its acceptance criteria.
+  Fixing it should just be wiring `renderMarkdown()` (already sanitizes
+  via DOMPurify) into the comment-content `div` the same way
+  `PostDetail.js`'s post-content block now does — no new dependency or
+  design decision needed.
+  Acceptance: comment bodies render markdown (bold/italic/links/code/lists)
+  instead of literal syntax; a regression test proves an XSS payload in
+  comment content is neutralized, mirroring the post-content tests in
+  `client/src/pages/__tests__/PostDetail.test.js`.
