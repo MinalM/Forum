@@ -149,3 +149,24 @@ describe('CategoryPosts Solved/Unsolved filter', () => {
     return match;
   }
 });
+
+describe('CategoryPosts document title', () => {
+  beforeEach(() => {
+    axios.get.mockReset();
+    axios.get.mockImplementation((url) => {
+      if (url.endsWith('/posts')) {
+        return Promise.resolve({ data: { success: true, count: 0, data: [] } });
+      }
+      return Promise.resolve({
+        data: { success: true, data: { _id: '1', name: 'Career Advice' } }
+      });
+    });
+  });
+
+  it('sets the document title to the category name once loaded', async () => {
+    renderAtCategory('000000000000000000000001');
+
+    await screen.findByText('Career Advice');
+    expect(document.title).toBe('Career Advice | AI/ML Career Forum');
+  });
+});

@@ -7,8 +7,11 @@ import { useFeatureFlag } from '../hooks/useFeatureFlag';
 import { useExperiment } from '../hooks/useExperiment';
 import TrendingPosts from '../components/TrendingPosts';
 import { useAuth } from '../context/AuthContext';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 const Home = () => {
+  useDocumentTitle();
+
   const [posts, setPosts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);

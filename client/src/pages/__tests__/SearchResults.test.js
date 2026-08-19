@@ -62,6 +62,22 @@ describe('SearchResults', () => {
     });
   });
 
+  it('sets the document title to include the search query', async () => {
+    axios.get.mockResolvedValue({
+      data: {
+        success: true,
+        count: 1,
+        pagination: { total: 1, limit: 10, page: 1, pages: 1 },
+        data: [post]
+      }
+    });
+
+    renderAtSearch('transformers');
+
+    await screen.findByText('Transformers 101');
+    expect(document.title).toBe('Search: transformers | AI/ML Career Forum');
+  });
+
   it('shows an empty state when there are no matches', async () => {
     axios.get.mockResolvedValue({
       data: {

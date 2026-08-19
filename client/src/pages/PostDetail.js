@@ -7,14 +7,16 @@ import { useAlert } from '../context/AlertContext';
 import { hasPermission, canModifyResource } from '../utils/permissions';
 import { renderMarkdown } from '../utils/markdown';
 import ReportModal from '../components/reports/ReportModal';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 const PostDetail = () => {
   const { id } = useParams();
   const { user, isAuthenticated, loading: authLoading } = useAuth();
   const { setAlert } = useAlert();
   const navigate = useNavigate();
-  
+
   const [post, setPost] = useState(null);
+  useDocumentTitle(post?.title);
   const [comments, setComments] = useState([]);
   const [commentText, setCommentText] = useState('');
   const [pageLoading, setPageLoading] = useState(true);

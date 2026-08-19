@@ -2,8 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { useAuth } from '../context/AuthContext';
 import { useAlert } from '../context/AlertContext';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 const Register = () => {
+  useDocumentTitle('Register');
+
   const [formData, setFormData] = useState({
     name: '',
     email: '',

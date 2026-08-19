@@ -3,11 +3,13 @@ import { useSearchParams } from 'react-router';
 import axios from 'axios';
 import { useAlert } from '../context/AlertContext';
 import PostItem from '../components/posts/PostItem';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 const SearchResults = () => {
   const [searchParams] = useSearchParams();
   const query = searchParams.get('q') || '';
   const { setAlert } = useAlert();
+  useDocumentTitle(query ? `Search: ${query}` : 'Search');
 
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);

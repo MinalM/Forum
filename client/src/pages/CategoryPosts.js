@@ -4,12 +4,14 @@ import axios from 'axios';
 import { useAlert } from '../context/AlertContext';
 import { useAuth } from '../context/AuthContext';
 import PostItem from '../components/posts/PostItem';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 const CategoryPosts = () => {
   const { categoryId } = useParams();
   const { setAlert } = useAlert();
   const { isAuthenticated } = useAuth();
   const [category, setCategory] = useState(null);
+  useDocumentTitle(category?.name);
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);

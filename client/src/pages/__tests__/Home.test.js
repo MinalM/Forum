@@ -28,6 +28,19 @@ const renderHome = (authValue) => {
   );
 };
 
+describe('Home document title', () => {
+  beforeEach(() => {
+    axios.get.mockReset();
+  });
+
+  it('sets the document title to the site name', async () => {
+    renderHome({ isAuthenticated: false, user: null });
+
+    await screen.findByText('Join the Community');
+    expect(document.title).toBe('AI/ML Career Forum');
+  });
+});
+
 describe('Home hero session-awareness', () => {
   beforeEach(() => {
     axios.get.mockReset();

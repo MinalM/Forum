@@ -70,6 +70,13 @@ describe('PostDetail with a deleted author (post.user is null)', () => {
     expect(screen.getByText('Some content')).toBeInTheDocument();
     expect(screen.getByText('Career Advice')).toBeInTheDocument();
   });
+
+  it('sets the document title to the post title once loaded', async () => {
+    renderPostDetail();
+
+    await screen.findByText('Orphaned post');
+    expect(document.title).toBe('Orphaned post | AI/ML Career Forum');
+  });
 });
 
 describe('PostDetail markdown rendering', () => {
