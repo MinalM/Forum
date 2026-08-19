@@ -226,22 +226,21 @@ Rules for items:
   Acceptance: full CI green on a PR built against the migrated client from
   the prior steps.
 
-- [ ] **PostDetail crashes the entire React app when a post's author has
-  been deleted (`post.user` is null).** Verified 2026-08-17: navigating to
-  `https://cerulean-marshmallow-003d16.netlify.app/posts/6936910651a7c355b934d878`
-  (a live post with `user: null`) produces `pageerror: Cannot read properties
-  of null (reading '_id')` and unmounts the entire app — the page falls back
-  to the `<noscript>` shell. Root cause: `client/src/pages/PostDetail.js`
-  line 244 renders `<Link to={/profile/${post.user._id}}>{post.user.name}</Link>`
-  without guarding `post.user`. The API already supports orphaned posts
-  (populate returns `null` when the referenced user is deleted) and one such
-  post is live in production now. Fix: guard the author block with
-  `post.user ? <Link …/> : <span>Deleted user</span>` (or equivalent) so the
-  component degrades gracefully instead of crashing.
-  Acceptance: a unit test renders PostDetail with a post where `user` is
-  `null`; the component mounts without throwing, shows a "Deleted user"
-  placeholder or similar, and the rest of the post (content, comments,
-  voting) is still visible.
+- [x] **PostDetail crashes the entire React app when a post's author has
+  been deleted (`post.user` is null).** Done: this PR. Guarded the author
+  block in `client/src/pages/PostDetail.js` (post-header meta, `isAuthor`
+  was already null-safe) so `post.user ? <Link …>{post.user.name}</Link> :
+  <span>Deleted user</span>` renders instead of dereferencing `post.user._id`
+  unconditionally. Added `client/src/pages/__tests__/PostDetail.test.js`
+  (new file — no prior test existed), written test-first: confirmed both
+  cases threw `TypeError: Cannot read properties of null (reading '_id')`
+  against the unmodified component, then verified they pass after the fix.
+  Covers: component mounts without throwing and shows "Deleted user" for a
+  post with `user: null`, and the rest of the post (title, content,
+  category) still renders. Full client Jest suite: 12 suites, 40 tests, all
+  passing (up from 38 — the 2 new tests). `npm run lint` unaffected (same 9
+  pre-existing problems as the step 4 baseline). `vite build` re-verified
+  clean.
 
 - [ ] **Post content renders raw markdown.** Post bodies are stored with
   markdown but rendered as plain text, so users see the literal syntax —
