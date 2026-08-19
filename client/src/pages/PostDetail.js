@@ -241,7 +241,11 @@ const PostDetail = () => {
           <div className="post-meta">
             <div className="post-meta-item">
               <i className="fas fa-user"></i>{' '}
-              <Link to={`/profile/${post.user._id}`}>{post.user.name}</Link>
+              {post.user ? (
+                <Link to={`/profile/${post.user._id}`}>{post.user.name}</Link>
+              ) : (
+                <span>Deleted user</span>
+              )}
             </div>
             <div className="post-meta-item">
               <i className="fas fa-folder"></i>{' '}
