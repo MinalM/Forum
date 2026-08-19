@@ -329,15 +329,39 @@ Rules for items:
   rather than folded in here, since the backlog item as written scoped
   only to "post content"/"post bodies".
 
-- [ ] **Per-page document titles.** Every route sets the same
-  `<title>AI/ML Career Forum</title>` — verified on `/`, `/login`, a post
-  detail page, `/search?q=`, and the 404 page. Browser tabs, history, and
-  bookmarks are indistinguishable, and search engines see one title for the
-  whole site. Set a per-route title (post title, category name,
-  "Search: <query>", "Page not found") plus a matching document title on the
-  404 route.
-  Acceptance: tests assert `document.title` per route; the site name still
-  appears (e.g. `<page> · AI/ML Career Forum`).
+- [x] **Per-page document titles.** Done: this PR. Added
+  `client/src/hooks/useDocumentTitle.js` — a small `useEffect`-based hook
+  (matching the existing lightweight style of `useFeatureFlag.js`) that
+  sets `document.title` to `"<title> | AI/ML Career Forum"`, or just
+  `"AI/ML Career Forum"` when called with no title/an empty title. No
+  `react-helmet` dependency needed. Wired into every route component:
+  `Home` (site name only), `Login` ("Login"), `Register` ("Register"),
+  `NotFound` ("Page Not Found"), `PostDetail` (`post?.title`, so it
+  reads the fallback site name until the post loads, then the post's
+  title), `CategoryPosts` (`category?.name`, same fetched-then-set
+  pattern), and `SearchResults` (`` `Search: ${query}` `` or plain
+  "Search" when the query is empty). Routes rendered only behind
+  `PrivateRoute`/`AdminRoute`/`ModeratorRoute` (`Dashboard`, `Profile`,
+  `EditProfile`, `Categories`, `CreatePost`, `EditPost`, admin/moderator
+  pages, `OAuthSuccess`) were left out of this item's scope — the
+  backlog item's acceptance criteria and its verified routes (`/`,
+  `/login`, a post detail page, `/search?q=`, the 404 page) only named
+  public-facing routes; filed the rest as a follow-up item below rather
+  than silently expanding scope.
+  Tests: `client/src/hooks/__tests__/useDocumentTitle.test.js` (new, 4
+  tests, written test-first — confirmed failing with "Cannot find
+  module" before the hook existed) covers the no-title/empty-title
+  fallback, the suffixed case, and that the title updates across
+  re-renders. Added `document.title` assertions to the existing
+  `PostDetail.test.js`, `CategoryPosts.test.js` (new
+  "CategoryPosts document title" describe block), `SearchResults.test.js`,
+  and `Home.test.js` (new "Home document title" describe block) suites,
+  plus new `Login.test.js`, `Register.test.js`, and `NotFound.test.js`
+  files (none existed before for these three pages). Full client Jest
+  suite: 18 suites, 70 tests, all passing (up from 14/59 — the 11 new
+  tests above). `npm run lint`: same 4 pre-existing errors / 7
+  pre-existing warnings as prior baselines (unaffected by this PR).
+  `vite build` re-verified clean.
 
 - [ ] **Mobile touch targets below the 44px minimum.** At a 375px viewport,
   16 of 27 interactive elements are under 44px tall — the navbar search
@@ -400,3 +424,18 @@ Rules for items:
   instead of literal syntax; a regression test proves an XSS payload in
   comment content is neutralized, mirroring the post-content tests in
   `client/src/pages/__tests__/PostDetail.test.js`.
+
+- [ ] **Per-page document titles for authenticated/admin routes.**
+  Discovered while implementing the per-page document titles item above
+  (done via `client/src/hooks/useDocumentTitle.js`). That item's
+  acceptance criteria named only public routes (`/`, `/login`, a post
+  detail page, `/search?q=`, the 404 page), so `Dashboard`, `Profile`,
+  `EditProfile`, `Categories`, `CreatePost`, `EditPost`, `AdminUsers`,
+  `AdminDashboard`, `ModeratorDashboard`, and `OAuthSuccess` were left
+  showing the fallback "AI/ML Career Forum" title rather than being
+  silently expanded into that PR's scope. Wiring is mechanical — the same
+  `useDocumentTitle()` hook, called with a static string per page (or
+  fetched data, e.g. a profile's display name) — no new dependency or
+  design decision needed.
+  Acceptance: tests assert `document.title` on each of the routes listed
+  above.
