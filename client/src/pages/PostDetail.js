@@ -5,6 +5,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '../context/AuthContext';
 import { useAlert } from '../context/AlertContext';
 import { hasPermission, canModifyResource } from '../utils/permissions';
+import { renderMarkdown } from '../utils/markdown';
 import ReportModal from '../components/reports/ReportModal';
 
 const PostDetail = () => {
@@ -262,7 +263,10 @@ const PostDetail = () => {
           </div>
         </div>
 
-        <div className="post-content">{post.content}</div>
+        <div
+          className="post-content"
+          dangerouslySetInnerHTML={{ __html: renderMarkdown(post.content) }}
+        />
 
         <div className="post-tags">
           {post.tags &&

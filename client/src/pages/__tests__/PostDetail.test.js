@@ -71,3 +71,48 @@ describe('PostDetail with a deleted author (post.user is null)', () => {
     expect(screen.getByText('Career Advice')).toBeInTheDocument();
   });
 });
+
+describe('PostDetail markdown rendering', () => {
+  beforeEach(() => {
+    axios.get.mockReset();
+  });
+
+  const renderWithContent = (content) => {
+    axios.get.mockImplementation((url) => {
+      if (url.endsWith('/comments')) {
+        return Promise.resolve({ data: { success: true, data: [] } });
+      }
+      return Promise.resolve({
+        data: { success: true, data: { ...basePost, content } }
+      });
+    });
+    return renderPostDetail();
+  };
+
+  it('renders markdown formatting instead of raw syntax', async () => {
+    renderWithContent('**bold** and a [link](https://example.com)');
+
+    await screen.findByText('Orphaned post');
+    expect(screen.getByText('bold')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'link' })).toHaveAttribute(
+      'href',
+      'https://example.com'
+    );
+    expect(screen.queryByText(/\*\*/)).not.toBeInTheDocument();
+  });
+
+  it('neutralizes a <script> XSS payload in post content', async () => {
+    renderWithContent('hello <script>alert("xss")</script> world');
+
+    await screen.findByText('Orphaned post');
+    expect(screen.getByText(/hello\s+world/)).toBeInTheDocument();
+    expect(screen.queryByText(/alert\(/)).not.toBeInTheDocument();
+  });
+
+  it('neutralizes an onerror-attribute XSS payload in post content', async () => {
+    renderWithContent('<img src="x" onerror="alert(1)">');
+
+    await screen.findByText('Orphaned post');
+    expect(screen.getByRole('img')).not.toHaveAttribute('onerror');
+  });
+});
