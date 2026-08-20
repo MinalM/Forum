@@ -36,3 +36,55 @@ describe('Register document title', () => {
     expect(document.title).toBe('Register | AI/ML Career Forum');
   });
 });
+
+describe('Register autocomplete attributes', () => {
+  beforeEach(() => {
+    axios.get.mockReset();
+    axios.get.mockRejectedValue(new Error('not authenticated'));
+  });
+
+  it('sets autocomplete="email" on the email input', async () => {
+    render(
+      <AuthProvider>
+        <AlertProvider>
+          <MemoryRouter>
+            <Register />
+          </MemoryRouter>
+        </AlertProvider>
+      </AuthProvider>
+    );
+
+    await screen.findByText('Join the AI/ML Career Transition community');
+    expect(screen.getByLabelText('Email Address')).toHaveAttribute('autocomplete', 'email');
+  });
+
+  it('sets autocomplete="new-password" on the password input', async () => {
+    render(
+      <AuthProvider>
+        <AlertProvider>
+          <MemoryRouter>
+            <Register />
+          </MemoryRouter>
+        </AlertProvider>
+      </AuthProvider>
+    );
+
+    await screen.findByText('Join the AI/ML Career Transition community');
+    expect(screen.getByLabelText('Password')).toHaveAttribute('autocomplete', 'new-password');
+  });
+
+  it('sets autocomplete="new-password" on the confirm password input', async () => {
+    render(
+      <AuthProvider>
+        <AlertProvider>
+          <MemoryRouter>
+            <Register />
+          </MemoryRouter>
+        </AlertProvider>
+      </AuthProvider>
+    );
+
+    await screen.findByText('Join the AI/ML Career Transition community');
+    expect(screen.getByLabelText('Confirm Password')).toHaveAttribute('autocomplete', 'new-password');
+  });
+});

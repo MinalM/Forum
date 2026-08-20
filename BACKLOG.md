@@ -398,14 +398,25 @@ Rules for items:
   same 4 pre-existing errors / 7 pre-existing warnings baseline
   (unaffected). `vite build` re-verified clean.
 
-- [ ] **Auth inputs missing `autocomplete` attributes.** `/login`'s email
-  and password inputs have proper `<label>`s but no `autocomplete`, so
-  password managers can't reliably fill or save credentials (WCAG 2.1 AA
-  1.3.5, Identify Input Purpose). Add `autocomplete="email"` /
-  `"current-password"` on login and `"new-password"` on register/reset
-  flows.
-  Acceptance: tests assert the attributes on login, register, and any
-  password-change form.
+- [x] **Auth inputs missing `autocomplete` attributes.** Done: this PR.
+  Added `autoComplete="email"` to the email inputs and
+  `autoComplete="current-password"` to the password input on
+  `client/src/pages/Login.js`; added `autoComplete="email"` to the email
+  input and `autoComplete="new-password"` to both the password and
+  confirm-password inputs on `client/src/pages/Register.js`. Searched the
+  codebase for a separate password-change/reset form (`grep -r password
+  client/src`) — none exists; `EditProfile.js` has no password field, and
+  `AuthContext.js`'s only other password usage is the login/register API
+  calls already covered above. So this item's acceptance criteria ("login,
+  register, and any password-change form") is fully covered by the two
+  files touched; no reset flow was silently skipped.
+  Tests: extended `client/src/pages/__tests__/Login.test.js` (+2 tests) and
+  `client/src/pages/__tests__/Register.test.js` (+3 tests), written
+  test-first — confirmed all 5 failing (`autocomplete` attribute `null`)
+  against the unmodified components before the change. Full client Jest
+  suite: 19 suites, 81 tests, all passing (up from 76 — the 5 new tests).
+  `npm run lint`: same 4 pre-existing errors / 7 pre-existing warnings
+  baseline, unaffected. `vite build` re-verified clean.
 
 - [ ] **No Open Graph / social preview metadata.** The document has a
   `meta[name=description]` but no `og:*` or `twitter:*` tags, so links
