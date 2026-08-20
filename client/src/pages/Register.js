@@ -92,6 +92,7 @@ const Register = () => {
               name="email"
               value={email}
               onChange={onChange}
+              autoComplete="email"
               required
             />
           </div>
@@ -106,6 +107,7 @@ const Register = () => {
               value={password}
               onChange={onChange}
               minLength="6"
+              autoComplete="new-password"
               required
             />
           </div>
@@ -120,6 +122,7 @@ const Register = () => {
               value={password2}
               onChange={onChange}
               minLength="6"
+              autoComplete="new-password"
               required
             />
           </div>

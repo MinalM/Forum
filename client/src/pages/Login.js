@@ -62,6 +62,7 @@ const Login = () => {
               name="email"
               value={email}
               onChange={onChange}
+              autoComplete="email"
               required
             />
           </div>
@@ -75,6 +76,7 @@ const Login = () => {
               name="password"
               value={password}
               onChange={onChange}
+              autoComplete="current-password"
               required
             />
           </div>

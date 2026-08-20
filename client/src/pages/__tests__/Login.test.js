@@ -36,3 +36,40 @@ describe('Login document title', () => {
     expect(document.title).toBe('Login | AI/ML Career Forum');
   });
 });
+
+describe('Login autocomplete attributes', () => {
+  beforeEach(() => {
+    axios.get.mockReset();
+    axios.get.mockRejectedValue(new Error('not authenticated'));
+  });
+
+  it('sets autocomplete="email" on the email input', async () => {
+    render(
+      <AuthProvider>
+        <AlertProvider>
+          <MemoryRouter>
+            <Login />
+          </MemoryRouter>
+        </AlertProvider>
+      </AuthProvider>
+    );
+
+    await screen.findByText('Sign in to your AI/ML Career Forum account');
+    expect(screen.getByLabelText('Email Address')).toHaveAttribute('autocomplete', 'email');
+  });
+
+  it('sets autocomplete="current-password" on the password input', async () => {
+    render(
+      <AuthProvider>
+        <AlertProvider>
+          <MemoryRouter>
+            <Login />
+          </MemoryRouter>
+        </AlertProvider>
+      </AuthProvider>
+    );
+
+    await screen.findByText('Sign in to your AI/ML Career Forum account');
+    expect(screen.getByLabelText('Password')).toHaveAttribute('autocomplete', 'current-password');
+  });
+});
