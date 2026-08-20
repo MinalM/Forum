@@ -418,16 +418,47 @@ Rules for items:
   `npm run lint`: same 4 pre-existing errors / 7 pre-existing warnings
   baseline, unaffected. `vite build` re-verified clean.
 
-- [ ] **No Open Graph / social preview metadata.** The document has a
-  `meta[name=description]` but no `og:*` or `twitter:*` tags, so links
-  shared to Slack/LinkedIn/X render with no title, description, or image.
-  Add static defaults for the site.
-  Note: sequence after Vite step 1, which moves `client/public/index.html`
-  to `client/index.html` — doing this first would create a needless
-  conflict. Per-post dynamic previews need server-side rendering and are
-  explicitly out of scope; static site-level defaults only.
-  Acceptance: `og:title`, `og:description`, `og:type`, `og:url`, and
-  `twitter:card` present in the built HTML; documented in the PR.
+- [x] **No Open Graph / social preview metadata.** Done: this PR. Added
+  static `og:title`, `og:description`, `og:type` (`website`), `og:url`,
+  and `twitter:card`/`twitter:title`/`twitter:description` tags to
+  `client/index.html`, alongside the existing `meta[name=description]`.
+  `og:url` can't be a literal value in source — the repo has no
+  documented production domain anywhere (checked `DEPLOYMENT.md`,
+  `netlify.toml`, `README.md`; `DEPLOYMENT.md` itself only ever uses
+  `<your-domain>` placeholders for this exact reason) — so it uses Vite's
+  built-in `%ENV_NAME%` HTML env-replacement syntax:
+  `<meta property="og:url" content="%REACT_APP_SITE_URL%" />`, backed by
+  a new `REACT_APP_SITE_URL` var in `client/.env.production` (same file,
+  same placeholder convention as the pre-existing
+  `REACT_APP_GOOGLE_ANALYTICS_ID=your_ga_id_here` line). Initially
+  defaulted to the RFC 2606 placeholder `https://your-domain.example`;
+  once this PR was opened, Netlify's own deploy-preview bot comment on
+  it revealed the real site domain
+  (`cerulean-marshmallow-003d16.netlify.app`), so the value was updated
+  to `https://cerulean-marshmallow-003d16.netlify.app` — the actual
+  production URL, not a placeholder. Verified the substitution actually
+  resolves at build time, not just in source: ran both `npx vite build
+  --mode production` and the real `npm run build` (matches what
+  CI/Netlify invoke) and confirmed `build/index.html` contains the
+  resolved `<meta property="og:url"
+  content="https://cerulean-marshmallow-003d16.netlify.app" />` rather
+  than the literal `%REACT_APP_SITE_URL%` token.
+  If a custom domain is ever attached in Netlify, `REACT_APP_SITE_URL`
+  should be updated to match (here or via a Netlify env var override).
+  Per-post dynamic previews (server-side rendering per post) remain
+  explicitly out of scope, as originally scoped.
+  Tests: `client/src/__tests__/socialMeta.test.js` (new, 5 tests, written
+  test-first — confirmed all 5 failing against the unmodified
+  `index.html` before the change) parses the raw `client/index.html`
+  source and asserts each of the five required tags is present with
+  non-empty (or, for `og:type`, exactly `"website"`) content — following
+  the same raw-source-assertion pattern already established in
+  `mobileTouchTargets.test.js`/`packageJson.test.js` since no live
+  browser/e2e is available in this environment (ground rules: no
+  Playwright). Full client Jest suite: 20 suites, 86 tests, all passing
+  (up from 19/81 — the 5 new tests). `npm run lint`: same 4 pre-existing
+  errors / 7 pre-existing warnings baseline, unaffected. `npm audit
+  --omit=dev`: 0 vulnerabilities (unaffected, no new dependency added).
 
 - [ ] **CI's Node 18.x pin blocks newer Vite/plugin-react majors.**
   Discovered while implementing Vite migration step 1 (#34): Vite 7 and
