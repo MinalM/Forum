@@ -45,14 +45,27 @@
     transform: scale(0.95);
     box-shadow: 0 0 0 0 rgba(176, 0, 32, 0.7);
   }
-  
+
   70% {
     transform: scale(1);
     box-shadow: 0 0 0 10px rgba(176, 0, 32, 0);
   }
-  
+
   100% {
     transform: scale(0.95);
     box-shadow: 0 0 0 0 rgba(176, 0, 32, 0);
+  }
+}
+
+/* Mobile touch targets: WCAG 2.5.5 wants pointer targets >= 44x44 CSS px.
+   Scoped to mobile so desktop's compact search bar is unchanged. */
+@media (max-width: 768px) {
+  .navbar-search-input {
+    min-height: 44px;
+  }
+
+  .navbar-search-btn {
+    min-height: 44px;
+    min-width: 44px;
   }
 }

@@ -363,14 +363,40 @@ Rules for items:
   pre-existing warnings as prior baselines (unaffected by this PR).
   `vite build` re-verified clean.
 
-- [ ] **Mobile touch targets below the 44px minimum.** At a 375px viewport,
-  16 of 27 interactive elements are under 44px tall — the navbar search
-  input measures 173×19, its submit button 17×19, and category links 21px
-  tall. WCAG 2.5.5 / mobile usability: pointer targets should be at least
-  44×44 CSS px (or have equivalent spacing).
-  Acceptance: a documented sweep at 375px showing primary interactive
-  elements (nav links, search input/button, category links, pagination
-  buttons) meet the minimum; no layout regression at desktop widths.
+- [x] **Mobile touch targets below the 44px minimum.** Done: this PR.
+  Fixed all four element groups named in this item's acceptance criteria
+  with `min-height`/`min-width: 44px` declarations: `.nav-link` and
+  `.mobile-menu-toggle` (`client/src/App.css`, inside the existing
+  `@media (max-width: 768px)` block, so desktop's nav sizing is
+  unchanged), `.navbar-search-input`/`.navbar-search-btn`
+  (`client/src/components/layout/Navbar.css`, new mobile-only media
+  block, same rationale), `.pagination button` (`App.css`, same mobile
+  block — pagination has no separate desktop-only layout to preserve, but
+  kept mobile-scoped for consistency with the other three), and
+  `.categories-sidebar .category-item a` (`App.css`, unscoped — this
+  selector had *no* CSS at all before this PR, so there's no desktop
+  behavior to regress; anchors are inline by default, so it also needed
+  `display: flex` for `min-height` to take effect at all).
+  `.mobile-menu-toggle` and `.nav-item` turned out to already have a
+  second, redundant `@media (max-width: 768px)` block earlier in
+  `App.css` (pre-existing duplication, not introduced by this PR) —
+  left as-is rather than consolidated, since deduplicating unrelated CSS
+  is outside this item's scope; filed as a follow-up below.
+  Verified with a real 375px browser measurement was not possible: task
+  ground rules for this run say "Do not run Playwright — CI covers
+  e2e," and `mongodb-memory-server`/a live app aren't available in this
+  sandbox either. Used the same file-content-assertion pattern already
+  established in `client/src/__tests__/packageJson.test.js` instead:
+  new `client/src/__tests__/mobileTouchTargets.test.js` parses the raw
+  CSS source (brace-matching to pull out the `@media (max-width: 768px)`
+  block content, merging the pre-existing duplicate occurrences the same
+  way a real cascade would) and asserts `min-height`/`min-width: 44px`
+  on each of the five selectors above — written test-first, confirmed
+  failing (`no mobile media query found` / a `null` min-height) before
+  the CSS changes, passing after. Full client Jest suite: 19 suites, 76
+  tests, all passing (up from 18/70 — the 6 new tests). `npm run lint`:
+  same 4 pre-existing errors / 7 pre-existing warnings baseline
+  (unaffected). `vite build` re-verified clean.
 
 - [ ] **Auth inputs missing `autocomplete` attributes.** `/login`'s email
   and password inputs have proper `<label>`s but no `autocomplete`, so
@@ -439,3 +465,16 @@ Rules for items:
   design decision needed.
   Acceptance: tests assert `document.title` on each of the routes listed
   above.
+
+- [ ] **`client/src/App.css` has a duplicate `@media (max-width: 768px)`
+  block.** Discovered while fixing mobile touch targets (see the item
+  above). `.mobile-menu-toggle`, `.navbar-nav`, `.navbar-nav.show`, and
+  `.nav-item` are each declared once in a first mobile media block
+  (around the navbar styles) and again, redundantly, in a second one
+  further down (the file's "Responsive styles" section). Not a bug today
+  — the properties either match exactly or don't conflict, so the
+  cascade produces the same result either way — but it's confusing to
+  read and a trap for a future edit to one copy that should've gone to
+  both. Low priority, purely a cleanup.
+  Acceptance: the two blocks merged into one; full client Jest suite and
+  `vite build` unchanged/still passing.
