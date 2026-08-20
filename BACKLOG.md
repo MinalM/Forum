@@ -460,20 +460,50 @@ Rules for items:
   errors / 7 pre-existing warnings baseline, unaffected. `npm audit
   --omit=dev`: 0 vulnerabilities (unaffected, no new dependency added).
 
-- [ ] **CI's Node 18.x pin blocks newer Vite/plugin-react majors.**
-  Discovered while implementing Vite migration step 1 (#34): Vite 7 and
-  `@vitejs/plugin-react` 5+ both require Node `^20.19.0 || >=22.12.0`, so
-  that PR pinned to Vite 6 / plugin-react 4 (both support Node 18)
-  instead of current latest. `.github/workflows/node.js.yml`'s
-  `build-and-test` matrix is `node-version: [18.x]`. Not fixed inline
-  since bumping the CI Node matrix is unrelated to the migration itself
-  and touches `.github/workflows/`, which the autonomous cycle's ground
-  rules say not to modify without it being the item's explicit scope.
-  Acceptance: decide whether to bump CI's Node matrix (and re-verify the
-  full suite + Playwright under the new version) or stay on Vite
-  6/plugin-react 4 long-term; document the decision. Low priority —
-  current pins aren't blocking anything else in the migration steps
-  already scoped.
+- [x] **CI's Node 18.x pin blocks newer Vite/plugin-react majors.**
+  Done: this PR. Decision: stay on Vite 6 (`^6.4.3`) / `@vitejs/plugin-react`
+  4 (`^4.7.0`) for now rather than bump CI's Node matrix. Reasoning: bumping
+  `.github/workflows/node.js.yml`'s `build-and-test` matrix off
+  `node-version: [18.x]` is itself a `.github/workflows/` edit, and every
+  autonomous-cycle run's ground rules bar modifying `.github/workflows/`
+  outright (not just "without it being the item's explicit scope" as this
+  item's original text assumed) — so no autonomous PR can ever carry out
+  the "bump" branch of this decision; only a human-driven change can. Given
+  that, and that this item was already flagged low-priority with current
+  pins "not blocking anything else in the migration steps already scoped,"
+  staying put is the only option actually available to this loop, and
+  nothing has since made Node 18 a practical blocker: CI's Node 18.x is
+  still within `vite@6`'s (`^18.0.0 || ^20.0.0 || >=22.0.0`) and
+  `@vitejs/plugin-react@4`'s (`^14.18.0 || >=16.0.0`) supported
+  `engines.node` ranges (re-confirmed against the versions actually
+  installed in `client/package.json`), and Node 18 itself is out of
+  upstream LTS support as of 2025-04-30, which is a separate, larger
+  concern (bumping the whole CI runtime, not just these two packages) than
+  this item's narrow Vite-major framing. Filed that broader concern as its
+  own follow-up item below rather than folding it in here.
+  No source files changed — this is a documentation-only decision PR,
+  consistent with the precedent set by the Vite migration step 6 item
+  above ("No source files changed in this PR — the verification is the PR
+  itself").
+
+- [ ] **CI still pins Node 18.x, which is past upstream LTS
+  (end-of-life 2025-04-30).** Discovered while documenting the Node
+  18.x/Vite-major decision above: independent of any Vite version
+  question, running CI against an unsupported Node line is a standing
+  risk (no further security patches from upstream Node itself) and
+  eventually a hard blocker once some dependency drops Node 18 support
+  entirely. Bumping `.github/workflows/node.js.yml`'s `node-version:
+  [18.x]` matrix (both the `build-and-test` job and the `deploy` job's
+  `node-version: '18'`) requires editing `.github/workflows/`, so — same
+  as the item above — no autonomous-cycle PR can carry this out under the
+  current ground rules; it needs a human-driven change (and, at that
+  point, revisiting whether to also bump Vite/plugin-react past their
+  current Node-18-compatible pins, per the item above). Not urgent enough
+  to block anything today, but should not be indefinitely deferred.
+  Acceptance: CI's Node matrix bumped to an actively-supported LTS line
+  (currently 20.x or 22.x); full suite (unit + Playwright) re-verified
+  green under the new version; `client/package.json` engines/version pins
+  revisited if the bump also permits newer Vite/plugin-react majors.
 
 - [ ] **Comment content renders raw markdown too.** Discovered while
   fixing post-content markdown rendering (see the item above, done in the
