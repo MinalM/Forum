@@ -430,19 +430,21 @@ Rules for items:
   `<meta property="og:url" content="%REACT_APP_SITE_URL%" />`, backed by
   a new `REACT_APP_SITE_URL` var in `client/.env.production` (same file,
   same placeholder convention as the pre-existing
-  `REACT_APP_GOOGLE_ANALYTICS_ID=your_ga_id_here` line), defaulted to
-  `https://your-domain.example` (the RFC 2606 reserved placeholder TLD,
-  not a domain that could be mistaken for real). Verified the
-  substitution actually resolves at build time, not just in source: ran
-  both `npx vite build --mode production` and the real `npm run build`
-  (matches what CI/Netlify invoke) and confirmed
-  `build/index.html` contains the resolved
-  `<meta property="og:url" content="https://your-domain.example" />`
-  rather than the literal `%REACT_APP_SITE_URL%` token.
-  **Caveat left for a human:** `REACT_APP_SITE_URL` must be set to the
-  real production URL as a Netlify environment variable once that domain
-  is known — the placeholder is safe (obviously fake, RFC-reserved) but
-  is not the real og:url until that's done.
+  `REACT_APP_GOOGLE_ANALYTICS_ID=your_ga_id_here` line). Initially
+  defaulted to the RFC 2606 placeholder `https://your-domain.example`;
+  once this PR was opened, Netlify's own deploy-preview bot comment on
+  it revealed the real site domain
+  (`cerulean-marshmallow-003d16.netlify.app`), so the value was updated
+  to `https://cerulean-marshmallow-003d16.netlify.app` — the actual
+  production URL, not a placeholder. Verified the substitution actually
+  resolves at build time, not just in source: ran both `npx vite build
+  --mode production` and the real `npm run build` (matches what
+  CI/Netlify invoke) and confirmed `build/index.html` contains the
+  resolved `<meta property="og:url"
+  content="https://cerulean-marshmallow-003d16.netlify.app" />` rather
+  than the literal `%REACT_APP_SITE_URL%` token.
+  If a custom domain is ever attached in Netlify, `REACT_APP_SITE_URL`
+  should be updated to match (here or via a Netlify env var override).
   Per-post dynamic previews (server-side rendering per post) remain
   explicitly out of scope, as originally scoped.
   Tests: `client/src/__tests__/socialMeta.test.js` (new, 5 tests, written
