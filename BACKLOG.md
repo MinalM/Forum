@@ -250,29 +250,21 @@ Rules for items:
   the Vite dev server) and `security` job against the accumulated Vite
   migration, which is the "full CI green" acceptance criterion.
 
-- [ ] **Post detail pages overflow horizontally on mobile — `.post-meta`
-  never wraps.** Confirmed live via Playwright at a 375px viewport on two
-  different posts:
-  `https://cerulean-marshmallow-003d16.netlify.app/posts/6925386a88cb7b8de046eddf`
-  (`document.documentElement.scrollWidth` 588 vs `clientWidth` 375, a
-  213px overflow) and `.../posts/6936910651a7c355b934d878` (434 vs 375, a
-  59px overflow) — both show a horizontal scrollbar and cut-off content.
-  Root cause: `client/src/App.css`'s `.post-meta` rule (the author /
-  category / date / views row under the post title) is `display: flex`
-  with no `flex-wrap` declared anywhere in the file (confirmed via
-  `grep -n post-meta client/src/App.css` — only one `.post-meta` block
-  exists, no mobile override), and browsers default unset `flex-wrap` to
-  `nowrap`, so on narrow viewports the row is forced onto one line and
-  pushes past the viewport edge. Checked as a control: home, /categories,
-  a category page, and /search at the same 375px viewport show no
-  overflow (`scrollWidth === clientWidth`) — this is specific to the post
-  detail page's meta row, not a sitewide layout issue.
-  Acceptance: `.post-meta` allows wrapping (e.g. `flex-wrap: wrap`) at
-  mobile widths; a regression test confirms no horizontal overflow
-  (`scrollWidth <= clientWidth`) on a post detail page at 375px, or, if a
-  live browser isn't available in the implementing environment, the
-  raw-CSS-source-assertion pattern already used in
-  `mobileTouchTargets.test.js` confirms the rule is present.
+- [x] **Post detail pages overflow horizontally on mobile — `.post-meta`
+  never wraps.** Done: this PR. Added `flex-wrap: wrap;` to `.post-meta`
+  in `client/src/App.css` (unscoped, not mobile-only — the rule has no
+  desktop-specific layout to preserve, and wrapping is a no-op on wide
+  viewports where the row already fits on one line).
+  Verified with a real browser wasn't possible in this environment (ground
+  rules: no Playwright, no live app). Used the raw-CSS-source-assertion
+  pattern already established in `mobileTouchTargets.test.js`: new
+  `client/src/__tests__/postMetaOverflow.test.js` parses `App.css` and
+  asserts `.post-meta` declares `flex-wrap: wrap` — written test-first,
+  confirmed failing against the unmodified CSS before the change. Full
+  client Jest suite: 30 suites, 100 tests, all passing (up from 29/99 —
+  the 1 new test). `npm run lint`: same 4 pre-existing errors / 7
+  pre-existing warnings baseline, unaffected. `vite build` re-verified
+  clean.
 
 - [ ] **`Navbar.css` is never imported — the mobile touch-target fix for
   the navbar search box shipped dead and never reached production.** The
