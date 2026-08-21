@@ -431,7 +431,10 @@ const PostDetail = () => {
                     )}
                   </div>
                 </div>
-                <div className="comment-content">{comment.content}</div>
+                <div
+                  className="comment-content"
+                  dangerouslySetInnerHTML={{ __html: renderMarkdown(comment.content) }}
+                />
               </div>
             ))
           ) : (

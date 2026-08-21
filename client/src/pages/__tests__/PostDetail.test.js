@@ -123,3 +123,55 @@ describe('PostDetail markdown rendering', () => {
     expect(screen.getByRole('img')).not.toHaveAttribute('onerror');
   });
 });
+
+describe('PostDetail comment markdown rendering', () => {
+  beforeEach(() => {
+    axios.get.mockReset();
+  });
+
+  const baseComment = {
+    _id: '000000000000000000000003',
+    user: { _id: '000000000000000000000004', name: 'Commenter' },
+    createdAt: new Date().toISOString(),
+    isAnswer: false
+  };
+
+  const renderWithCommentContent = (content) => {
+    axios.get.mockImplementation((url) => {
+      if (url.endsWith('/comments')) {
+        return Promise.resolve({
+          data: { success: true, data: [{ ...baseComment, content }] }
+        });
+      }
+      return Promise.resolve({ data: { success: true, data: basePost } });
+    });
+    return renderPostDetail();
+  };
+
+  it('renders markdown formatting in comment content instead of raw syntax', async () => {
+    renderWithCommentContent('**bold** and a [link](https://example.com)');
+
+    await screen.findByText('Orphaned post');
+    expect(screen.getByText('bold')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'link' })).toHaveAttribute(
+      'href',
+      'https://example.com'
+    );
+    expect(screen.queryByText(/\*\*/)).not.toBeInTheDocument();
+  });
+
+  it('neutralizes a <script> XSS payload in comment content', async () => {
+    renderWithCommentContent('hello <script>alert("xss")</script> world');
+
+    await screen.findByText('Orphaned post');
+    expect(screen.getByText(/hello\s+world/)).toBeInTheDocument();
+    expect(screen.queryByText(/alert\(/)).not.toBeInTheDocument();
+  });
+
+  it('neutralizes an onerror-attribute XSS payload in comment content', async () => {
+    renderWithCommentContent('<img src="x" onerror="alert(1)">');
+
+    await screen.findByText('Orphaned post');
+    expect(screen.getByRole('img', { name: '' })).not.toHaveAttribute('onerror');
+  });
+});
