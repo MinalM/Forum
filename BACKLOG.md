@@ -505,23 +505,27 @@ Rules for items:
   green under the new version; `client/package.json` engines/version pins
   revisited if the bump also permits newer Vite/plugin-react majors.
 
-- [ ] **Comment content renders raw markdown too.** Discovered while
-  fixing post-content markdown rendering (see the item above, done in the
-  same PR that introduced `client/src/utils/markdown.js`'s
-  `renderMarkdown()`/`markdownToPlainText()`). `client/src/pages/PostDetail.js`'s
-  `.comment-content` block (`{comment.content}`) has the exact same
-  raw-markdown/no-sanitization pattern the post-content item fixed, just
-  for comment bodies instead of post bodies — left alone there since the
-  backlog item as originally written scoped only to "post content"/"post
-  bodies", and comments weren't mentioned in its acceptance criteria.
-  Fixing it should just be wiring `renderMarkdown()` (already sanitizes
-  via DOMPurify) into the comment-content `div` the same way
-  `PostDetail.js`'s post-content block now does — no new dependency or
-  design decision needed.
-  Acceptance: comment bodies render markdown (bold/italic/links/code/lists)
-  instead of literal syntax; a regression test proves an XSS payload in
-  comment content is neutralized, mirroring the post-content tests in
-  `client/src/pages/__tests__/PostDetail.test.js`.
+- [x] **Comment content renders raw markdown too.** Done: this PR. Wired
+  the already-existing `renderMarkdown()` (from
+  `client/src/utils/markdown.js`, added for post-content rendering; it
+  runs `marked.parse()` then always `DOMPurify.sanitize()`s the result)
+  into `client/src/pages/PostDetail.js`'s `.comment-content` block, same
+  `dangerouslySetInnerHTML` pattern already used for `.post-content`. No
+  new dependency or design decision needed — exactly as scoped.
+  Tests: extended `client/src/pages/__tests__/PostDetail.test.js` with a
+  new "PostDetail comment markdown rendering" describe block (+3 tests,
+  written test-first — confirmed all 3 failing against the unmodified
+  component: bold/link markdown showed as literal `**`/`[link](...)`
+  syntax, and the `<script>`/`onerror` XSS payloads rendered as escaped
+  literal text rather than being parsed and stripped), mirroring the
+  existing post-content markdown tests in the same file. Full client Jest
+  suite: 20 suites, 89 tests, all passing (up from 86 — the 3 new tests).
+  `npm run lint`: same 4 pre-existing errors / 7 pre-existing warnings
+  baseline, unaffected. `vite build` re-verified clean.
+  Note: this PR's own ground rules bar modifying `.github/workflows/`, so
+  it could not also take the two workflow-editing backlog items above
+  (`CI=false` cleanup, Node 18.x bump) — those remain open, needing a
+  human-driven change.
 
 - [ ] **Per-page document titles for authenticated/admin routes.**
   Discovered while implementing the per-page document titles item above
