@@ -4,11 +4,13 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { useAlert } from '../context/AlertContext';
 import { hasPermission } from '../utils/permissions';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 const AdminDashboard = () => {
   const { user, isAuthenticated } = useAuth();
   const { setAlert } = useAlert();
   const navigate = useNavigate();
+  useDocumentTitle('Admin Dashboard');
   
   const [stats, setStats] = useState({
     totalUsers: 0,

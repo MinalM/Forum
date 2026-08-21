@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import axios from 'axios';
 import { useAlert } from '../context/AlertContext';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 const CreatePost = () => {
   const { setAlert } = useAlert();
   const navigate = useNavigate();
+  useDocumentTitle('Create New Post');
 
   const [formData, setFormData] = useState({
     title: '',

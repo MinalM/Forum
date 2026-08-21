@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { useAuth } from '../context/AuthContext';
 import { useAlert } from '../context/AlertContext';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 const EditProfile = () => {
   const { user, updateProfile } = useAuth();
   const { setAlert } = useAlert();
   const navigate = useNavigate();
+  useDocumentTitle('Edit Profile');
 
   const [formData, setFormData] = useState({
     name: '',

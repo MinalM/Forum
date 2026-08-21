@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router';
 import axios from 'axios';
 import { useAlert } from '../context/AlertContext';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 const Categories = () => {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const { setAlert } = useAlert();
+  useDocumentTitle('Forum Categories');
 
   useEffect(() => {
     const fetchCategories = async () => {

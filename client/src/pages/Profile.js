@@ -6,6 +6,7 @@ import { useAlert } from '../context/AlertContext';
 import { hasPermission } from '../utils/permissions';
 import PostItem from '../components/posts/PostItem';
 import ReportModal from '../components/reports/ReportModal';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 const Profile = () => {
   const { id } = useParams();
@@ -13,6 +14,7 @@ const Profile = () => {
   const { setAlert } = useAlert();
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
+  useDocumentTitle(user?.name);
   const [userPosts, setUserPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);

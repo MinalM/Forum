@@ -5,10 +5,12 @@ import { useAuth } from '../context/AuthContext';
 import { useAlert } from '../context/AlertContext';
 import { hasPermission } from '../utils/permissions';
 import PostItem from '../components/posts/PostItem';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 const Dashboard = () => {
   const { user } = useAuth();
   const { setAlert } = useAlert();
+  useDocumentTitle('Dashboard');
   const [userPosts, setUserPosts] = useState([]);
   const [userComments, setUserComments] = useState([]);
   const [loading, setLoading] = useState(true);
