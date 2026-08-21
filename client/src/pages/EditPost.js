@@ -3,12 +3,14 @@ import { useParams, useNavigate } from 'react-router';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { useAlert } from '../context/AlertContext';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 const EditPost = () => {
   const { id } = useParams();
   const { user } = useAuth();
   const { setAlert } = useAlert();
   const navigate = useNavigate();
+  useDocumentTitle('Edit Post');
 
   const [formData, setFormData] = useState({
     title: '',

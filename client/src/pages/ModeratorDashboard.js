@@ -5,11 +5,13 @@ import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '../context/AuthContext';
 import { useAlert } from '../context/AlertContext';
 import { hasPermission } from '../utils/permissions';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 const ModeratorDashboard = () => {
   const { user, isAuthenticated } = useAuth();
   const { setAlert } = useAlert();
   const navigate = useNavigate();
+  useDocumentTitle('Moderator Dashboard');
   
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);

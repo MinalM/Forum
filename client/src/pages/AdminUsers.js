@@ -4,12 +4,14 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { useAlert } from '../context/AlertContext';
 import { hasPermission } from '../utils/permissions';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import './AdminUsers.css';
 
 const AdminUsers = () => {
   const { user, isAuthenticated } = useAuth();
   const { setAlert } = useAlert();
   const navigate = useNavigate();
+  useDocumentTitle('User Management');
   
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);

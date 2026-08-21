@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router';
 import { useAuth } from '../context/AuthContext';
 import { useAlert } from '../context/AlertContext';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import axios from 'axios';
 
 const OAuthSuccess = () => {
@@ -10,6 +11,7 @@ const OAuthSuccess = () => {
   const { setAlert } = useAlert();
   const auth = useAuth();
   const { setToken } = auth || {};
+  useDocumentTitle('Signing In');
   
   useEffect(() => {
     const handleOAuthSuccess = async () => {

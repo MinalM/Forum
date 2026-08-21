@@ -527,20 +527,42 @@ Rules for items:
   (`CI=false` cleanup, Node 18.x bump) — those remain open, needing a
   human-driven change.
 
-- [ ] **Per-page document titles for authenticated/admin routes.**
-  Discovered while implementing the per-page document titles item above
-  (done via `client/src/hooks/useDocumentTitle.js`). That item's
-  acceptance criteria named only public routes (`/`, `/login`, a post
-  detail page, `/search?q=`, the 404 page), so `Dashboard`, `Profile`,
-  `EditProfile`, `Categories`, `CreatePost`, `EditPost`, `AdminUsers`,
-  `AdminDashboard`, `ModeratorDashboard`, and `OAuthSuccess` were left
-  showing the fallback "AI/ML Career Forum" title rather than being
-  silently expanded into that PR's scope. Wiring is mechanical — the same
-  `useDocumentTitle()` hook, called with a static string per page (or
-  fetched data, e.g. a profile's display name) — no new dependency or
-  design decision needed.
-  Acceptance: tests assert `document.title` on each of the routes listed
-  above.
+- [x] **Per-page document titles for authenticated/admin routes.** Done:
+  this PR. Wired the existing `useDocumentTitle()` hook into all ten
+  routes named by this item, mechanically as scoped: `Dashboard`
+  ('Dashboard'), `EditProfile` ('Edit Profile'), `Categories` ('Forum
+  Categories', matching its `<h1>`), `CreatePost` ('Create New Post'),
+  `EditPost` ('Edit Post'), `AdminUsers` ('User Management'),
+  `AdminDashboard` ('Admin Dashboard'), `ModeratorDashboard` ('Moderator
+  Dashboard') all use a static string; `Profile` uses `user?.name` (the
+  fetched-then-set pattern the earlier item used for `PostDetail`/
+  `CategoryPosts`), so it reads the fallback site name until the profile
+  loads, then the viewed user's name; `OAuthSuccess` (no page heading to
+  match — a transient redirect screen) uses 'Signing In'.
+  Found and worked around one test-only hazard, not a production bug:
+  `OAuthSuccess`'s redirect effect depends on `location`, which gets a
+  new identity on every `navigate()` call; in production this is safe
+  because navigating away unmounts `OAuthSuccess` (the route no longer
+  matches), but a test that renders it bare (no matching `<Routes>` to
+  unmount it on redirect) never unmounts, so the effect refires on every
+  new `location` and navigates in an infinite loop. Fixed by routing the
+  test the same way the app does (matching `/oauth-success` and `/login`
+  routes) rather than changing the component.
+  Tests: new `client/src/pages/__tests__/{Dashboard,Profile,EditProfile,
+  Categories,CreatePost,EditPost,AdminUsers,AdminDashboard,
+  ModeratorDashboard}.test.js` (one `document.title` assertion each,
+  none of these pages had a test file before), plus a new "OAuthSuccess
+  document title" describe block in the existing
+  `OAuthSuccess.test.js`. `EditPost`'s test mocks `useAuth()` directly
+  rather than using a real `AuthProvider`, since `EditPost`'s own effect
+  reads `user._id` unconditionally (no null guard) and would otherwise
+  race a real `AuthProvider`'s async `/api/users/me` load on first
+  mount — a separate, pre-existing latent bug filed as its own follow-up
+  item below rather than fixed inline here (out of this item's scope).
+  Full client Jest suite: 29 suites, 99 tests, all passing (up from 20/89
+  — the 10 new suites above). `npm run lint`: same 4 pre-existing errors
+  / 7 pre-existing warnings baseline, unaffected. `vite build`
+  re-verified clean.
 
 - [ ] **`client/src/App.css` has a duplicate `@media (max-width: 768px)`
   block.** Discovered while fixing mobile touch targets (see the item
@@ -554,3 +576,26 @@ Rules for items:
   both. Low priority, purely a cleanup.
   Acceptance: the two blocks merged into one; full client Jest suite and
   `vite build` unchanged/still passing.
+
+- [ ] **`EditPost` can crash-redirect a valid edit request away when the
+  page is opened directly (a fresh load / hard refresh), before auth has
+  finished loading.** Discovered while adding this page's document-title
+  test (see the per-page document titles item above): `EditPost`'s
+  data-fetch `useEffect` in `client/src/pages/EditPost.js` reads
+  `user._id` unconditionally (`if (user._id !== postData.user._id && ...)`)
+  with no null guard, and its dependency array includes `user`. On a
+  direct navigation to `/posts/edit/:id` (not client-side nav from an
+  already-authenticated session), `AuthContext`'s `user` is still `null`
+  on first render while `/api/users/me` is in flight, so this effect's
+  first run throws on `null._id`, which the surrounding `try/catch`
+  turns into "Error fetching post data" plus `navigate('/')` — even
+  though the user is in fact authorized. The effect does re-run once
+  `user` resolves, but the redirect has already fired by then. Every
+  other page that gates on `user` (`Dashboard`, `AdminUsers`,
+  `AdminDashboard`, `ModeratorDashboard`) checks `!user`/`isAuthenticated`
+  before dereferencing it; `EditPost` is the one exception.
+  Acceptance: `EditPost` waits for auth to resolve (e.g. guard on
+  `!user` the same way `Dashboard` does) before comparing
+  `user._id`/`postData.user._id`; a regression test renders `EditPost`
+  behind a real (not mocked) `AuthProvider` with a token set and asserts
+  the edit form renders instead of redirecting to `/`.
