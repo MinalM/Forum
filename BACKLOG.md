@@ -274,37 +274,41 @@ Rules for items:
   raw-CSS-source-assertion pattern already used in
   `mobileTouchTargets.test.js` confirms the rule is present.
 
-- [ ] **`Navbar.css` is never imported — the mobile touch-target fix for
-  the navbar search box shipped dead and never reached production.** The
-  "Mobile touch targets below the 44px minimum" item (done, #46) added
-  `min-height`/`min-width: 44px` to `.navbar-search-input`/
-  `.navbar-search-btn` in `client/src/components/layout/Navbar.css`.
-  Confirmed live at https://cerulean-marshmallow-003d16.netlify.app/ (375px
-  viewport, and identically on every other route reviewed) via Playwright
-  that `.navbar-search-btn` still measures 17×19px — the fix is not
-  applied. Root cause: `client/src/components/layout/Navbar.js` has no
-  `import './Navbar.css'` (or any CSS import at all — confirmed by reading
-  the file's imports), and nothing else in `client/src` imports it either
-  — `grep -rn "Navbar.css" client/src` returns exactly one hit, in
-  `client/src/__tests__/mobileTouchTargets.test.js`, which reads the file
-  as raw text rather than rendering it. Because it's never imported, Vite
-  correctly excludes it from the production bundle: fetching the live
-  compiled CSS (`/assets/index-BX3vc24L.css`) shows zero occurrences of
-  `navbar-search` anywhere in it. This isn't a stale-deploy artifact —
-  the same live bundle already contains the Open Graph meta tags from the
-  later-merged #48, so the deploy is current; the CSS is just genuinely
-  never shipped. The other four selectors from the same backlog item
-  (`.nav-link`, `.mobile-menu-toggle`, `.pagination button`,
-  `.categories-sidebar .category-item a`) all live in `client/src/App.css`,
-  which *is* imported (`App.js` imports it), and are confirmed present
-  with `min-height`/`min-width: 44px` in the live CSS — only the two
-  selectors that happened to live in the orphaned file are broken.
-  Acceptance: `Navbar.js` imports `Navbar.css` (or its rules move into a
-  file that's actually imported); a test that renders `<Navbar />` (not
-  one that reads the CSS source as text) asserts
-  `.navbar-search-btn`/`.navbar-search-input` actually receive the 44px
-  minimum in a real DOM; `mobileTouchTargets.test.js` is corrected so it
-  can no longer pass against CSS that isn't actually loaded by the app.
+- [x] **`Navbar.css` is never imported — the mobile touch-target fix for
+  the navbar search box shipped dead and never reached production.** Done:
+  this PR. Added `import './Navbar.css';` to
+  `client/src/components/layout/Navbar.js`. Verified the actual production
+  bug is fixed, not just the source: `npm run build` (Vite) now emits
+  `navbar-search` rules into the compiled CSS bundle (`grep -c
+  navbar-search build/assets/*.css` → 1; it was 0 before this change).
+  Root cause was as originally diagnosed: the file existed and had correct
+  rules, but nothing imported it, so bundlers correctly tree-shook it out.
+  Tests, in line with this item's acceptance criteria that a test render
+  `<Navbar />` rather than only read CSS source as text: new
+  `client/src/components/__tests__/NavbarStylesheet.test.js` (written
+  test-first — confirmed both failing before the import was added) mocks
+  `../layout/Navbar.css` to record when it's actually imported (rather than
+  merely present on disk) and renders `<Navbar />` to prove the import
+  fires, plus injects the real CSS source as a `<style>` tag and asserts an
+  unconditional rule (not gated behind `@media`) is applied via
+  `getComputedStyle()` in a real DOM. Note: jsdom in this repo's Jest setup
+  has no `window.matchMedia` and does not evaluate `@media` conditions in
+  `getComputedStyle()` (confirmed empirically — a minimal repro rule inside
+  `@media (max-width: 768px)` never applied, with or without setting
+  `window.innerWidth`), so the mobile-only 44px rules themselves still rely
+  on `mobileTouchTargets.test.js`'s raw-CSS-source assertions for their
+  pixel values — this is a hard jsdom limitation, not something this PR
+  chose to skip. To close that gap per the acceptance criteria ("corrected
+  so it can no longer pass against CSS that isn't actually loaded"),
+  `mobileTouchTargets.test.js` gained a new assertion (also written
+  test-first) that `Navbar.js`'s source actually contains
+  `import './Navbar.css'`, so the file's existing 44px assertions can no
+  longer pass silently against an orphaned stylesheet. Full client Jest
+  suite: 30 suites, 102 tests, all passing (up from 29/99 — the 3 new
+  tests: 2 in `NavbarStylesheet.test.js`, 1 in
+  `mobileTouchTargets.test.js`). `npm run lint`: same 4 pre-existing errors
+  / 7 pre-existing warnings baseline, unaffected. `npm audit --omit=dev`:
+  0 vulnerabilities (unaffected, no new dependency).
 
 - [ ] **Post upvote/downvote buttons have no CSS at all — a 14×19px touch
   target on every post detail page, desktop and mobile alike.**

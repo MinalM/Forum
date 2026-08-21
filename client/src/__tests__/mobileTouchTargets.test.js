@@ -11,6 +11,10 @@ const navbarCss = fs.readFileSync(
   path.join(__dirname, '../components/layout/Navbar.css'),
   'utf8'
 );
+const navbarSource = fs.readFileSync(
+  path.join(__dirname, '../components/layout/Navbar.js'),
+  'utf8'
+);
 
 const MIN_TARGET = 44;
 
@@ -74,6 +78,15 @@ function minPx(declarations, property) {
 describe('mobile touch targets (WCAG 2.5.5, <=768px viewport)', () => {
   const appMobile = extractMobileMediaDeclarations(appCss);
   const navbarMobile = extractMobileMediaDeclarations(navbarCss);
+
+  // Navbar.css rules only reach the browser if something actually imports
+  // the file - Vite (and every other bundler) drops unimported CSS from the
+  // production bundle. Without this check, every assertion below could pass
+  // against a stylesheet the app never ships (as happened previously: see
+  // NavbarStylesheet.test.js for a render-based check of the same fact).
+  it('Navbar.js imports Navbar.css, so these rules actually ship', () => {
+    expect(navbarSource).toMatch(/import\s+['"]\.\/Navbar\.css['"]/);
+  });
 
   it('nav links are at least 44px tall', () => {
     const rule = extractRule(appMobile, '.nav-link');
