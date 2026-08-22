@@ -4,6 +4,7 @@ import { MemoryRouter, Routes, Route } from 'react-router';
 import axios from 'axios';
 import SearchResults from '../SearchResults';
 import { AlertProvider } from '../../context/AlertContext';
+import { AuthProvider } from '../../context/AuthContext';
 
 jest.mock('axios', () => ({
   defaults: {},
@@ -15,13 +16,15 @@ jest.mock('axios', () => ({
 
 const renderAtSearch = (query) =>
   render(
-    <AlertProvider>
-      <MemoryRouter initialEntries={[`/search?q=${encodeURIComponent(query)}`]}>
-        <Routes>
-          <Route path="/search" element={<SearchResults />} />
-        </Routes>
-      </MemoryRouter>
-    </AlertProvider>
+    <AuthProvider>
+      <AlertProvider>
+        <MemoryRouter initialEntries={[`/search?q=${encodeURIComponent(query)}`]}>
+          <Routes>
+            <Route path="/search" element={<SearchResults />} />
+          </Routes>
+        </MemoryRouter>
+      </AlertProvider>
+    </AuthProvider>
   );
 
 const post = {

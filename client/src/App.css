@@ -325,7 +325,7 @@
 
 .vote-btn.active {
   color: var(--primary-color);
-  background-color: rgba(255, 255, 255, 0.2);
+  background-color: rgba(98, 0, 234, 0.15);
 }
 
 .post-action {
@@ -336,6 +336,57 @@
 
 .post-action:hover {
   color: var(--primary-color);
+}
+
+/* Feed card layout (PostItem): vote column on the left, content on the
+   right, so a post can be voted on without opening it. */
+.post-card-layout {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.post-vote-column {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+.post-vote-count {
+  font-weight: 700;
+  min-width: 1.5rem;
+  text-align: center;
+}
+
+.post-card-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.post-card-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.post-status-badges {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.post-level-badge {
+  margin-right: 1rem;
+}
+
+/* A question with no answers yet is the one most at risk of being missed -
+   an amber left border flags it in the feed without needing to open it. */
+.post-card--needs-answer {
+  border-left: 4px solid var(--warning-color);
 }
 
 /* Post Detail */
