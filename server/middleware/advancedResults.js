@@ -1,3 +1,19 @@
+// Feed values for GET /api/posts — see parseSinceWindow for the `since` format.
+const POST_FEED_VALUES = ['recent', 'unanswered', 'top'];
+const DEFAULT_TOP_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+
+// Parses a `since` window like '7d', '12h', '2w' into milliseconds.
+// Returns null for anything else so the caller can fall back to a default.
+function parseSinceWindow(since) {
+  if (typeof since !== 'string') return null;
+  const match = since.match(/^(\d+)(h|d|w)$/);
+  if (!match) return null;
+
+  const amount = parseInt(match[1], 10);
+  const msPerUnit = { h: 60 * 60 * 1000, d: 24 * 60 * 60 * 1000, w: 7 * 24 * 60 * 60 * 1000 };
+  return amount * msPerUnit[match[2]];
+}
+
 const advancedResults = (model, populate) => async (req, res, next) => {
   let query;
 
@@ -5,7 +21,7 @@ const advancedResults = (model, populate) => async (req, res, next) => {
   const reqQuery = { ...req.query };
 
   // Fields to exclude
-  const removeFields = ['select', 'sort', 'page', 'limit', 'search'];
+  const removeFields = ['select', 'sort', 'page', 'limit', 'search', 'feed', 'since'];
 
   // Loop over removeFields and delete them from reqQuery
   removeFields.forEach(param => delete reqQuery[param]);
@@ -16,17 +32,40 @@ const advancedResults = (model, populate) => async (req, res, next) => {
   // Create operators ($gt, $gte, etc)
   queryStr = queryStr.replace(/\b(gt|gte|lt|lte|in)\b/g, match => `$${match}`);
 
+  const baseFilter = JSON.parse(queryStr);
+
+  // Feed filtering, `GET /api/posts` only — recent (default) / unanswered / top.
+  // An unrecognised feed value falls back to 'recent' rather than erroring.
+  const isPostModel = model.modelName === 'Post';
+  let feedFilter = null;
+  let feedSort = null;
+
+  if (isPostModel && req.query.feed !== undefined) {
+    const feed = POST_FEED_VALUES.includes(req.query.feed) ? req.query.feed : 'recent';
+
+    if (feed === 'unanswered') {
+      feedFilter = { commentCount: 0 };
+      feedSort = 'createdAt';
+    } else if (feed === 'top') {
+      const windowMs = parseSinceWindow(req.query.since) ?? DEFAULT_TOP_WINDOW_MS;
+      feedFilter = { createdAt: { $gte: new Date(Date.now() - windowMs) } };
+      feedSort = '-score';
+    }
+  }
+
+  const combinedFilter = feedFilter ? { $and: [baseFilter, feedFilter] } : baseFilter;
+
   // Finding resource
-  query = model.find(JSON.parse(queryStr));
+  query = model.find(combinedFilter);
 
   // Handle search functionality
   if (req.query.search) {
     const searchQuery = req.query.search;
     const searchRegex = new RegExp(searchQuery, 'i');
-    
+
     // Determine which fields to search based on model
     let searchFields = [];
-    
+
     // Detect model by checking if collection name exists
     if (model.collection && model.collection.name) {
       switch (model.collection.name) {
@@ -46,16 +85,16 @@ const advancedResults = (model, populate) => async (req, res, next) => {
           searchFields = ['name']; // Default search by name
       }
     }
-    
+
     // Build search conditions
     const searchConditions = searchFields.map(field => ({
       [field]: { $regex: searchRegex }
     }));
-    
+
     // Clear previous query and apply search condition
     query = model.find({
       $and: [
-        JSON.parse(queryStr), // Original query conditions
+        combinedFilter, // Original query conditions (incl. feed filter)
         { $or: searchConditions } // Search conditions
       ]
     });
@@ -71,6 +110,8 @@ const advancedResults = (model, populate) => async (req, res, next) => {
   if (req.query.sort) {
     const sortBy = req.query.sort.split(',').join(' ');
     query = query.sort(sortBy);
+  } else if (feedSort) {
+    query = query.sort(feedSort);
   } else {
     query = query.sort('-createdAt');
   }
@@ -114,15 +155,18 @@ const advancedResults = (model, populate) => async (req, res, next) => {
     
     countQuery = {
       $and: [
-        JSON.parse(queryStr),
+        combinedFilter,
         { $or: searchConditions }
       ]
     };
   } else {
-    countQuery = JSON.parse(queryStr);
+    countQuery = combinedFilter;
   }
-  
+
   const total = await model.countDocuments(countQuery);
+  const unansweredCount = isPostModel
+    ? await model.countDocuments({ commentCount: 0 })
+    : undefined;
 
   query = query.skip(startIndex).limit(limit);
 
@@ -161,6 +205,10 @@ const advancedResults = (model, populate) => async (req, res, next) => {
     pagination,
     data: results
   };
+
+  if (isPostModel) {
+    res.advancedResults.unansweredCount = unansweredCount;
+  }
 
   next();
 };

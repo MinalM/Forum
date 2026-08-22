@@ -9,7 +9,9 @@ const { trace, SpanStatusCode } = require('@opentelemetry/api');
 const { postCreatedCounter, postViewCounter } = require('../dist/instrumentation/metrics');
 const { getExperimentationService } = require('../dist/services/experimentation');
 
-// @desc    Get all posts
+// @desc    Get all posts. GET /api/posts supports ?feed=recent|unanswered|top
+//          (see server/middleware/advancedResults.js), plus the existing
+//          sort/page/limit/search params.
 // @route   GET /api/posts
 // @route   GET /api/categories/:categoryId/posts
 // @route   GET /api/users/:userId/posts
