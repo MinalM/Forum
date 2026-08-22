@@ -1,10 +1,14 @@
 import React from 'react';
+import fs from 'fs';
+import path from 'path';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router';
 import axios from 'axios';
 import PostDetail from '../PostDetail';
 import { AlertProvider } from '../../context/AlertContext';
 import { AuthProvider } from '../../context/AuthContext';
+
+const appCss = fs.readFileSync(path.join(__dirname, '../../App.css'), 'utf8');
 
 jest.mock('axios', () => ({
   defaults: {},
@@ -173,5 +177,40 @@ describe('PostDetail comment markdown rendering', () => {
 
     await screen.findByText('Orphaned post');
     expect(screen.getByRole('img', { name: '' })).not.toHaveAttribute('onerror');
+  });
+});
+
+describe('PostDetail vote button touch targets (WCAG 2.5.5)', () => {
+  beforeEach(() => {
+    axios.get.mockReset();
+    axios.get.mockImplementation((url) => {
+      if (url.endsWith('/comments')) {
+        return Promise.resolve({ data: { success: true, data: [] } });
+      }
+      return Promise.resolve({ data: { success: true, data: basePost } });
+    });
+
+    // Inject the real App.css source as an actual <style> tag so
+    // getComputedStyle() below reflects real rule matching instead of the
+    // transform stub Jest normally substitutes for a CSS import.
+    const style = document.createElement('style');
+    style.textContent = appCss;
+    document.head.appendChild(style);
+  });
+
+  it('renders the upvote and downvote buttons at least 44x44', async () => {
+    renderPostDetail();
+
+    await screen.findByText('Orphaned post');
+    const voteButtons = screen
+      .getAllByRole('button')
+      .filter((button) => button.className.includes('vote-btn'));
+    expect(voteButtons).toHaveLength(2);
+
+    voteButtons.forEach((button) => {
+      const style = getComputedStyle(button);
+      expect(parseFloat(style.minHeight)).toBeGreaterThanOrEqual(44);
+      expect(parseFloat(style.minWidth)).toBeGreaterThanOrEqual(44);
+    });
   });
 });

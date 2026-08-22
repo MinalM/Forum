@@ -310,25 +310,35 @@ Rules for items:
   / 7 pre-existing warnings baseline, unaffected. `npm audit --omit=dev`:
   0 vulnerabilities (unaffected, no new dependency).
 
-- [ ] **Post upvote/downvote buttons have no CSS at all — a 14×19px touch
-  target on every post detail page, desktop and mobile alike.**
-  `grep -rn "vote-btn" client/src --include=*.css` returns no matches
-  anywhere in the codebase; `.vote-btn` (used in
-  `client/src/pages/PostDetail.js` for the upvote/downvote controls) is
-  completely unstyled beyond the browser's default `<button>` box model
-  around its icon. Confirmed live via Playwright on
-  `https://cerulean-marshmallow-003d16.netlify.app/posts/6925386a88cb7b8de046eddf`
-  (and the null-user post) at both a 1280px and a 375px viewport: both
-  buttons render at 14×19px in every case — well under the 44px minimum,
-  and smaller than any element the "Mobile touch targets" item (#46)
-  covered, which didn't include this element in its scope. Voting is a
-  core, frequently-used interaction, not a peripheral one.
-  Acceptance: `.vote-btn` gets a `min-height`/`min-width: 44px` (desktop
-  and mobile, or mobile-scoped consistent with the existing pattern in
-  `App.css`); a test asserts the declared/computed size meets the
-  minimum, rendering the component (or otherwise verifying applied
-  styles) rather than only parsing CSS source text, per the lesson from
-  the `Navbar.css` item above.
+- [x] **Post upvote/downvote buttons have no CSS at all — a 14×19px touch
+  target on every post detail page, desktop and mobile alike.** Done: this
+  PR. Added `.vote-btn` (`min-width`/`min-height: 44px`, flex-centered
+  icon) and a `.vote-buttons` flex container to `client/src/App.css`,
+  applied unconditionally (not mobile-gated) since the bug was confirmed
+  at both a 1280px and a 375px viewport — matching the existing
+  `.pagination button` styling (background, border-radius, hover/disabled
+  states) for visual consistency, plus an `.active` state for the
+  already-voted case neither of which previously had any styling at all.
+  No missing-import bug here (unlike the `Navbar.css` item): `App.css` is
+  already globally imported via `client/src/App.js`, so the only gap was
+  the missing rule itself.
+  Test: extended `client/src/pages/__tests__/PostDetail.test.js` with a
+  "PostDetail vote button touch targets" describe block, written
+  test-first (confirmed failing — `NaN >= 44` — against the unmodified
+  CSS). Following the `Navbar.css` item's lesson, it renders the real
+  `PostDetail` component and injects the actual `App.css` source as a
+  `<style>` tag so `getComputedStyle()` reflects real rule matching
+  (not the CSS-module stub Jest normally substitutes), then asserts both
+  vote buttons' computed `min-height`/`min-width` are `>= 44px` — a
+  render-based check rather than only parsing CSS source text. Queried
+  via `screen.getAllByRole('button')` filtered by class name rather than
+  `container.querySelector`, since the latter trips this repo's
+  `testing-library/no-node-access`/`no-container` lint rules (caught by
+  running `npm run lint` after the first draft).
+  Full client Jest suite: 30 suites, 103 tests, all passing (up from 102
+  — the 1 new test). `npm run lint`: same 4 pre-existing errors / 7
+  pre-existing warnings baseline, unaffected. `vite build` re-verified
+  clean.
 
 - [ ] **Every page skips from `<h1>` straight to `<h3>` — the footer's
   three headings have no `<h2>` anywhere above them.** Confirmed via
