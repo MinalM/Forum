@@ -123,3 +123,10 @@ describe('category sidebar links (Home) are at least 44px tall', () => {
     expect(minPx(rule, 'min-height')).toBeGreaterThanOrEqual(MIN_TARGET);
   });
 });
+
+describe('feed tab buttons (Home) are at least 44px tall', () => {
+  it('declares a min-height of 44px on the feed-tab button', () => {
+    const rule = extractRule(appCss, '.feed-tab');
+    expect(minPx(rule, 'min-height')).toBeGreaterThanOrEqual(MIN_TARGET);
+  });
+});

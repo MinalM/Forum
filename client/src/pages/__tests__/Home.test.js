@@ -1,5 +1,6 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import axios from 'axios';
 import Home from '../Home';
@@ -14,9 +15,13 @@ jest.mock('axios', () => ({
   get: jest.fn()
 }));
 
-const renderHome = (authValue) => {
-  axios.get.mockResolvedValue({ data: { data: [] } });
+jest.mock('../../hooks/useFeatureFlag', () => ({
+  useFeatureFlag: jest.fn(() => false)
+}));
 
+const { useFeatureFlag } = require('../../hooks/useFeatureFlag');
+
+const renderHome = (authValue) => {
   return render(
     <AuthContext.Provider value={authValue}>
       <AlertProvider>
@@ -31,6 +36,7 @@ const renderHome = (authValue) => {
 describe('Home document title', () => {
   beforeEach(() => {
     axios.get.mockReset();
+    axios.get.mockResolvedValue({ data: { data: [] } });
   });
 
   it('sets the document title to the site name', async () => {
@@ -41,12 +47,13 @@ describe('Home document title', () => {
   });
 });
 
-describe('Home hero session-awareness', () => {
+describe('Home value bar session-awareness', () => {
   beforeEach(() => {
     axios.get.mockReset();
+    axios.get.mockResolvedValue({ data: { data: [] } });
   });
 
-  it('shows Join the Community / Register CTAs when logged out', async () => {
+  it('shows a value bar with Join/Browse CTAs when logged out', async () => {
     renderHome({ isAuthenticated: false, user: null });
 
     expect(await screen.findByText('Join the Community')).toBeInTheDocument();
@@ -54,11 +61,114 @@ describe('Home hero session-awareness', () => {
     expect(screen.queryByText('Go to Dashboard')).not.toBeInTheDocument();
   });
 
-  it('shows Create Post / Dashboard links when logged in', async () => {
+  it('shows the feed directly with no value bar when logged in', async () => {
     renderHome({ isAuthenticated: true, user: { _id: '1', username: 'alice' } });
 
-    expect(await screen.findByText('Create Post')).toBeInTheDocument();
-    expect(screen.getByText('Go to Dashboard')).toBeInTheDocument();
+    await screen.findByRole('tab', { name: /For you/ });
     expect(screen.queryByText('Join the Community')).not.toBeInTheDocument();
+  });
+});
+
+describe('Home feed tabs', () => {
+  beforeEach(() => {
+    axios.get.mockReset();
+  });
+
+  it('requests the recent feed by default', async () => {
+    axios.get.mockResolvedValue({ data: { data: [], unansweredCount: 0 } });
+    renderHome({ isAuthenticated: false, user: null });
+
+    await waitFor(() => {
+      expect(axios.get).toHaveBeenCalledWith(expect.stringContaining('feed=recent'));
+    });
+  });
+
+  it('switches to the unanswered feed on tab click', async () => {
+    const user = userEvent.setup();
+    axios.get.mockResolvedValue({ data: { data: [], unansweredCount: 2 } });
+    renderHome({ isAuthenticated: false, user: null });
+
+    await waitFor(() => expect(axios.get).toHaveBeenCalled());
+    axios.get.mockClear();
+
+    await user.click(screen.getByRole('tab', { name: /Unanswered/ }));
+
+    await waitFor(() => {
+      expect(axios.get).toHaveBeenCalledWith(expect.stringContaining('feed=unanswered'));
+    });
+  });
+
+  it('switches to the top feed with a since window on tab click', async () => {
+    const user = userEvent.setup();
+    axios.get.mockResolvedValue({ data: { data: [] } });
+    renderHome({ isAuthenticated: false, user: null });
+
+    await waitFor(() => expect(axios.get).toHaveBeenCalled());
+    axios.get.mockClear();
+
+    await user.click(screen.getByRole('tab', { name: /Top this week/ }));
+
+    await waitFor(() => {
+      expect(axios.get).toHaveBeenCalledWith(
+        expect.stringMatching(/feed=top.*since=7d/)
+      );
+    });
+  });
+
+  it('renders the unanswered tab count from the response envelope', async () => {
+    axios.get.mockResolvedValue({ data: { data: [], unansweredCount: 7 } });
+    renderHome({ isAuthenticated: false, user: null });
+
+    const tab = await screen.findByRole('tab', { name: /Unanswered/ });
+    expect(await within(tab).findByText('7')).toBeInTheDocument();
+  });
+});
+
+describe('Home feed states', () => {
+  beforeEach(() => {
+    axios.get.mockReset();
+  });
+
+  it('shows an empty state when the feed has no posts', async () => {
+    axios.get.mockResolvedValue({ data: { data: [] } });
+    renderHome({ isAuthenticated: false, user: null });
+
+    expect(await screen.findByText('No posts found')).toBeInTheDocument();
+  });
+
+  it('shows an error state when the feed fetch fails', async () => {
+    axios.get.mockRejectedValue(new Error('network down'));
+    renderHome({ isAuthenticated: false, user: null });
+
+    expect(await screen.findByText('Error loading posts')).toBeInTheDocument();
+  });
+});
+
+describe('Home trending posts gating', () => {
+  beforeEach(() => {
+    axios.get.mockReset();
+    axios.get.mockResolvedValue({ data: { data: [] } });
+    useFeatureFlag.mockReset();
+  });
+
+  it('does not render TrendingPosts when the flag is off', async () => {
+    useFeatureFlag.mockReturnValue(false);
+    renderHome({ isAuthenticated: false, user: null });
+
+    await screen.findByText('No posts found');
+    expect(screen.queryByText('Trending')).not.toBeInTheDocument();
+  });
+
+  it('renders TrendingPosts when the flag is on', async () => {
+    useFeatureFlag.mockReturnValue(true);
+    axios.get.mockImplementation((url) => {
+      if (url.includes('views')) {
+        return Promise.resolve({ data: { data: [{ _id: 't1', title: 'Trending post' }] } });
+      }
+      return Promise.resolve({ data: { data: [] } });
+    });
+    renderHome({ isAuthenticated: false, user: null });
+
+    expect(await screen.findByText('Trending')).toBeInTheDocument();
   });
 });
