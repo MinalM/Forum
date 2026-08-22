@@ -271,6 +271,7 @@ exports.upvotePost = asyncHandler(async (req, res, next) => {
     );
   }
 
+  post.score = post.upvotes.length - post.downvotes.length;
   await post.save();
 
   res.status(200).json({
@@ -306,6 +307,7 @@ exports.downvotePost = asyncHandler(async (req, res, next) => {
     );
   }
 
+  post.score = post.upvotes.length - post.downvotes.length;
   await post.save();
 
   res.status(200).json({
