@@ -767,17 +767,13 @@ out of the same reviews.
 
 ## Dropped 2026-08-22 — superseded by the engagement redesign
 
-Not completed. These two were open UX items that the redesign's own work will
-rewrite the same code for, so implementing them first would be work thrown
-away. Recorded here so the underlying defects are not lost.
+Not completed. This was an open UX item that the redesign's own work will
+rewrite the same code for, so implementing it first would be work thrown
+away. Recorded here so the underlying defect is not lost.
 
-- **Post detail pages overflow horizontally on mobile — `.post-meta` never
-  wraps.** Real, confirmed live via Playwright at 375px
-  (`scrollWidth` 588 vs `clientWidth` 375 on one post, 434 vs 375 on another):
-  `.post-meta` in `client/src/App.css` is `display: flex` with no `flex-wrap`.
-  Not lost — folded into the redesign's mobile item, which carries the same
-  acceptance criterion (`scrollWidth <= clientWidth` at 375px) and rebuilds the
-  meta row that causes it.
+(A second item was listed here originally — the `.post-meta` mobile overflow.
+It turned out not to be superseded at all: `main` shipped the fix in #53 while
+this queue was being written, so it has moved to the completed section below.)
 
 - **`client/src/App.css` has a duplicate `@media (max-width: 768px)` block.**
   Real but cosmetic: `.mobile-menu-toggle`, `.navbar-nav`, `.navbar-nav.show`
@@ -787,3 +783,25 @@ away. Recorded here so the underlying defects are not lost.
   rewrite these navbar and responsive rules directly, and de-duplicating them
   first would only create merge conflicts against that work. If the duplication
   survives the redesign, re-file it then.
+
+## Cycle 3 — shipped on main alongside the redesign queue (Aug 2026)
+
+Completed on `main` after the redesign queue was written, and merged into the
+redesign branch. Archived here rather than left ticked in `BACKLOG.md`, per the
+rule that the working file holds only open items.
+
+- [x] **Post detail pages overflow horizontally on mobile — `.post-meta`
+  never wraps.** Done: this PR. Added `flex-wrap: wrap;` to `.post-meta`
+  in `client/src/App.css` (unscoped, not mobile-only — the rule has no
+  desktop-specific layout to preserve, and wrapping is a no-op on wide
+  viewports where the row already fits on one line).
+  Verified with a real browser wasn't possible in this environment (ground
+  rules: no Playwright, no live app). Used the raw-CSS-source-assertion
+  pattern already established in `mobileTouchTargets.test.js`: new
+  `client/src/__tests__/postMetaOverflow.test.js` parses `App.css` and
+  asserts `.post-meta` declares `flex-wrap: wrap` — written test-first,
+  confirmed failing against the unmodified CSS before the change. Full
+  client Jest suite: 30 suites, 100 tests, all passing (up from 29/99 —
+  the 1 new test). `npm run lint`: same 4 pre-existing errors / 7
+  pre-existing warnings baseline, unaffected. `vite build` re-verified
+  clean.
