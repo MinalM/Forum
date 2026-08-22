@@ -153,13 +153,45 @@ Two standing constraints for every item below:
   replies on a locked post — the UI must not offer the control), the "Asker"
   chip, and reply targets at 44px.
 
-- [ ] **Answer voting and "Most helpful" ordering.** `PUT /api/comments/:id/upvote`
-  and `/downvote` exist and are unused. Add the per-answer vote control from
-  `PostThread.dc.html` and the Most helpful / Newest sort toggle above the
-  answer list, with the accepted answer pinned first under both orderings.
-  Acceptance: tests for voting, retraction, the unauthenticated disabled
-  state, both sort orders, and the accepted answer staying pinned; sorting is
-  client-side over the already-fetched list unless the thread paginates.
+- [x] **Post detail pages overflow horizontally on mobile — `.post-meta`
+  never wraps.** Done: this PR. Added `flex-wrap: wrap;` to `.post-meta`
+  in `client/src/App.css` (unscoped, not mobile-only — the rule has no
+  desktop-specific layout to preserve, and wrapping is a no-op on wide
+  viewports where the row already fits on one line).
+  Verified with a real browser wasn't possible in this environment (ground
+  rules: no Playwright, no live app). Used the raw-CSS-source-assertion
+  pattern already established in `mobileTouchTargets.test.js`: new
+  `client/src/__tests__/postMetaOverflow.test.js` parses `App.css` and
+  asserts `.post-meta` declares `flex-wrap: wrap` — written test-first,
+  confirmed failing against the unmodified CSS before the change. Full
+  client Jest suite: 30 suites, 100 tests, all passing (up from 29/99 —
+  the 1 new test). `npm run lint`: same 4 pre-existing errors / 7
+  pre-existing warnings baseline, unaffected. `vite build` re-verified
+  clean.
+- [x] **Clicking a post from the Dashboard gives a 404 for logged-in
+  users.** Done: #57. Audited the full chain: `Dashboard.js` fetches
+  `GET /api/users/:userId/posts` (`server/routes/users.js`), passes each
+  post straight through to `PostItem`, whose `title` link is
+  `` `/posts/${_id}` `` — the same `_id` `PostDetail` reads via
+  `useParams()` and fetches with `GET /api/posts/:id`
+  (`server/controllers/posts.js`). No `slug`/`_id` mismatch or other
+  field misuse found anywhere in that path (also checked
+  `AdminDashboard.js`/`ModeratorDashboard.js` and the Dashboard's
+  "recent comments" `comment.post` links — all consistent). Added
+  `client/src/pages/__tests__/DashboardPostLink.test.js`, a
+  render-Dashboard-inside-real-`<Routes>`-and-click integration test
+  matching this item's acceptance criteria exactly (login, load
+  Dashboard, click the first post link, assert the H1 on the post detail
+  page matches the post title, no "Post not found" alert); it passes
+  against current `main` with no code change needed, so the reported
+  flow does not reproduce with well-formed data. Could not additionally
+  verify a real server round-trip (`GET /api/users/:id/posts` →
+  `GET /api/posts/:id`) in this sandbox: `mongodb-memory-server` can't
+  download its binary here (no egress to `fastdl.mongodb.org`). If this
+  is still observed on the live site, it's likely a demo-data race (a
+  post deleted between page load and click) rather than a code defect —
+  next time it's seen, capture the exact post `_id`/URL that 404s for a
+  targeted repro.
 
 - [ ] **Thread subscriptions (server).** Nothing in the app brings a member
   back: the only notification surface is the moderator-only pending-reports

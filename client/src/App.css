@@ -253,6 +253,7 @@
 .post-meta {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   margin-bottom: 0.5rem;
   font-size: 0.9rem;
   color: #666;
