@@ -76,7 +76,7 @@ Two standing constraints for every item below:
   existing `/api/posts` consumers (`Home`, `CategoryPosts`, `SearchResults`)
   still pass their current tests untouched.
 
-- [ ] **Rebuild `PostItem` as the feed card.** Currently
+- [x] **Rebuild `PostItem` as the feed card.** Done: #62. Currently
   `client/src/components/posts/PostItem.js` renders the comment, view and vote
   counts as inert `<div>`s — a member must open a post to vote on it, which is
   the single largest source of friction in the current UI. Rebuild it per the
