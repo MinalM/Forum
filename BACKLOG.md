@@ -250,6 +250,21 @@ Rules for items:
   the Vite dev server) and `security` job against the accumulated Vite
   migration, which is the "full CI green" acceptance criterion.
 
+- [x] **Post detail pages overflow horizontally on mobile — `.post-meta`
+  never wraps.** Done: this PR. Added `flex-wrap: wrap;` to `.post-meta`
+  in `client/src/App.css` (unscoped, not mobile-only — the rule has no
+  desktop-specific layout to preserve, and wrapping is a no-op on wide
+  viewports where the row already fits on one line).
+  Verified with a real browser wasn't possible in this environment (ground
+  rules: no Playwright, no live app). Used the raw-CSS-source-assertion
+  pattern already established in `mobileTouchTargets.test.js`: new
+  `client/src/__tests__/postMetaOverflow.test.js` parses `App.css` and
+  asserts `.post-meta` declares `flex-wrap: wrap` — written test-first,
+  confirmed failing against the unmodified CSS before the change. Full
+  client Jest suite: 30 suites, 100 tests, all passing (up from 29/99 —
+  the 1 new test). `npm run lint`: same 4 pre-existing errors / 7
+  pre-existing warnings baseline, unaffected. `vite build` re-verified
+  clean.
 - [x] **Clicking a post from the Dashboard gives a 404 for logged-in
   users.** Done: #57. Audited the full chain: `Dashboard.js` fetches
   `GET /api/users/:userId/posts` (`server/routes/users.js`), passes each
