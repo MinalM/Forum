@@ -250,6 +250,19 @@ Rules for items:
   the Vite dev server) and `security` job against the accumulated Vite
   migration, which is the "full CI green" acceptance criterion.
 
+- [ ] **Clicking a post from the Dashboard gives a 404 for logged-in
+  users.** Reported 2026-08-21: authenticated users navigating to a post
+  via a link on the Dashboard page land on a 404 / "Post not found" screen
+  instead of the post detail. The Dashboard likely constructs post URLs
+  using a field that doesn't match the router's `:id` param (e.g. `slug`
+  instead of `_id`, or vice-versa). Fix: audit the link `to=` prop in the
+  Dashboard's post-list render and align it with the `/posts/:id` route
+  that `PostDetail` expects (MongoDB ObjectId).
+  Acceptance: an integration or Playwright test logs in, loads the
+  Dashboard, clicks the first post link, and asserts the post detail page
+  renders (H1 matches post title, no "not found" alert); no regression on
+  direct `/posts/:id` deep-links.
+
 - [ ] **Post detail pages overflow horizontally on mobile — `.post-meta`
   never wraps.** Confirmed live via Playwright at a 375px viewport on two
   different posts:
