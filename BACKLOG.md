@@ -340,24 +340,33 @@ Rules for items:
   pre-existing warnings baseline, unaffected. `vite build` re-verified
   clean.
 
-- [ ] **Every page skips from `<h1>` straight to `<h3>` — the footer's
-  three headings have no `<h2>` anywhere above them.** Confirmed via
-  Playwright across all ten routes reviewed (home, /categories, a category
-  page, a post detail page, /search, /search with no results, /login,
-  /register, and the 404 page): pages whose only other heading is the
-  page's own `<h1>` jump directly from `h1` to `h3` — e.g. /login yields
-  `H1, H3, H3, H3` and /categories yields `H1, H3×9` — because
-  `client/src/components/layout/Footer.js` renders
-  `<h3 className="footer-heading">` three times ("AI/ML Career Forum",
-  "Quick Links", "Career Resources") with no `<h2>` anywhere in between.
-  Footer renders on every page, so this is sitewide, not page-specific.
-  Skipped heading levels break the outline screen-reader users rely on to
-  navigate a page by heading.
-  Acceptance: the footer's headings are changed to non-heading elements
-  styled the same way (e.g. `<p>`/`<div>` keeping the existing
-  `.footer-heading` class) or demoted so no page's heading sequence skips
-  a level; a test parses rendered heading tags on at least one page and
-  asserts consecutive heading levels never skip.
+- [x] **Every page skips from `<h1>` straight to `<h3>` — the footer's
+  three headings have no `<h2>` anywhere above them.** Done: this PR.
+  Chose the "non-heading element" branch of this item's acceptance
+  criteria rather than inserting an `<h2>`: the footer's three section
+  titles ("AI/ML Career Forum", "Quick Links", "Career Resources") aren't
+  part of any single page's content outline (the footer is a
+  sitewide/global region, not page-specific content), and page heading
+  structures vary too much (some pages have their own `<h2>`s already,
+  e.g. `Home`/`Dashboard`; some have none at all, e.g. `Login`/`Register`)
+  for one shared `<h2>` insertion point to make sense everywhere. Changed
+  `client/src/components/layout/Footer.js`'s three
+  `<h3 className="footer-heading">` elements to
+  `<p className="footer-heading">`, keeping the class so `.footer-heading`
+  styling in `client/src/App.css` (font-size/weight/color — a plain
+  class-based rule, not tag-scoped) is unaffected.
+  Tests: new `client/src/components/__tests__/FooterHeadingLevel.test.js`,
+  written test-first (confirmed failing against the unmodified `<h3>`s —
+  3 headings found where 0 were expected, and a 2-level jump from `h1` to
+  `h3` on a real page). Asserts `<Footer>` alone renders zero elements
+  with `role="heading"`, that the three section titles still render with
+  the `.footer-heading` class, and — rendering `Login` + `Footer` together
+  behind real `AuthProvider`/`AlertProvider`s, mirroring the pattern in
+  `Login.test.js` — that the full page's heading level sequence never
+  jumps by more than 1. Full client Jest suite: 31 suites, 106 tests, all
+  passing (up from 30/103 — the 3 new tests). `npm run lint`: same 4
+  pre-existing errors / 7 pre-existing warnings baseline, unaffected.
+  `vite build` re-verified clean.
 
 - [ ] **Drop the vestigial `CI=false` from the two `npm run build`
   invocations in `.github/workflows/node.js.yml`** (`build-and-test`'s
