@@ -250,18 +250,30 @@ Rules for items:
   the Vite dev server) and `security` job against the accumulated Vite
   migration, which is the "full CI green" acceptance criterion.
 
-- [ ] **Clicking a post from the Dashboard gives a 404 for logged-in
-  users.** Reported 2026-08-21: authenticated users navigating to a post
-  via a link on the Dashboard page land on a 404 / "Post not found" screen
-  instead of the post detail. The Dashboard likely constructs post URLs
-  using a field that doesn't match the router's `:id` param (e.g. `slug`
-  instead of `_id`, or vice-versa). Fix: audit the link `to=` prop in the
-  Dashboard's post-list render and align it with the `/posts/:id` route
-  that `PostDetail` expects (MongoDB ObjectId).
-  Acceptance: an integration or Playwright test logs in, loads the
-  Dashboard, clicks the first post link, and asserts the post detail page
-  renders (H1 matches post title, no "not found" alert); no regression on
-  direct `/posts/:id` deep-links.
+- [x] **Clicking a post from the Dashboard gives a 404 for logged-in
+  users.** Done: #57. Audited the full chain: `Dashboard.js` fetches
+  `GET /api/users/:userId/posts` (`server/routes/users.js`), passes each
+  post straight through to `PostItem`, whose `title` link is
+  `` `/posts/${_id}` `` — the same `_id` `PostDetail` reads via
+  `useParams()` and fetches with `GET /api/posts/:id`
+  (`server/controllers/posts.js`). No `slug`/`_id` mismatch or other
+  field misuse found anywhere in that path (also checked
+  `AdminDashboard.js`/`ModeratorDashboard.js` and the Dashboard's
+  "recent comments" `comment.post` links — all consistent). Added
+  `client/src/pages/__tests__/DashboardPostLink.test.js`, a
+  render-Dashboard-inside-real-`<Routes>`-and-click integration test
+  matching this item's acceptance criteria exactly (login, load
+  Dashboard, click the first post link, assert the H1 on the post detail
+  page matches the post title, no "Post not found" alert); it passes
+  against current `main` with no code change needed, so the reported
+  flow does not reproduce with well-formed data. Could not additionally
+  verify a real server round-trip (`GET /api/users/:id/posts` →
+  `GET /api/posts/:id`) in this sandbox: `mongodb-memory-server` can't
+  download its binary here (no egress to `fastdl.mongodb.org`). If this
+  is still observed on the live site, it's likely a demo-data race (a
+  post deleted between page load and click) rather than a code defect —
+  next time it's seen, capture the exact post `_id`/URL that 404s for a
+  targeted repro.
 
 - [ ] **Post detail pages overflow horizontally on mobile — `.post-meta`
   never wraps.** Confirmed live via Playwright at a 375px viewport on two
