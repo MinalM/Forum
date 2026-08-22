@@ -251,7 +251,7 @@ Rules for items:
   migration, which is the "full CI green" acceptance criterion.
 
 - [x] **Clicking a post from the Dashboard gives a 404 for logged-in
-  users.** Done: this PR. Audited the full chain: `Dashboard.js` fetches
+  users.** Done: #57. Audited the full chain: `Dashboard.js` fetches
   `GET /api/users/:userId/posts` (`server/routes/users.js`), passes each
   post straight through to `PostItem`, whose `title` link is
   `` `/posts/${_id}` `` — the same `_id` `PostDetail` reads via
