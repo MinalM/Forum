@@ -61,7 +61,7 @@ Two standing constraints for every item below:
   data and asserts it reconciles deliberately-wrong counters; both fields are
   indexed; existing server suite green.
 
-- [ ] **Feed query parameters on `GET /api/posts`.** Backs the three feed tabs
+- [x] **Feed query parameters on `GET /api/posts`.** Done: #61. Backs the three feed tabs
   with one endpoint, on top of the counters from the item above. Add
   `?feed=recent` (default, newest first), `?feed=unanswered`
   (`commentCount: 0`, **oldest first** — the oldest unanswered question is the
