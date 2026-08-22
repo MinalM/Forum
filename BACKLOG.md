@@ -265,77 +265,148 @@ Rules for items:
   the 1 new test). `npm run lint`: same 4 pre-existing errors / 7
   pre-existing warnings baseline, unaffected. `vite build` re-verified
   clean.
+- [x] **Clicking a post from the Dashboard gives a 404 for logged-in
+  users.** Done: #57. Audited the full chain: `Dashboard.js` fetches
+  `GET /api/users/:userId/posts` (`server/routes/users.js`), passes each
+  post straight through to `PostItem`, whose `title` link is
+  `` `/posts/${_id}` `` — the same `_id` `PostDetail` reads via
+  `useParams()` and fetches with `GET /api/posts/:id`
+  (`server/controllers/posts.js`). No `slug`/`_id` mismatch or other
+  field misuse found anywhere in that path (also checked
+  `AdminDashboard.js`/`ModeratorDashboard.js` and the Dashboard's
+  "recent comments" `comment.post` links — all consistent). Added
+  `client/src/pages/__tests__/DashboardPostLink.test.js`, a
+  render-Dashboard-inside-real-`<Routes>`-and-click integration test
+  matching this item's acceptance criteria exactly (login, load
+  Dashboard, click the first post link, assert the H1 on the post detail
+  page matches the post title, no "Post not found" alert); it passes
+  against current `main` with no code change needed, so the reported
+  flow does not reproduce with well-formed data. Could not additionally
+  verify a real server round-trip (`GET /api/users/:id/posts` →
+  `GET /api/posts/:id`) in this sandbox: `mongodb-memory-server` can't
+  download its binary here (no egress to `fastdl.mongodb.org`). If this
+  is still observed on the live site, it's likely a demo-data race (a
+  post deleted between page load and click) rather than a code defect —
+  next time it's seen, capture the exact post `_id`/URL that 404s for a
+  targeted repro.
 
-- [ ] **`Navbar.css` is never imported — the mobile touch-target fix for
-  the navbar search box shipped dead and never reached production.** The
-  "Mobile touch targets below the 44px minimum" item (done, #46) added
-  `min-height`/`min-width: 44px` to `.navbar-search-input`/
-  `.navbar-search-btn` in `client/src/components/layout/Navbar.css`.
-  Confirmed live at https://cerulean-marshmallow-003d16.netlify.app/ (375px
-  viewport, and identically on every other route reviewed) via Playwright
-  that `.navbar-search-btn` still measures 17×19px — the fix is not
-  applied. Root cause: `client/src/components/layout/Navbar.js` has no
-  `import './Navbar.css'` (or any CSS import at all — confirmed by reading
-  the file's imports), and nothing else in `client/src` imports it either
-  — `grep -rn "Navbar.css" client/src` returns exactly one hit, in
-  `client/src/__tests__/mobileTouchTargets.test.js`, which reads the file
-  as raw text rather than rendering it. Because it's never imported, Vite
-  correctly excludes it from the production bundle: fetching the live
-  compiled CSS (`/assets/index-BX3vc24L.css`) shows zero occurrences of
-  `navbar-search` anywhere in it. This isn't a stale-deploy artifact —
-  the same live bundle already contains the Open Graph meta tags from the
-  later-merged #48, so the deploy is current; the CSS is just genuinely
-  never shipped. The other four selectors from the same backlog item
-  (`.nav-link`, `.mobile-menu-toggle`, `.pagination button`,
-  `.categories-sidebar .category-item a`) all live in `client/src/App.css`,
-  which *is* imported (`App.js` imports it), and are confirmed present
-  with `min-height`/`min-width: 44px` in the live CSS — only the two
-  selectors that happened to live in the orphaned file are broken.
-  Acceptance: `Navbar.js` imports `Navbar.css` (or its rules move into a
-  file that's actually imported); a test that renders `<Navbar />` (not
-  one that reads the CSS source as text) asserts
-  `.navbar-search-btn`/`.navbar-search-input` actually receive the 44px
-  minimum in a real DOM; `mobileTouchTargets.test.js` is corrected so it
-  can no longer pass against CSS that isn't actually loaded by the app.
-
-- [ ] **Post upvote/downvote buttons have no CSS at all — a 14×19px touch
-  target on every post detail page, desktop and mobile alike.**
-  `grep -rn "vote-btn" client/src --include=*.css` returns no matches
-  anywhere in the codebase; `.vote-btn` (used in
-  `client/src/pages/PostDetail.js` for the upvote/downvote controls) is
-  completely unstyled beyond the browser's default `<button>` box model
-  around its icon. Confirmed live via Playwright on
+- [ ] **Post detail pages overflow horizontally on mobile — `.post-meta`
+  never wraps.** Confirmed live via Playwright at a 375px viewport on two
+  different posts:
   `https://cerulean-marshmallow-003d16.netlify.app/posts/6925386a88cb7b8de046eddf`
-  (and the null-user post) at both a 1280px and a 375px viewport: both
-  buttons render at 14×19px in every case — well under the 44px minimum,
-  and smaller than any element the "Mobile touch targets" item (#46)
-  covered, which didn't include this element in its scope. Voting is a
-  core, frequently-used interaction, not a peripheral one.
-  Acceptance: `.vote-btn` gets a `min-height`/`min-width: 44px` (desktop
-  and mobile, or mobile-scoped consistent with the existing pattern in
-  `App.css`); a test asserts the declared/computed size meets the
-  minimum, rendering the component (or otherwise verifying applied
-  styles) rather than only parsing CSS source text, per the lesson from
-  the `Navbar.css` item above.
+  (`document.documentElement.scrollWidth` 588 vs `clientWidth` 375, a
+  213px overflow) and `.../posts/6936910651a7c355b934d878` (434 vs 375, a
+  59px overflow) — both show a horizontal scrollbar and cut-off content.
+  Root cause: `client/src/App.css`'s `.post-meta` rule (the author /
+  category / date / views row under the post title) is `display: flex`
+  with no `flex-wrap` declared anywhere in the file (confirmed via
+  `grep -n post-meta client/src/App.css` — only one `.post-meta` block
+  exists, no mobile override), and browsers default unset `flex-wrap` to
+  `nowrap`, so on narrow viewports the row is forced onto one line and
+  pushes past the viewport edge. Checked as a control: home, /categories,
+  a category page, and /search at the same 375px viewport show no
+  overflow (`scrollWidth === clientWidth`) — this is specific to the post
+  detail page's meta row, not a sitewide layout issue.
+  Acceptance: `.post-meta` allows wrapping (e.g. `flex-wrap: wrap`) at
+  mobile widths; a regression test confirms no horizontal overflow
+  (`scrollWidth <= clientWidth`) on a post detail page at 375px, or, if a
+  live browser isn't available in the implementing environment, the
+  raw-CSS-source-assertion pattern already used in
+  `mobileTouchTargets.test.js` confirms the rule is present.
 
-- [ ] **Every page skips from `<h1>` straight to `<h3>` — the footer's
-  three headings have no `<h2>` anywhere above them.** Confirmed via
-  Playwright across all ten routes reviewed (home, /categories, a category
-  page, a post detail page, /search, /search with no results, /login,
-  /register, and the 404 page): pages whose only other heading is the
-  page's own `<h1>` jump directly from `h1` to `h3` — e.g. /login yields
-  `H1, H3, H3, H3` and /categories yields `H1, H3×9` — because
-  `client/src/components/layout/Footer.js` renders
-  `<h3 className="footer-heading">` three times ("AI/ML Career Forum",
-  "Quick Links", "Career Resources") with no `<h2>` anywhere in between.
-  Footer renders on every page, so this is sitewide, not page-specific.
-  Skipped heading levels break the outline screen-reader users rely on to
-  navigate a page by heading.
-  Acceptance: the footer's headings are changed to non-heading elements
-  styled the same way (e.g. `<p>`/`<div>` keeping the existing
-  `.footer-heading` class) or demoted so no page's heading sequence skips
-  a level; a test parses rendered heading tags on at least one page and
-  asserts consecutive heading levels never skip.
+- [x] **`Navbar.css` is never imported — the mobile touch-target fix for
+  the navbar search box shipped dead and never reached production.** Done:
+  this PR. Added `import './Navbar.css';` to
+  `client/src/components/layout/Navbar.js`. Verified the actual production
+  bug is fixed, not just the source: `npm run build` (Vite) now emits
+  `navbar-search` rules into the compiled CSS bundle (`grep -c
+  navbar-search build/assets/*.css` → 1; it was 0 before this change).
+  Root cause was as originally diagnosed: the file existed and had correct
+  rules, but nothing imported it, so bundlers correctly tree-shook it out.
+  Tests, in line with this item's acceptance criteria that a test render
+  `<Navbar />` rather than only read CSS source as text: new
+  `client/src/components/__tests__/NavbarStylesheet.test.js` (written
+  test-first — confirmed both failing before the import was added) mocks
+  `../layout/Navbar.css` to record when it's actually imported (rather than
+  merely present on disk) and renders `<Navbar />` to prove the import
+  fires, plus injects the real CSS source as a `<style>` tag and asserts an
+  unconditional rule (not gated behind `@media`) is applied via
+  `getComputedStyle()` in a real DOM. Note: jsdom in this repo's Jest setup
+  has no `window.matchMedia` and does not evaluate `@media` conditions in
+  `getComputedStyle()` (confirmed empirically — a minimal repro rule inside
+  `@media (max-width: 768px)` never applied, with or without setting
+  `window.innerWidth`), so the mobile-only 44px rules themselves still rely
+  on `mobileTouchTargets.test.js`'s raw-CSS-source assertions for their
+  pixel values — this is a hard jsdom limitation, not something this PR
+  chose to skip. To close that gap per the acceptance criteria ("corrected
+  so it can no longer pass against CSS that isn't actually loaded"),
+  `mobileTouchTargets.test.js` gained a new assertion (also written
+  test-first) that `Navbar.js`'s source actually contains
+  `import './Navbar.css'`, so the file's existing 44px assertions can no
+  longer pass silently against an orphaned stylesheet. Full client Jest
+  suite: 30 suites, 102 tests, all passing (up from 29/99 — the 3 new
+  tests: 2 in `NavbarStylesheet.test.js`, 1 in
+  `mobileTouchTargets.test.js`). `npm run lint`: same 4 pre-existing errors
+  / 7 pre-existing warnings baseline, unaffected. `npm audit --omit=dev`:
+  0 vulnerabilities (unaffected, no new dependency).
+
+- [x] **Post upvote/downvote buttons have no CSS at all — a 14×19px touch
+  target on every post detail page, desktop and mobile alike.** Done: this
+  PR. Added `.vote-btn` (`min-width`/`min-height: 44px`, flex-centered
+  icon) and a `.vote-buttons` flex container to `client/src/App.css`,
+  applied unconditionally (not mobile-gated) since the bug was confirmed
+  at both a 1280px and a 375px viewport — matching the existing
+  `.pagination button` styling (background, border-radius, hover/disabled
+  states) for visual consistency, plus an `.active` state for the
+  already-voted case neither of which previously had any styling at all.
+  No missing-import bug here (unlike the `Navbar.css` item): `App.css` is
+  already globally imported via `client/src/App.js`, so the only gap was
+  the missing rule itself.
+  Test: extended `client/src/pages/__tests__/PostDetail.test.js` with a
+  "PostDetail vote button touch targets" describe block, written
+  test-first (confirmed failing — `NaN >= 44` — against the unmodified
+  CSS). Following the `Navbar.css` item's lesson, it renders the real
+  `PostDetail` component and injects the actual `App.css` source as a
+  `<style>` tag so `getComputedStyle()` reflects real rule matching
+  (not the CSS-module stub Jest normally substitutes), then asserts both
+  vote buttons' computed `min-height`/`min-width` are `>= 44px` — a
+  render-based check rather than only parsing CSS source text. Queried
+  via `screen.getAllByRole('button')` filtered by class name rather than
+  `container.querySelector`, since the latter trips this repo's
+  `testing-library/no-node-access`/`no-container` lint rules (caught by
+  running `npm run lint` after the first draft).
+  Full client Jest suite: 30 suites, 103 tests, all passing (up from 102
+  — the 1 new test). `npm run lint`: same 4 pre-existing errors / 7
+  pre-existing warnings baseline, unaffected. `vite build` re-verified
+  clean.
+
+- [x] **Every page skips from `<h1>` straight to `<h3>` — the footer's
+  three headings have no `<h2>` anywhere above them.** Done: this PR.
+  Chose the "non-heading element" branch of this item's acceptance
+  criteria rather than inserting an `<h2>`: the footer's three section
+  titles ("AI/ML Career Forum", "Quick Links", "Career Resources") aren't
+  part of any single page's content outline (the footer is a
+  sitewide/global region, not page-specific content), and page heading
+  structures vary too much (some pages have their own `<h2>`s already,
+  e.g. `Home`/`Dashboard`; some have none at all, e.g. `Login`/`Register`)
+  for one shared `<h2>` insertion point to make sense everywhere. Changed
+  `client/src/components/layout/Footer.js`'s three
+  `<h3 className="footer-heading">` elements to
+  `<p className="footer-heading">`, keeping the class so `.footer-heading`
+  styling in `client/src/App.css` (font-size/weight/color — a plain
+  class-based rule, not tag-scoped) is unaffected.
+  Tests: new `client/src/components/__tests__/FooterHeadingLevel.test.js`,
+  written test-first (confirmed failing against the unmodified `<h3>`s —
+  3 headings found where 0 were expected, and a 2-level jump from `h1` to
+  `h3` on a real page). Asserts `<Footer>` alone renders zero elements
+  with `role="heading"`, that the three section titles still render with
+  the `.footer-heading` class, and — rendering `Login` + `Footer` together
+  behind real `AuthProvider`/`AlertProvider`s, mirroring the pattern in
+  `Login.test.js` — that the full page's heading level sequence never
+  jumps by more than 1. Full client Jest suite: 31 suites, 106 tests, all
+  passing (up from 30/103 — the 3 new tests). `npm run lint`: same 4
+  pre-existing errors / 7 pre-existing warnings baseline, unaffected.
+  `vite build` re-verified clean.
 
 - [ ] **Drop the vestigial `CI=false` from the two `npm run build`
   invocations in `.github/workflows/node.js.yml`** (`build-and-test`'s

@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router';
 import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
 import { hasPermission } from '../../utils/permissions';
+import './Navbar.css';
 
 const Navbar = () => {
   const { isAuthenticated, user, logout } = useAuth();
