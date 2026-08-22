@@ -225,11 +225,13 @@ Two standing constraints for every item below:
 
 ### Carried over from the previous queue
 
-Not part of the redesign. The `EditPost` crash is a real bug and sits
-directly below the redesign work only because the redesign was explicitly
-prioritised; the two CI items both require editing `.github/workflows/`,
-which the autonomous cycle cannot do under the current ground rules, so
-they wait for a human-driven change.
+Not part of the redesign, though the first CI item below directly affects
+whether the redesign's own tests mean anything. The `EditPost` crash is a real
+bug and sits below the redesign work only because the redesign was explicitly
+prioritised; the three CI items all require editing `.github/workflows/`, which
+the autonomous cycle cannot do under the current ground rules, so they wait for
+a human-driven change — and since they touch the same file, they are probably
+one PR rather than three.
 
 - [ ] **`EditPost` can crash-redirect a valid edit request away when the
   page is opened directly (a fresh load / hard refresh), before auth has
@@ -253,6 +255,30 @@ they wait for a human-driven change.
   `user._id`/`postData.user._id`; a regression test renders `EditPost`
   behind a real (not mocked) `AuthProvider` with a token set and asserts
   the edit form renders instead of redirecting to `/`.
+
+- [ ] **Run the client unit tests in CI — they have never run there.** CI's
+  only unit-test step is `npm test` at the repo root, which resolves to
+  `jest --config server/jest.config.js` (server suites only). Nothing in
+  `.github/workflows/` has ever invoked the client's Jest — not
+  `cd client && npm test`, and not the `react-scripts test` that preceded it —
+  so the 32 client suites under `client/src/` are not a merge gate. CI does run
+  `vite build` and Playwright against a live stack, so client code is compiled
+  and smoke-tested end to end, but its unit tests are unenforced. This matters
+  most for the redesign queue above: 9 of its 13 items are primarily client
+  work whose acceptance criteria are component tests, and as things stand a PR
+  can break every one of them with CI green. The fix is a step in
+  `build-and-test` alongside the existing server one:
+  `- name: Run client unit tests` / `run: cd client && npm test`.
+  Consider gating `cd client && npm run lint` in the same PR, but only after
+  clearing the existing lint baseline — #53's notes report 4 errors and 7
+  warnings already present on `main` (re-verify before relying on that count),
+  so adding the step as-is lands the job red. Never paper over that with
+  `|| true`.
+  Acceptance: `build-and-test` runs the client suite on every push/PR to
+  `main`; a deliberately failing client test is demonstrated to fail the job
+  (then reverted); the server unit-test step, the build step and the Playwright
+  job are unchanged; if lint gating is included, the pre-existing lint errors
+  are fixed in the same PR so the step lands green.
 
 - [ ] **Drop the vestigial `CI=false` from the two `npm run build`
   invocations in `.github/workflows/node.js.yml`** (`build-and-test`'s
