@@ -47,6 +47,21 @@ const PostSchema = new mongoose.Schema({
     type: mongoose.Schema.ObjectId,
     ref: 'User'
   }],
+  // Denormalised count of all comments (including replies) on this post,
+  // kept in sync by the comment controllers — Post.comments is a
+  // reverse-populate virtual and can't be filtered or sorted on in a query.
+  commentCount: {
+    type: Number,
+    default: 0,
+    index: true
+  },
+  // Denormalised upvotes.length - downvotes.length, kept in sync by the vote
+  // controllers — a plain Model.find() can't sort on the voteCount virtual.
+  score: {
+    type: Number,
+    default: 0,
+    index: true
+  },
   views: {
     type: Number,
     default: 0

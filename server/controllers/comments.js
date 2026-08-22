@@ -72,6 +72,8 @@ exports.addComment = asyncHandler(async (req, res, next) => {
 
   const comment = await Comment.create(req.body);
 
+  await Post.findByIdAndUpdate(post._id, { $inc: { commentCount: 1 } });
+
   // Increment comment counter metric
   commentCreatedCounter.add(1, {
     is_reply: 'false',
@@ -151,6 +153,8 @@ exports.deleteComment = asyncHandler(async (req, res, next) => {
   }
 
   await Comment.deleteOne({ _id: req.params.id });
+
+  await Post.findByIdAndUpdate(comment.post, { $inc: { commentCount: -1 } });
 
   res.status(200).json({
     success: true,
@@ -314,6 +318,8 @@ exports.addReply = asyncHandler(async (req, res, next) => {
   req.body.user = req.user.id;
 
   const reply = await Comment.create(req.body);
+
+  await Post.findByIdAndUpdate(parentComment.post, { $inc: { commentCount: 1 } });
 
   // Increment comment counter metric (for replies)
   commentCreatedCounter.add(1, {

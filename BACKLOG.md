@@ -38,7 +38,8 @@ Two standing constraints for every item below:
   every new page/component gets the raw-CSS-source assertion used in
   `client/src/__tests__/mobileTouchTargets.test.js`.
 
-- [ ] **Denormalise `commentCount` and `score` onto `Post`.** The feed's
+- [x] **Denormalise `commentCount` and `score` onto `Post`.** Done: #60.
+  The feed's
   Unanswered tab and the "needs an answer" card state both need "posts with no
   comments" as a *query filter*, and the Top tab needs a real ranking. Neither
   is expressible today: `Post.comments` is a reverse-populate virtual
