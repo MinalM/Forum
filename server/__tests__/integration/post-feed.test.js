@@ -187,22 +187,35 @@ describe('GET /api/posts feed parameter', () => {
       expect(ids).not.toContain(outsideWindow._id.toString());
     });
 
-    it('includes a post exactly on the since window boundary', async () => {
+    it('includes a post just inside the since window boundary', async () => {
+      // A few seconds of slack rather than an exact millisecond boundary —
+      // the server computes its own $gte cutoff from Date.now() at request
+      // time, a moment after this test computes `now`, so an exact-boundary
+      // post would flake by falling just outside the server's cutoff.
       const now = Date.now();
       const DAY_MS = 24 * 60 * 60 * 1000;
-      const boundaryPost = await Post.create({
-        title: 'On the boundary',
+      const justInsidePost = await Post.create({
+        title: 'Just inside the boundary',
         content: 'content',
         user: user._id,
         category: category._id,
         score: 3,
-        createdAt: new Date(now - 7 * DAY_MS)
+        createdAt: new Date(now - 7 * DAY_MS + 60 * 1000)
+      });
+      const justOutsidePost = await Post.create({
+        title: 'Just outside the boundary',
+        content: 'content',
+        user: user._id,
+        category: category._id,
+        score: 3,
+        createdAt: new Date(now - 7 * DAY_MS - 60 * 1000)
       });
 
       const res = await request(server).get('/api/posts?feed=top&since=7d');
 
       const ids = res.body.data.map(p => p._id);
-      expect(ids).toContain(boundaryPost._id.toString());
+      expect(ids).toContain(justInsidePost._id.toString());
+      expect(ids).not.toContain(justOutsidePost._id.toString());
     });
 
     it('defaults the window to 7 days when since is omitted', async () => {
