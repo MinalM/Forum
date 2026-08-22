@@ -10,7 +10,7 @@ const Footer = () => {
       <div className="container">
         <div className="footer-content">
           <div className="footer-section">
-            <h3 className="footer-heading">AI/ML Career Forum</h3>
+            <p className="footer-heading">AI/ML Career Forum</p>
             <p>
               A community platform for professionals transitioning to careers in
               Artificial Intelligence and Machine Learning.
@@ -18,7 +18,7 @@ const Footer = () => {
           </div>
 
           <div className="footer-section">
-            <h3 className="footer-heading">Quick Links</h3>
+            <p className="footer-heading">Quick Links</p>
             <ul className="footer-links">
               <li className="footer-link">
                 <Link to="/">Home</Link>
@@ -33,7 +33,7 @@ const Footer = () => {
           </div>
 
           <div className="footer-section">
-            <h3 className="footer-heading">Career Resources</h3>
+            <p className="footer-heading">Career Resources</p>
             <ul className="footer-links">
               <li className="footer-link">
                 <a href="https://www.kaggle.com" target="_blank" rel="noopener noreferrer">
