@@ -93,7 +93,8 @@ Two standing constraints for every item below:
   hidden), the solved / needs-an-answer / neutral states, and 44px targets;
   `Home`, `CategoryPosts` and `SearchResults` still render it correctly.
 
-- [ ] **Replace the Home marketing page with the feed.** `client/src/pages/Home.js`
+- [x] **Replace the Home marketing page with the feed.** Done: #63.
+  `client/src/pages/Home.js`
   shows every signed-in member the "Welcome to the AI/ML Career Transition
   Forum" hero and the "Why Join Our Community?" feature cards before five
   hard-coded posts (`limit=5`) — a brochure served to people who have already
