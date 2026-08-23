@@ -20,6 +20,8 @@ const PostDetail = () => {
   const [comments, setComments] = useState([]);
   const [commentText, setCommentText] = useState('');
   const [pageLoading, setPageLoading] = useState(true);
+  const [replyingTo, setReplyingTo] = useState(null);
+  const [replyText, setReplyText] = useState('');
   const [reportModal, setReportModal] = useState({
     isOpen: false,
     type: 'post',
@@ -213,6 +215,26 @@ const PostDetail = () => {
     }
   };
 
+  const handleReplySubmit = async (parentId) => {
+    if (!replyText.trim()) {
+      setAlert('Reply cannot be empty', 'danger');
+      return;
+    }
+
+    try {
+      const res = await axios.post(`/api/comments/${parentId}/replies`, {
+        content: replyText
+      });
+
+      setComments([...comments, res.data.data]);
+      setReplyText('');
+      setReplyingTo(null);
+      setAlert('Reply added successfully', 'success');
+    } catch (err) {
+      setAlert('Error adding reply', 'danger');
+    }
+  };
+
   const handleDeleteComment = async (commentId) => {
     if (window.confirm('Are you sure you want to delete this comment?')) {
       try {
@@ -251,6 +273,16 @@ const PostDetail = () => {
   const voteCount = post.upvotes.length - post.downvotes.length;
   const hasUpvoted = user && post.upvotes.includes(user._id);
   const hasDownvoted = user && post.downvotes.includes(user._id);
+
+  const topLevelComments = comments.filter((comment) => !comment.parentComment);
+  const repliesByParent = comments.reduce((acc, comment) => {
+    if (comment.parentComment) {
+      const key = comment.parentComment;
+      acc[key] = acc[key] || [];
+      acc[key].push(comment);
+    }
+    return acc;
+  }, {});
 
   return (
     <div className="main-content">
@@ -419,8 +451,8 @@ const PostDetail = () => {
         )}
 
         <div className="comments-list">
-          {comments.length > 0 ? (
-            comments.map((comment) => (
+          {topLevelComments.length > 0 ? (
+            topLevelComments.map((comment) => (
               <div
                 key={comment._id}
                 className={`comment${comment.isAnswer ? ' comment--accepted' : ''}`}
@@ -484,6 +516,109 @@ const PostDetail = () => {
                   className="comment-content"
                   dangerouslySetInnerHTML={{ __html: renderMarkdown(comment.content) }}
                 />
+
+                {isAuthenticated && !post.isLocked && (
+                  <div className="comment-footer">
+                    <button
+                      type="button"
+                      className="reply-btn"
+                      onClick={() =>
+                        setReplyingTo(replyingTo === comment._id ? null : comment._id)
+                      }
+                    >
+                      Reply
+                    </button>
+                  </div>
+                )}
+
+                {replyingTo === comment._id && (
+                  <div className="comment-form">
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        handleReplySubmit(comment._id);
+                      }}
+                    >
+                      <div className="form-group">
+                        <textarea
+                          className="form-control"
+                          name="reply"
+                          rows="2"
+                          placeholder="Write a reply..."
+                          value={replyText}
+                          onChange={(e) => setReplyText(e.target.value)}
+                          required
+                        ></textarea>
+                      </div>
+                      <button type="submit" className="reply-btn">
+                        Post reply
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-sm"
+                        onClick={() => {
+                          setReplyingTo(null);
+                          setReplyText('');
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    </form>
+                  </div>
+                )}
+
+                {repliesByParent[comment._id]?.length > 0 && (
+                  <div className="comment-replies" data-testid="comment-replies">
+                    {repliesByParent[comment._id].map((reply) => (
+                      <div key={reply._id} className="comment">
+                        <div className="comment-header">
+                          <div className="comment-user">
+                            <img
+                              src={reply.user?.avatar || '/images/default-avatar1.png'}
+                              alt={reply.user?.name || 'User'}
+                              className="comment-avatar"
+                            />
+                            <div>
+                              <Link to={`/profile/${reply.user?._id}`} className="comment-username">
+                                {reply.user?.name || 'Anonymous'}
+                              </Link>
+                              {post.user && reply.user?._id === post.user._id && (
+                                <span className="badge badge-info ml-2">Asker</span>
+                              )}
+                              <div className="comment-meta">
+                                {formatDistanceToNow(new Date(reply.createdAt), {
+                                  addSuffix: true
+                                })}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="comment-actions">
+                            {(canModifyResource(user, reply) || hasPermission(user, 'deleteComment')) && (
+                              <button
+                                className="btn btn-sm btn-danger"
+                                onClick={() => handleDeleteComment(reply._id)}
+                              >
+                                <i className="fas fa-trash"></i>
+                              </button>
+                            )}
+                            {isAuthenticated && user._id !== reply.user?._id && (
+                              <button
+                                className="btn btn-sm btn-outline-danger"
+                                onClick={() => openReportModal('comment', reply._id, `Comment by ${reply.user?.name}`)}
+                              >
+                                <i className="fas fa-flag"></i>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                        <div
+                          className="comment-content"
+                          dangerouslySetInnerHTML={{ __html: renderMarkdown(reply.content) }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             ))
           ) : (
