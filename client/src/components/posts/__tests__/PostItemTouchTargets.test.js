@@ -12,9 +12,14 @@ const appCss = fs.readFileSync(
   'utf8'
 );
 
+// Matches `selector` anywhere in a rule's (possibly comma-separated)
+// selector list, not just as the sole selector, since .answer-composer-cancel
+// and .answer-composer-submit share one declaration block.
 function extractRule(css, selector) {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const matches = [...css.matchAll(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`, 'g'))];
+  const matches = [
+    ...css.matchAll(new RegExp(`[^{}]*${escaped}[^{}]*\\{([^}]*)\\}`, 'g'))
+  ];
   if (matches.length === 0) throw new Error(`selector "${selector}" not found`);
   return matches.map((match) => match[1]).join('\n');
 }
@@ -33,4 +38,19 @@ describe('PostItem vote button touch targets', () => {
     expect(minPx(rule, 'min-width')).toBeGreaterThanOrEqual(44);
     expect(minPx(rule, 'min-height')).toBeGreaterThanOrEqual(44);
   });
+});
+
+describe('PostItem answer composer touch targets', () => {
+  it('.answer-btn is at least 44px tall', () => {
+    const rule = extractRule(appCss, '.answer-btn');
+    expect(minPx(rule, 'min-height')).toBeGreaterThanOrEqual(44);
+  });
+
+  it.each(['.answer-composer-cancel', '.answer-composer-submit'])(
+    '%s is at least 44px tall',
+    (selector) => {
+      const rule = extractRule(appCss, selector);
+      expect(minPx(rule, 'min-height')).toBeGreaterThanOrEqual(44);
+    }
+  );
 });

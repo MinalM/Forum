@@ -6,6 +6,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { markdownToPlainText } from '../../utils/markdown';
 import { useAuth } from '../../context/AuthContext';
 import { useAlert } from '../../context/AlertContext';
+import { useFeedComposer } from '../../context/FeedComposerContext';
 
 const AI_ML_LEVEL_LABELS = {
   beginner: 'Beginner',
@@ -19,6 +20,13 @@ const PostItem = ({ post: initialPost }) => {
   const { user, isAuthenticated } = useAuth();
   const { setAlert } = useAlert();
   const [post, setPost] = useState(initialPost);
+  const [draftText, setDraftText] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  // Coordinates with sibling feed cards when a FeedComposerProvider is
+  // present; falls back to local-only state otherwise (e.g. in isolation).
+  const feedComposer = useFeedComposer();
+  const [localComposerOpen, setLocalComposerOpen] = useState(false);
 
   const {
     _id,
@@ -51,6 +59,58 @@ const PostItem = ({ post: initialPost }) => {
   const hasUpvoted = Boolean(user && upvotes.includes(user._id));
   const hasDownvoted = Boolean(user && downvotes.includes(user._id));
   const needsAnswer = !isSolved && commentCount === 0;
+  const isQuestion = commentCount === 0;
+
+  const isComposerOpen = feedComposer
+    ? feedComposer.openPostId === _id
+    : localComposerOpen;
+
+  const openComposer = () => {
+    if (feedComposer) {
+      feedComposer.setOpenPostId(_id);
+    } else {
+      setLocalComposerOpen(true);
+    }
+  };
+
+  const closeComposer = () => {
+    setDraftText('');
+    if (feedComposer) {
+      feedComposer.setOpenPostId(prev => (prev === _id ? null : prev));
+    } else {
+      setLocalComposerOpen(false);
+    }
+  };
+
+  const toggleComposer = () => {
+    if (isComposerOpen) {
+      closeComposer();
+    } else {
+      openComposer();
+    }
+  };
+
+  const handleAnswerSubmit = async (e) => {
+    e.preventDefault();
+    if (!draftText.trim() || submitting) {
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await axios.post(`/api/posts/${_id}/comments`, { content: draftText });
+      setPost(prev => ({
+        ...prev,
+        commentCount:
+          (typeof prev.commentCount === 'number' ? prev.commentCount : 0) + 1
+      }));
+      closeComposer();
+    } catch (err) {
+      setAlert('Error posting your answer', 'danger');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   // Truncate content for excerpt (plain text, markdown syntax stripped)
   const plainContent = markdownToPlainText(content);
@@ -177,8 +237,53 @@ const PostItem = ({ post: initialPost }) => {
                 <div className="post-action">
                   <i className="fas fa-eye"></i> {views}
                 </div>
+                <button
+                  type="button"
+                  className={`answer-btn ${isQuestion ? 'answer-btn--filled' : 'answer-btn--outline'}`}
+                  onClick={toggleComposer}
+                >
+                  {isQuestion ? 'Answer' : 'Reply'}
+                </button>
               </div>
             </div>
+
+            {isComposerOpen && (
+              isAuthenticated ? (
+                <form className="answer-composer" onSubmit={handleAnswerSubmit}>
+                  <textarea
+                    className="form-control"
+                    rows="3"
+                    placeholder="Write your answer..."
+                    value={draftText}
+                    onChange={(e) => setDraftText(e.target.value)}
+                    disabled={submitting}
+                  ></textarea>
+                  <div className="answer-composer-actions">
+                    <button
+                      type="button"
+                      className="answer-composer-cancel"
+                      onClick={closeComposer}
+                      disabled={submitting}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="answer-composer-submit"
+                      disabled={submitting || !draftText.trim()}
+                    >
+                      {isQuestion ? 'Post answer' : 'Post reply'}
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <div className="answer-composer-signin alert alert-info">
+                  <Link to="/login">Log in</Link> or{' '}
+                  <Link to="/register">register</Link> to{' '}
+                  {isQuestion ? 'answer' : 'reply'}
+                </div>
+              )
+            )}
           </div>
         </div>
       </div>

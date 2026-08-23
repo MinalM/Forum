@@ -5,6 +5,8 @@ import axios from 'axios';
 import PostItem from '../PostItem';
 import { AuthProvider } from '../../../context/AuthContext';
 import { AlertProvider } from '../../../context/AlertContext';
+import { FeedComposerProvider } from '../../../context/FeedComposerContext';
+import Alert from '../../layout/Alert';
 
 jest.mock('axios', () => ({
   defaults: {},
@@ -12,7 +14,8 @@ jest.mock('axios', () => ({
     response: { use: jest.fn(), eject: jest.fn() }
   },
   get: jest.fn(),
-  put: jest.fn()
+  put: jest.fn(),
+  post: jest.fn()
 }));
 
 const POST_ID = '000000000000000000000001';
@@ -39,7 +42,22 @@ const renderPostItem = (post) =>
     <AuthProvider>
       <AlertProvider>
         <MemoryRouter>
+          <Alert />
           <PostItem post={post} />
+        </MemoryRouter>
+      </AlertProvider>
+    </AuthProvider>
+  );
+
+const renderTwoPostItems = (postA, postB) =>
+  render(
+    <AuthProvider>
+      <AlertProvider>
+        <MemoryRouter>
+          <FeedComposerProvider>
+            <PostItem post={postA} />
+            <PostItem post={postB} />
+          </FeedComposerProvider>
         </MemoryRouter>
       </AlertProvider>
     </AuthProvider>
@@ -62,6 +80,7 @@ beforeEach(() => {
   localStorage.clear();
   axios.get.mockReset();
   axios.put.mockReset();
+  axios.post.mockReset();
 });
 
 describe('PostItem excerpt', () => {
@@ -211,5 +230,107 @@ describe('PostItem voting, authenticated', () => {
     expect(voteCount()).toBe('1');
 
     await waitFor(() => expect(voteCount()).toBe('0'));
+  });
+});
+
+describe('PostItem answer composer', () => {
+  const draftField = () => screen.getByPlaceholderText('Write your answer...');
+
+  it('shows a filled Answer button for a commentless question', () => {
+    renderPostItem({ ...basePost, commentCount: 0 });
+
+    const button = screen.getByRole('button', { name: 'Answer' });
+    expect(button).toHaveClass('answer-btn--filled');
+  });
+
+  it('shows an outline Reply button once a post already has discussion', () => {
+    renderPostItem({ ...basePost, commentCount: 2 });
+
+    const button = screen.getByRole('button', { name: 'Reply' });
+    expect(button).toHaveClass('answer-btn--outline');
+  });
+
+  it('opens a composer, submits an answer, and the card leaves the needs-answer state', async () => {
+    signIn();
+    axios.post.mockResolvedValue({ data: { data: { _id: 'c1', content: 'My answer' } } });
+
+    renderPostItem({ ...basePost, commentCount: 0 });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Answer' })).toBeEnabled());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Answer' }));
+    fireEvent.change(draftField(), { target: { value: 'My answer' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Post answer' }));
+
+    await waitFor(() =>
+      expect(axios.post).toHaveBeenCalledWith(`/api/posts/${POST_ID}/comments`, {
+        content: 'My answer'
+      })
+    );
+
+    await waitFor(() => expect(screen.queryByText('Needs an answer')).not.toBeInTheDocument());
+    expect(screen.queryByPlaceholderText('Write your answer...')).not.toBeInTheDocument();
+  });
+
+  it('discards the draft on cancel', async () => {
+    signIn();
+    renderPostItem({ ...basePost, commentCount: 0 });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Answer' })).toBeEnabled());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Answer' }));
+    fireEvent.change(draftField(), { target: { value: 'Half-written thought' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(screen.queryByPlaceholderText('Write your answer...')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Answer' }));
+    expect(draftField()).toHaveValue('');
+  });
+
+  it('leaves the draft intact and surfaces an alert when submitting fails', async () => {
+    signIn();
+    axios.post.mockRejectedValue(new Error('network error'));
+
+    renderPostItem({ ...basePost, commentCount: 0 });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Answer' })).toBeEnabled());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Answer' }));
+    fireEvent.change(draftField(), { target: { value: 'My answer' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Post answer' }));
+
+    await waitFor(() => expect(axios.post).toHaveBeenCalled());
+
+    expect(draftField()).toHaveValue('My answer');
+    expect(await screen.findByText(/error posting your answer/i)).toBeInTheDocument();
+  });
+
+  it('shows a sign-in prompt instead of the composer for unauthenticated users', () => {
+    renderPostItem({ ...basePost, commentCount: 0 });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Answer' }));
+
+    expect(screen.queryByPlaceholderText('Write your answer...')).not.toBeInTheDocument();
+    expect(screen.getByText(/log in/i)).toBeInTheDocument();
+  });
+
+  it('keeps only one composer open at a time across a shared feed', async () => {
+    signIn();
+    const postA = { ...basePost, _id: POST_ID, commentCount: 0 };
+    const postB = {
+      ...basePost,
+      _id: '000000000000000000000003',
+      commentCount: 0
+    };
+
+    renderTwoPostItems(postA, postB);
+    await waitFor(() =>
+      expect(screen.getAllByRole('button', { name: 'Answer' })[0]).toBeEnabled()
+    );
+
+    const [answerA, answerB] = screen.getAllByRole('button', { name: 'Answer' });
+    fireEvent.click(answerA);
+    expect(screen.getAllByPlaceholderText('Write your answer...')).toHaveLength(1);
+
+    fireEvent.click(answerB);
+    expect(screen.getAllByPlaceholderText('Write your answer...')).toHaveLength(1);
   });
 });
