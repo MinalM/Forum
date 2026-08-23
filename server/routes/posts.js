@@ -11,6 +11,11 @@ const {
   getPostsByLevel,
   searchPosts
 } = require('../controllers/posts');
+const {
+  subscribeToPost,
+  unsubscribeFromPost,
+  getSubscriptionStatus
+} = require('../controllers/subscriptions');
 
 const Post = require('../models/Post');
 
@@ -27,6 +32,12 @@ router.get('/level/:level', getPostsByLevel);
 router.put('/:id/upvote', protect, upvotePost);
 router.put('/:id/downvote', protect, downvotePost);
 router.put('/:id/solve', protect, solvePost);
+
+router
+  .route('/:id/subscribe')
+  .get(protect, getSubscriptionStatus)
+  .post(protect, subscribeToPost)
+  .delete(protect, unsubscribeFromPost);
 
 router
   .route('/')
