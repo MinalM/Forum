@@ -164,19 +164,35 @@ Two standing constraints for every item below:
   state, both sort orders, and the accepted answer staying pinned; sorting is
   client-side over the already-fetched list unless the thread paginates.
 
-- [ ] **Thread subscriptions (server).** Nothing in the app brings a member
-  back: the only notification surface is the moderator-only pending-reports
-  count polled by `client/src/components/layout/Navbar.js`. This is the largest
-  new server surface in the redesign, so it lands on its own. Add a
-  subscription model (user + post + createdAt, unique per pair), auto-subscribe
-  a member to any post they author or comment on, and endpoints to
-  subscribe/unsubscribe/list. Add a notification record written when a new
-  answer or reply lands on a subscribed post, with an unread count endpoint and
-  a mark-read endpoint. No email or push in this item — in-app only.
-  Acceptance: integration tests for subscribe/unsubscribe idempotency,
-  auto-subscribe on authoring and on commenting, no self-notification for your
-  own answer, notifications written to every other subscriber, unread count,
-  mark-read, and authorisation (a member only ever sees their own).
+- [x] **Thread subscriptions (server).** Done: #68. Added `Subscription`
+  (`user` + `post` + `createdAt`, unique compound index) and `Notification`
+  (`user`, `post`, `comment`, `actor`, `type: 'answer'|'reply'`, `read`)
+  models, plus `server/utils/subscriptions.js` with two idempotent helpers —
+  `subscribeUserToPost` (upsert) and `notifySubscribers` (writes one
+  `Notification` per subscriber excluding the acting user). Wired
+  auto-subscribe into `createPost` (author) and `addComment`/`addReply`
+  (commenter/replier), and `notifySubscribers` into the same two comment
+  paths so every other subscriber to a post gets notified on a new
+  answer/reply, never the actor themselves. New endpoints:
+  `POST`/`DELETE`/`GET /api/posts/:id/subscribe` (subscribe, unsubscribe,
+  status — all idempotent), `GET /api/subscriptions` (list mine), and
+  `GET /api/notifications`, `GET /api/notifications/unread/count`,
+  `PUT /api/notifications/read-all`, all `protect`-scoped to `req.user.id`
+  so a member only ever sees their own. No email/push — in-app only, as
+  scoped.
+  Acceptance: new `server/__tests__/integration/subscriptions.test.js`
+  covers subscribe/unsubscribe idempotency, auto-subscribe on authoring and
+  on commenting/replying, no self-notification, notifications fanning out to
+  every other subscriber (both `answer` and `reply` types), unread count,
+  mark-read, and per-user authorisation on both subscriptions and
+  notifications listings.
+  Caveat: could not run the server suite in this environment —
+  `mongodb-memory-server`'s binary download is blocked by this sandbox's
+  egress policy (`fastdl.mongodb.org` → 403), which fails every existing
+  integration suite identically (verified against `comments.test.js`
+  unmodified), not something introduced by this change. Verified instead by
+  booting the compiled app in-process (`NODE_ENV=test`) and confirming it
+  loads without error with both new routers mounted at their expected paths.
 
 - [ ] **Notify-me control and a member notification bell (client).** Wires item
   9 into the UI: the "Notify me of answers" toggle on the thread per
@@ -329,3 +345,39 @@ one PR rather than three.
   (currently 20.x or 22.x); full suite (unit + Playwright) re-verified
   green under the new version; `client/package.json` engines/version pins
   revisited if the bump also permits newer Vite/plugin-react majors.
+
+- [ ] **`Post`/`Comment` populated with a partial `select` crash on response
+  serialization if `upvotes`/`downvotes` are excluded.** Discovered while
+  building thread subscriptions (#68), across two rounds of CI failures:
+  both `PostSchema.virtual('voteCount')` (`server/models/Post.js`) and
+  `CommentSchema.virtual('voteCount')` (`server/models/Comment.js`)
+  compute `this.upvotes.length - this.downvotes.length`, and both schemas
+  set `toJSON: { virtuals: true }`, so that getter runs on *every*
+  serialization of the document — populated subdocuments included. A
+  `.populate({ path: 'post'|'comment', select: '...' })` that omits
+  `upvotes`/`downvotes` leaves them `undefined` on the populated doc, so
+  `res.json()` throws `Cannot read properties of undefined (reading
+  'length')` — a 500 with no useful error surfaced (CI's job logs don't
+  capture the server's `console.log`-based error middleware output
+  either, which cost real debugging time on #68).
+  `server/controllers/reports.js`'s `getReports`/`getReport` have the
+  identical pattern on *both* models today — `.populate({ path: 'post',
+  select: 'title content' })` / `select: 'title content user'` and
+  `.populate({ path: 'comment', select: 'content' })` / `select: 'content
+  user'` — none of the four selects include `upvotes`/`downvotes`, and
+  none is covered by a test (no `server/__tests__/integration/
+  reports.test.js` exists), so this is live and simply never triggered.
+  Fix options: always include `upvotes downvotes` in any partial
+  `Post`/`Comment` select (what #68 does locally, in both
+  `server/controllers/subscriptions.js` and
+  `server/controllers/notifications.js`), or make both `voteCount`
+  getters defensive (`(this.upvotes || []).length - (this.downvotes ||
+  []).length`) so a partial projection degrades gracefully instead of
+  throwing — the second is more robust since it protects every future
+  partial-select call site on either model, not just the ones an author
+  remembers to patch.
+  Acceptance: a regression test populates a `Post` and a `Comment` each
+  with a `select` that excludes `upvotes`/`downvotes` and asserts
+  serialization succeeds (`voteCount` either omitted or `0`, not a
+  thrown error); `reports.js`'s four affected populates fixed or
+  covered; existing server suite green.

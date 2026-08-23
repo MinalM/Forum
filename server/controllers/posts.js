@@ -8,6 +8,7 @@ const Category = require('../models/Category');
 const { trace, SpanStatusCode } = require('@opentelemetry/api');
 const { postCreatedCounter, postViewCounter } = require('../dist/instrumentation/metrics');
 const { getExperimentationService } = require('../dist/services/experimentation');
+const { subscribeUserToPost } = require('../utils/subscriptions');
 
 // @desc    Get all posts. GET /api/posts supports ?feed=recent|unanswered|top
 //          (see server/middleware/advancedResults.js), plus the existing
@@ -155,6 +156,10 @@ exports.createPost = asyncHandler(async (req, res, next) => {
 
       const post = await Post.create(req.body);
       span.setAttribute('post.id', post._id.toString());
+
+      // A member is automatically subscribed to answers/replies on their
+      // own posts.
+      await subscribeUserToPost(req.user.id, post._id);
 
       // Increment metric using centralized counter
       postCreatedCounter.add(1, {
