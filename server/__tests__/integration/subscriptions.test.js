@@ -4,7 +4,6 @@ const app = require('../../server');
 const { createTestUser, cleanupTestData } = require('./setup');
 const Category = require('../../models/Category');
 const Post = require('../../models/Post');
-const Comment = require('../../models/Comment');
 const Subscription = require('../../models/Subscription');
 const Notification = require('../../models/Notification');
 
@@ -36,12 +35,14 @@ describe('Thread subscriptions and notifications', () => {
       description: 'Test Description'
     });
 
-    post = await Post.create({
-      title: 'Test Post',
-      content: 'Test content',
-      user: asker._id,
-      category: category._id
-    });
+    // Created through the API (not Post.create) so the auto-subscribe
+    // hook in the createPost controller actually fires, the way it would
+    // for a real member authoring a post.
+    const postRes = await request(server)
+      .post('/api/posts')
+      .set('Authorization', `Bearer ${askerToken}`)
+      .send({ title: 'Test Post', content: 'Test content', category: category._id });
+    post = await Post.findById(postRes.body.data._id);
   });
 
   afterEach(async () => {
