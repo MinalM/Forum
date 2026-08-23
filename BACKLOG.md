@@ -164,19 +164,35 @@ Two standing constraints for every item below:
   state, both sort orders, and the accepted answer staying pinned; sorting is
   client-side over the already-fetched list unless the thread paginates.
 
-- [ ] **Thread subscriptions (server).** Nothing in the app brings a member
-  back: the only notification surface is the moderator-only pending-reports
-  count polled by `client/src/components/layout/Navbar.js`. This is the largest
-  new server surface in the redesign, so it lands on its own. Add a
-  subscription model (user + post + createdAt, unique per pair), auto-subscribe
-  a member to any post they author or comment on, and endpoints to
-  subscribe/unsubscribe/list. Add a notification record written when a new
-  answer or reply lands on a subscribed post, with an unread count endpoint and
-  a mark-read endpoint. No email or push in this item — in-app only.
-  Acceptance: integration tests for subscribe/unsubscribe idempotency,
-  auto-subscribe on authoring and on commenting, no self-notification for your
-  own answer, notifications written to every other subscriber, unread count,
-  mark-read, and authorisation (a member only ever sees their own).
+- [x] **Thread subscriptions (server).** Done: #68. Added `Subscription`
+  (`user` + `post` + `createdAt`, unique compound index) and `Notification`
+  (`user`, `post`, `comment`, `actor`, `type: 'answer'|'reply'`, `read`)
+  models, plus `server/utils/subscriptions.js` with two idempotent helpers —
+  `subscribeUserToPost` (upsert) and `notifySubscribers` (writes one
+  `Notification` per subscriber excluding the acting user). Wired
+  auto-subscribe into `createPost` (author) and `addComment`/`addReply`
+  (commenter/replier), and `notifySubscribers` into the same two comment
+  paths so every other subscriber to a post gets notified on a new
+  answer/reply, never the actor themselves. New endpoints:
+  `POST`/`DELETE`/`GET /api/posts/:id/subscribe` (subscribe, unsubscribe,
+  status — all idempotent), `GET /api/subscriptions` (list mine), and
+  `GET /api/notifications`, `GET /api/notifications/unread/count`,
+  `PUT /api/notifications/read-all`, all `protect`-scoped to `req.user.id`
+  so a member only ever sees their own. No email/push — in-app only, as
+  scoped.
+  Acceptance: new `server/__tests__/integration/subscriptions.test.js`
+  covers subscribe/unsubscribe idempotency, auto-subscribe on authoring and
+  on commenting/replying, no self-notification, notifications fanning out to
+  every other subscriber (both `answer` and `reply` types), unread count,
+  mark-read, and per-user authorisation on both subscriptions and
+  notifications listings.
+  Caveat: could not run the server suite in this environment —
+  `mongodb-memory-server`'s binary download is blocked by this sandbox's
+  egress policy (`fastdl.mongodb.org` → 403), which fails every existing
+  integration suite identically (verified against `comments.test.js`
+  unmodified), not something introduced by this change. Verified instead by
+  booting the compiled app in-process (`NODE_ENV=test`) and confirming it
+  loads without error with both new routers mounted at their expected paths.
 
 - [ ] **Notify-me control and a member notification bell (client).** Wires item
   9 into the UI: the "Notify me of answers" toggle on the thread per
