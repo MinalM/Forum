@@ -187,6 +187,32 @@ const PostDetail = () => {
     });
   };
 
+  const handleMarkAnswer = async (commentId) => {
+    try {
+      const res = await axios.put(`/api/comments/${commentId}/answer`);
+      const updatedComment = res.data.data;
+
+      setComments(
+        comments.map((comment) => {
+          if (comment._id === commentId) {
+            return { ...comment, isAnswer: updatedComment.isAnswer };
+          }
+          // Accepting a new answer un-accepts any other on this post.
+          return updatedComment.isAnswer
+            ? { ...comment, isAnswer: false }
+            : comment;
+        })
+      );
+      setPost({ ...post, isSolved: updatedComment.isAnswer });
+      setAlert(
+        updatedComment.isAnswer ? 'Answer accepted' : 'Answer unaccepted',
+        'success'
+      );
+    } catch (err) {
+      setAlert('Error updating answer status', 'danger');
+    }
+  };
+
   const handleDeleteComment = async (commentId) => {
     if (window.confirm('Are you sure you want to delete this comment?')) {
       try {
@@ -218,6 +244,7 @@ const PostDetail = () => {
   const isAuthor = user && post.user && user._id === post.user._id;
   const isAdmin = user && user.role === 'admin';
   const canEdit = isAuthor || isAdmin;
+  const canMarkAnswer = isAuthor || hasPermission(user, 'markAnswer');
   const formattedDate = formatDistanceToNow(new Date(post.createdAt), {
     addSuffix: true
   });
@@ -231,9 +258,6 @@ const PostDetail = () => {
         <div className="post-header">
           <h1 className="post-title">
             {post.title}
-            {post.isSolved && (
-              <span className="badge badge-success ml-2">Solved</span>
-            )}
             {post.isPinned && (
               <span className="badge badge-info ml-2">Pinned</span>
             )}
@@ -241,6 +265,13 @@ const PostDetail = () => {
               <span className="badge badge-warning ml-2">Locked</span>
             )}
           </h1>
+          <div className="post-status-badges">
+            {post.isSolved ? (
+              <span className="badge badge-success">Solved</span>
+            ) : (
+              <span className="badge badge-warning">Needs an answer</span>
+            )}
+          </div>
           <div className="post-meta">
             <div className="post-meta-item">
               <i className="fas fa-user"></i>{' '}
@@ -390,7 +421,10 @@ const PostDetail = () => {
         <div className="comments-list">
           {comments.length > 0 ? (
             comments.map((comment) => (
-              <div key={comment._id} className="comment">
+              <div
+                key={comment._id}
+                className={`comment${comment.isAnswer ? ' comment--accepted' : ''}`}
+              >
                 <div className="comment-header">
                   <div className="comment-user">
                     <img
@@ -413,6 +447,15 @@ const PostDetail = () => {
                     {comment.isAnswer && (
                       <span className="badge badge-success">Answer</span>
                     )}
+                    {canMarkAnswer && (
+                      <button
+                        className="accept-answer-btn"
+                        onClick={() => handleMarkAnswer(comment._id)}
+                      >
+                        <i className={`fas fa-check${comment.isAnswer ? '' : '-circle'}`}></i>{' '}
+                        {comment.isAnswer ? 'Unaccept' : 'Accept this answer'}
+                      </button>
+                    )}
                     {(canModifyResource(user, comment) || hasPermission(user, 'deleteComment')) && (
                       <button 
                         className="btn btn-sm btn-danger"
@@ -431,6 +474,12 @@ const PostDetail = () => {
                     )}
                   </div>
                 </div>
+                {comment.isAnswer && (
+                  <div className="comment-accepted-note">
+                    <i className="fas fa-check-circle"></i>{' '}
+                    Accepted by {post.user?.name || 'the asker'}
+                  </div>
+                )}
                 <div
                   className="comment-content"
                   dangerouslySetInnerHTML={{ __html: renderMarkdown(comment.content) }}

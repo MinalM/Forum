@@ -125,7 +125,7 @@ Two standing constraints for every item below:
   surfacing an alert, unauthenticated users seeing a sign-in prompt instead of
   the composer, and only one composer open at a time.
 
-- [ ] **Accepted answers on the thread.** The mechanic that makes answering
+- [x] **Accepted answers on the thread.** Done: #65. The mechanic that makes answering
   worth doing, and it is almost entirely built already: `Comment.isAnswer`
   exists in the schema, and `PUT /api/comments/:id/answer`
   (`markAsAnswer` in `server/controllers/comments.js`) already authorises to
@@ -224,6 +224,24 @@ Two standing constraints for every item below:
   no browser is available in the implementing environment, the raw-CSS-source
   assertion pattern from `mobileTouchTargets.test.js`; every tab-bar target at
   44px; the existing mobile menu still works.
+
+- [ ] **`PostDetail`'s standalone "Mark as Solved" button can now diverge
+  from the accepted-answer state.** Discovered while implementing accepted
+  answers (item above): `handleSolve` in `client/src/pages/PostDetail.js`
+  calls `PUT /api/posts/:id/solve` (`solvePost` in
+  `server/controllers/posts.js`), a manual toggle of `post.isSolved`
+  completely independent of any comment's `isAnswer` flag. Now that
+  accepting an answer also sets `post.isSolved` (and un-accepting clears
+  it), a post can end up "Solved" with no accepted answer (asker clicked
+  the standalone button) or "Needs an answer" while a comment still shows
+  the green "Accepted by" state (asker un-solved the post directly instead
+  of un-accepting the answer). Low priority - not a regression from this
+  item, the two controls already both wrote `isSolved` before it, but the
+  new accepted-answer UI makes the split more visible. Worth resolving by
+  either removing the standalone button in favour of accept-driven solving,
+  or having each path clear the other's state.
+  Acceptance: decide and document which control owns `isSolved`; a test
+  demonstrates the two paths can no longer disagree.
 
 ### Carried over from the previous queue
 
