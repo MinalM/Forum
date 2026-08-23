@@ -142,7 +142,7 @@ Two standing constraints for every item below:
   behaviour unchanged (no controller edits expected — if one proves necessary,
   cover it with an integration test).
 
-- [ ] **Threaded replies on the thread.** `Comment.parentComment`,
+- [x] **Threaded replies on the thread.** Done: #66. `Comment.parentComment`,
   `GET /api/comments/:id/replies` and `POST /api/comments/:id/replies` all
   exist and are unused by the client — `PostDetail` renders one flat list, and
   `client/src/App.css` even carries an unused `.comment-replies` rule with a
