@@ -3,6 +3,7 @@ const asyncHandler = require('../middleware/async');
 const Comment = require('../models/Comment');
 const Post = require('../models/Post');
 const { commentCreatedCounter } = require('../dist/instrumentation/metrics');
+const { subscribeUserToPost, notifySubscribers } = require('../utils/subscriptions');
 
 // @desc    Get comments
 // @route   GET /api/comments
@@ -73,6 +74,14 @@ exports.addComment = asyncHandler(async (req, res, next) => {
   const comment = await Comment.create(req.body);
 
   await Post.findByIdAndUpdate(post._id, { $inc: { commentCount: 1 } });
+
+  await subscribeUserToPost(req.user.id, post._id);
+  await notifySubscribers({
+    postId: post._id,
+    actorId: req.user.id,
+    commentId: comment._id,
+    type: 'answer'
+  });
 
   // Increment comment counter metric
   commentCreatedCounter.add(1, {
@@ -327,6 +336,14 @@ exports.addReply = asyncHandler(async (req, res, next) => {
   const reply = await Comment.create(req.body);
 
   await Post.findByIdAndUpdate(parentComment.post, { $inc: { commentCount: 1 } });
+
+  await subscribeUserToPost(req.user.id, parentComment.post);
+  await notifySubscribers({
+    postId: parentComment.post,
+    actorId: req.user.id,
+    commentId: reply._id,
+    type: 'reply'
+  });
 
   // Increment comment counter metric (for replies)
   commentCreatedCounter.add(1, {
