@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router';
 import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
 import { hasPermission } from '../../utils/permissions';
+import NotificationBell from './NotificationBell';
 import './Navbar.css';
 
 const Navbar = () => {
@@ -69,6 +70,7 @@ const Navbar = () => {
 
   const authLinks = (
     <>
+      <NotificationBell />
       <li className="nav-item">
         <Link className="nav-link" to="/dashboard">Dashboard</Link>
       </li>

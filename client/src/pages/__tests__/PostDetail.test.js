@@ -668,3 +668,87 @@ describe('PostDetail answer voting and Most helpful ordering', () => {
     });
   });
 });
+
+describe('PostDetail notify-me subscription toggle', () => {
+  const MEMBER = { _id: '000000000000000000000040', name: 'Member', role: 'user' };
+
+  const setup = ({ subscribed = false } = {}) => {
+    axios.get.mockReset();
+    axios.put.mockReset();
+    axios.post.mockReset();
+    axios.delete.mockReset();
+    localStorage.clear();
+    localStorage.setItem('token', 'fake-token');
+    axios.get.mockImplementation((url) => {
+      if (url === '/api/users/me') {
+        return Promise.resolve({ data: { data: MEMBER } });
+      }
+      if (url.endsWith('/comments')) {
+        return Promise.resolve({ data: { success: true, data: [] } });
+      }
+      if (url.endsWith('/subscribe')) {
+        return Promise.resolve({ data: { success: true, data: { subscribed } } });
+      }
+      return Promise.resolve({ data: { success: true, data: basePost } });
+    });
+  };
+
+  afterEach(() => {
+    localStorage.clear();
+  });
+
+  it('shows "Notify me of answers" when not subscribed, and subscribes on click', async () => {
+    setup({ subscribed: false });
+    axios.post.mockResolvedValue({ data: { success: true, data: { subscribed: true } } });
+    renderPostDetail();
+
+    const btn = await screen.findByRole('button', { name: /notify me of answers/i });
+    fireEvent.click(btn);
+
+    await screen.findByRole('button', { name: /^notified$/i });
+    expect(axios.post).toHaveBeenCalledWith(`/api/posts/${POST_ID}/subscribe`);
+  });
+
+  it('shows "Notified" when already subscribed, and unsubscribes on click', async () => {
+    setup({ subscribed: true });
+    axios.delete.mockResolvedValue({ data: { success: true, data: { subscribed: false } } });
+    renderPostDetail();
+
+    const btn = await screen.findByRole('button', { name: /^notified$/i });
+    fireEvent.click(btn);
+
+    await screen.findByRole('button', { name: /notify me of answers/i });
+    expect(axios.delete).toHaveBeenCalledWith(`/api/posts/${POST_ID}/subscribe`);
+  });
+
+  it('does not show the toggle for unauthenticated visitors', async () => {
+    axios.get.mockReset();
+    axios.get.mockImplementation((url) => {
+      if (url.endsWith('/comments')) {
+        return Promise.resolve({ data: { success: true, data: [] } });
+      }
+      return Promise.resolve({ data: { success: true, data: basePost } });
+    });
+    renderPostDetail();
+
+    await screen.findByText('Orphaned post');
+    expect(
+      screen.queryByRole('button', { name: /notify me of answers/i })
+    ).not.toBeInTheDocument();
+  });
+
+  it('renders the subscribe toggle at least 44x44', async () => {
+    setup({ subscribed: false });
+
+    const style = document.createElement('style');
+    style.textContent = appCss;
+    document.head.appendChild(style);
+
+    renderPostDetail();
+
+    const button = await screen.findByRole('button', { name: /notify me of answers/i });
+    const computed = getComputedStyle(button);
+    expect(parseFloat(computed.minHeight)).toBeGreaterThanOrEqual(44);
+    expect(parseFloat(computed.minWidth)).toBeGreaterThanOrEqual(44);
+  });
+});

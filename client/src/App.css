@@ -662,6 +662,29 @@
   background: rgba(98, 0, 234, 0.08);
 }
 
+.subscribe-toggle-btn {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 1rem;
+  margin-right: 0.5rem;
+  background: transparent;
+  border: 1px solid var(--primary-color);
+  border-radius: 4px;
+  color: var(--primary-color);
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.subscribe-toggle-btn:hover {
+  background: rgba(98, 0, 234, 0.08);
+}
+
+.subscribe-toggle-btn.active {
+  background: var(--primary-color);
+  color: #fff;
+}
+
 /* Comment styles */
 .comment-list {
   margin-top: 1rem;

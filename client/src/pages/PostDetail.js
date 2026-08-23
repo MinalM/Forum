@@ -23,6 +23,7 @@ const PostDetail = () => {
   const [replyingTo, setReplyingTo] = useState(null);
   const [replyText, setReplyText] = useState('');
   const [commentSort, setCommentSort] = useState('helpful');
+  const [subscribed, setSubscribed] = useState(false);
   const [reportModal, setReportModal] = useState({
     isOpen: false,
     type: 'post',
@@ -50,6 +51,37 @@ const PostDetail = () => {
 
     fetchPostData();
   }, [id, setAlert]);
+
+  useEffect(() => {
+    const fetchSubscriptionStatus = async () => {
+      if (!isAuthenticated || !user) return;
+
+      try {
+        const res = await axios.get(`/api/posts/${id}/subscribe`);
+        setSubscribed(res.data.data.subscribed);
+      } catch (err) {
+        // Non-fatal - the toggle just starts in the unsubscribed state.
+      }
+    };
+
+    fetchSubscriptionStatus();
+  }, [id, isAuthenticated, user]);
+
+  const handleToggleSubscribe = async () => {
+    if (!isAuthenticated || !user) {
+      setAlert('Please log in to get notified', 'danger');
+      return;
+    }
+
+    try {
+      const res = subscribed
+        ? await axios.delete(`/api/posts/${id}/subscribe`)
+        : await axios.post(`/api/posts/${id}/subscribe`);
+      setSubscribed(res.data.data.subscribed);
+    } catch (err) {
+      setAlert('Error updating notification preference', 'danger');
+    }
+  };
 
   const handleCommentSubmit = async (e) => {
     e.preventDefault();
@@ -420,6 +452,17 @@ const PostDetail = () => {
             >
               <i className={`fas fa-${post.isSolved ? 'check-circle' : 'question-circle'}`}></i>{' '}
               {post.isSolved ? 'Solved' : 'Mark as Solved'}
+            </button>
+          )}
+
+          {isAuthenticated && (
+            <button
+              type="button"
+              className={`subscribe-toggle-btn${subscribed ? ' active' : ''}`}
+              onClick={handleToggleSubscribe}
+            >
+              <i className={`fas fa-bell${subscribed ? '' : '-slash'}`}></i>{' '}
+              {subscribed ? 'Notified' : 'Notify me of answers'}
             </button>
           )}
 

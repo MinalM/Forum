@@ -194,15 +194,21 @@ Two standing constraints for every item below:
   booting the compiled app in-process (`NODE_ENV=test`) and confirming it
   loads without error with both new routers mounted at their expected paths.
 
-- [ ] **Notify-me control and a member notification bell (client).** Wires item
-  9 into the UI: the "Notify me of answers" toggle on the thread per
-  `PostThread.dc.html`, and the navbar bell showing a member's unread count
-  rather than only a moderator's pending reports, with a dropdown listing
-  recent notifications that link through to the answer.
-  Acceptance: tests for toggling subscription, the bell reflecting the unread
-  count for a plain member, moderators still seeing the reports count
-  (distinguish the two, don't merge them), mark-read on open, and the polling
-  interval not firing after unmount.
+- [x] **Notify-me control and a member notification bell (client).** Done: #69.
+  Wires item 9 into the UI: a "Notify me of answers" / "Notified" toggle on
+  `PostDetail` (`GET`/`POST`/`DELETE /api/posts/:id/subscribe`), and a new
+  `NotificationBell` component in the navbar for every authenticated member,
+  entirely separate from the existing moderator reports badge/dropdown
+  (`hasPermission(user, 'viewReports')`) - the two counts are never merged.
+  The bell polls `GET /api/notifications/unread/count` every 60s (cleared on
+  unmount), and opening its dropdown fetches `GET /api/notifications` and
+  calls `PUT /api/notifications/read-all` to mark them read.
+  Acceptance: tests for toggling subscription (both directions, and hidden
+  for signed-out visitors), the bell's badge reflecting the unread count,
+  moderators still seeing the reports count unaffected, the dropdown listing
+  notifications and marking them read on open, an empty state, the polling
+  interval not firing after unmount, and 44px targets on the bell button,
+  dropdown items and the subscribe toggle.
 
 - [ ] **Ask for a member's track at signup, not on a profile page nobody
   visits.** `User.targetRole`, `User.aiMlExperience` and `User.skills` are
