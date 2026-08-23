@@ -13,7 +13,13 @@ exports.getNotifications = asyncHandler(async (req, res, next) => {
       // voteCount virtual needs upvotes/downvotes present or toJSON throws.
       select: 'title slug upvotes downvotes'
     })
-    .populate({ path: 'comment', select: 'content' })
+    .populate({
+      path: 'comment',
+      // Comment.voteCount has the identical toJSON({ virtuals: true })
+      // landmine as Post.voteCount (see the comment on the 'post'
+      // populate above) — upvotes/downvotes must stay selected.
+      select: 'content upvotes downvotes'
+    })
     .populate({ path: 'actor', select: 'name avatar' });
 
   res.status(200).json({

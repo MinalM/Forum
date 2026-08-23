@@ -346,31 +346,38 @@ one PR rather than three.
   green under the new version; `client/package.json` engines/version pins
   revisited if the bump also permits newer Vite/plugin-react majors.
 
-- [ ] **A `Post` populated with a partial `select` crashes on response
-  serialization if `upvotes`/`downvotes` are excluded.** Discovered
-  while building thread subscriptions (#68): `PostSchema.virtual('voteCount')`
-  (`server/models/Post.js`) computes `this.upvotes.length -
-  this.downvotes.length`, and `toJSON: { virtuals: true }` means that
-  getter runs on *every* serialization of a `Post` document, populated
-  subdocuments included. A `.populate({ path: 'post', select: '...' })`
-  that omits `upvotes`/`downvotes` leaves them `undefined` on the
-  populated doc, so `res.json()` throws `Cannot read properties of
-  undefined (reading 'length')` — a 500 with no useful error surfaced
-  (CI's job logs don't capture the server's `console.log`-based error
-  middleware output either, which cost real time to work around while
-  debugging #68). `server/controllers/reports.js`'s `getReports`/
-  `getReport` have the identical pattern today —
-  `.populate({ path: 'post', select: 'title content' })` /
-  `select: 'title content user'` — both missing `upvotes`/`downvotes`,
-  and neither is covered by a test (no `server/__tests__/integration/
+- [ ] **`Post`/`Comment` populated with a partial `select` crash on response
+  serialization if `upvotes`/`downvotes` are excluded.** Discovered while
+  building thread subscriptions (#68), across two rounds of CI failures:
+  both `PostSchema.virtual('voteCount')` (`server/models/Post.js`) and
+  `CommentSchema.virtual('voteCount')` (`server/models/Comment.js`)
+  compute `this.upvotes.length - this.downvotes.length`, and both schemas
+  set `toJSON: { virtuals: true }`, so that getter runs on *every*
+  serialization of the document — populated subdocuments included. A
+  `.populate({ path: 'post'|'comment', select: '...' })` that omits
+  `upvotes`/`downvotes` leaves them `undefined` on the populated doc, so
+  `res.json()` throws `Cannot read properties of undefined (reading
+  'length')` — a 500 with no useful error surfaced (CI's job logs don't
+  capture the server's `console.log`-based error middleware output
+  either, which cost real debugging time on #68).
+  `server/controllers/reports.js`'s `getReports`/`getReport` have the
+  identical pattern on *both* models today — `.populate({ path: 'post',
+  select: 'title content' })` / `select: 'title content user'` and
+  `.populate({ path: 'comment', select: 'content' })` / `select: 'content
+  user'` — none of the four selects include `upvotes`/`downvotes`, and
+  none is covered by a test (no `server/__tests__/integration/
   reports.test.js` exists), so this is live and simply never triggered.
-  Fix options: always include `upvotes downvotes` in any partial `Post`
-  select (what #68 does locally), or make `voteCount` defensive
-  (`(this.upvotes || []).length - (this.downvotes || []).length`) so a
-  partial projection degrades gracefully instead of throwing — the
-  second is more robust since it protects every future partial-select
-  call site, not just the ones an author remembers to patch.
-  Acceptance: a regression test populates a `Post` with a `select` that
-  excludes `upvotes`/`downvotes` and asserts serialization succeeds
-  (`voteCount` either omitted or `0`, not a thrown error); `reports.js`'s
-  two affected populates fixed or covered; existing server suite green.
+  Fix options: always include `upvotes downvotes` in any partial
+  `Post`/`Comment` select (what #68 does locally, in both
+  `server/controllers/subscriptions.js` and
+  `server/controllers/notifications.js`), or make both `voteCount`
+  getters defensive (`(this.upvotes || []).length - (this.downvotes ||
+  []).length`) so a partial projection degrades gracefully instead of
+  throwing — the second is more robust since it protects every future
+  partial-select call site on either model, not just the ones an author
+  remembers to patch.
+  Acceptance: a regression test populates a `Post` and a `Comment` each
+  with a `select` that excludes `upvotes`/`downvotes` and asserts
+  serialization succeeds (`voteCount` either omitted or `0`, not a
+  thrown error); `reports.js`'s four affected populates fixed or
+  covered; existing server suite green.
