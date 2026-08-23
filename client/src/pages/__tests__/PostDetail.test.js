@@ -1,7 +1,7 @@
 import React from 'react';
 import fs from 'fs';
 import path from 'path';
-import { render, screen, fireEvent, within } from '@testing-library/react';
+import { render, screen, fireEvent, within, waitFor } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router';
 import axios from 'axios';
 import PostDetail from '../PostDetail';
@@ -471,5 +471,200 @@ describe('PostDetail threaded replies', () => {
     computed = getComputedStyle(postReplyButton);
     expect(parseFloat(computed.minHeight)).toBeGreaterThanOrEqual(44);
     expect(parseFloat(computed.minWidth)).toBeGreaterThanOrEqual(44);
+  });
+});
+
+describe('PostDetail answer voting and Most helpful ordering', () => {
+  const ASKER = { _id: '000000000000000000000010', name: 'Asker', role: 'user' };
+  const ANSWERER = { _id: '000000000000000000000011', name: 'Answerer', role: 'user' };
+
+  const postWithAsker = {
+    ...basePost,
+    user: { _id: ASKER._id, name: ASKER.name }
+  };
+
+  const makeComment = (overrides) => ({
+    _id: '000000000000000000000020',
+    content: 'An answer',
+    user: { _id: ANSWERER._id, name: ANSWERER.name },
+    createdAt: new Date('2026-01-01T00:00:00.000Z').toISOString(),
+    isAnswer: false,
+    parentComment: null,
+    upvotes: [],
+    downvotes: [],
+    ...overrides
+  });
+
+  const setupAsUser = (currentUser, comments, post = postWithAsker) => {
+    axios.get.mockReset();
+    axios.put.mockReset();
+    localStorage.clear();
+    if (currentUser) {
+      localStorage.setItem('token', 'fake-token');
+    }
+    axios.get.mockImplementation((url) => {
+      if (url === '/api/users/me') {
+        return Promise.resolve({ data: { data: currentUser } });
+      }
+      if (url.endsWith('/comments')) {
+        return Promise.resolve({ data: { success: true, data: comments } });
+      }
+      return Promise.resolve({ data: { success: true, data: post } });
+    });
+  };
+
+  afterEach(() => {
+    localStorage.clear();
+  });
+
+  const contentOrder = (labels) =>
+    screen
+      .getAllByText(new RegExp(`^(${labels.join('|')})$`), { selector: 'p' })
+      .map((el) => el.textContent);
+
+  it('upvoting an answer sends the vote and updates the count', async () => {
+    const comment = makeComment({ content: 'Answer A' });
+    setupAsUser(ANSWERER, [comment]);
+    axios.put.mockResolvedValue({
+      data: { success: true, data: { ...comment, upvotes: [ANSWERER._id] } }
+    });
+    renderPostDetail();
+
+    await screen.findByText('Answer A');
+    fireEvent.click(screen.getByRole('button', { name: /upvote answer/i }));
+
+    expect(axios.put).toHaveBeenCalledWith(
+      `/api/comments/${comment._id}/upvote`
+    );
+    const voteCount = screen.getByTestId(`comment-vote-count-${comment._id}`);
+    await waitFor(() => expect(voteCount).toHaveTextContent('1'));
+    expect(
+      screen.getByRole('button', { name: /upvote answer/i })
+    ).toHaveClass('active');
+  });
+
+  it('retracts an answer upvote on a second click', async () => {
+    const comment = makeComment({
+      content: 'Answer A',
+      upvotes: [ANSWERER._id]
+    });
+    setupAsUser(ANSWERER, [comment]);
+    axios.put.mockResolvedValue({
+      data: { success: true, data: { ...comment, upvotes: [] } }
+    });
+    renderPostDetail();
+
+    await screen.findByText('Answer A');
+    fireEvent.click(screen.getByRole('button', { name: /upvote answer/i }));
+
+    const voteCount = screen.getByTestId(`comment-vote-count-${comment._id}`);
+    await waitFor(() => expect(voteCount).toHaveTextContent('0'));
+    expect(
+      screen.getByRole('button', { name: /upvote answer/i })
+    ).not.toHaveClass('active');
+  });
+
+  it('disables answer vote buttons for an unauthenticated visitor', async () => {
+    const comment = makeComment({ content: 'Answer A' });
+    setupAsUser(null, [comment]);
+    renderPostDetail();
+
+    await screen.findByText('Answer A');
+    expect(screen.getByRole('button', { name: /upvote answer/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /downvote answer/i })).toBeDisabled();
+  });
+
+  it('orders answers by vote count under Most helpful (the default)', async () => {
+    const low = makeComment({
+      _id: 'a1', content: 'Answer A', upvotes: ['u1'],
+      createdAt: '2026-01-01T00:00:00.000Z'
+    });
+    const high = makeComment({
+      _id: 'a2', content: 'Answer B', upvotes: ['u1', 'u2', 'u3'],
+      createdAt: '2026-01-02T00:00:00.000Z'
+    });
+    const zero = makeComment({
+      _id: 'a3', content: 'Answer C', upvotes: [],
+      createdAt: '2026-01-03T00:00:00.000Z'
+    });
+    setupAsUser(ANSWERER, [low, high, zero]);
+    renderPostDetail();
+
+    await screen.findByText('Answer A');
+    expect(contentOrder(['Answer A', 'Answer B', 'Answer C'])).toEqual([
+      'Answer B', 'Answer A', 'Answer C'
+    ]);
+  });
+
+  it('orders answers by recency under Newest', async () => {
+    const low = makeComment({
+      _id: 'a1', content: 'Answer A', upvotes: ['u1'],
+      createdAt: '2026-01-01T00:00:00.000Z'
+    });
+    const high = makeComment({
+      _id: 'a2', content: 'Answer B', upvotes: ['u1', 'u2', 'u3'],
+      createdAt: '2026-01-02T00:00:00.000Z'
+    });
+    const zero = makeComment({
+      _id: 'a3', content: 'Answer C', upvotes: [],
+      createdAt: '2026-01-03T00:00:00.000Z'
+    });
+    setupAsUser(ANSWERER, [low, high, zero]);
+    renderPostDetail();
+
+    await screen.findByText('Answer A');
+    fireEvent.click(screen.getByRole('button', { name: /^newest$/i }));
+
+    expect(contentOrder(['Answer A', 'Answer B', 'Answer C'])).toEqual([
+      'Answer C', 'Answer B', 'Answer A'
+    ]);
+  });
+
+  it('keeps the accepted answer pinned first under both sort orders', async () => {
+    const accepted = makeComment({
+      _id: 'a1', content: 'Accepted answer', upvotes: [],
+      isAnswer: true, createdAt: '2026-01-01T00:00:00.000Z'
+    });
+    const popular = makeComment({
+      _id: 'a2', content: 'Popular answer', upvotes: ['u1', 'u2', 'u3'],
+      createdAt: '2026-01-03T00:00:00.000Z'
+    });
+    setupAsUser(ANSWERER, [accepted, popular]);
+    renderPostDetail();
+
+    await screen.findByText('Accepted answer');
+    expect(contentOrder(['Accepted answer', 'Popular answer'])).toEqual([
+      'Accepted answer', 'Popular answer'
+    ]);
+
+    fireEvent.click(screen.getByRole('button', { name: /^newest$/i }));
+    expect(contentOrder(['Accepted answer', 'Popular answer'])).toEqual([
+      'Accepted answer', 'Popular answer'
+    ]);
+  });
+
+  it('renders the sort toggle and vote buttons at least 44x44', async () => {
+    const comment = makeComment({ content: 'Answer A' });
+    setupAsUser(ANSWERER, [comment]);
+
+    const style = document.createElement('style');
+    style.textContent = appCss;
+    document.head.appendChild(style);
+
+    renderPostDetail();
+
+    await screen.findByText('Answer A');
+    const targets = [
+      screen.getByRole('button', { name: /^most helpful$/i }),
+      screen.getByRole('button', { name: /^newest$/i }),
+      screen.getByRole('button', { name: /upvote answer/i }),
+      screen.getByRole('button', { name: /downvote answer/i })
+    ];
+
+    targets.forEach((button) => {
+      const computed = getComputedStyle(button);
+      expect(parseFloat(computed.minHeight)).toBeGreaterThanOrEqual(44);
+      expect(parseFloat(computed.minWidth)).toBeGreaterThanOrEqual(44);
+    });
   });
 });

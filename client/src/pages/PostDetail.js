@@ -22,6 +22,7 @@ const PostDetail = () => {
   const [pageLoading, setPageLoading] = useState(true);
   const [replyingTo, setReplyingTo] = useState(null);
   const [replyText, setReplyText] = useState('');
+  const [commentSort, setCommentSort] = useState('helpful');
   const [reportModal, setReportModal] = useState({
     isOpen: false,
     type: 'post',
@@ -235,6 +236,33 @@ const PostDetail = () => {
     }
   };
 
+  const handleCommentVote = async (commentId, direction) => {
+    if (!isAuthenticated || !user) {
+      setAlert('Please log in to vote', 'danger');
+      return;
+    }
+
+    try {
+      const res = await axios.put(`/api/comments/${commentId}/${direction}`);
+      const { upvotes, downvotes } = res.data.data;
+      setComments((prevComments) =>
+        prevComments.map((comment) =>
+          comment._id === commentId ? { ...comment, upvotes, downvotes } : comment
+        )
+      );
+    } catch (err) {
+      if (err.response?.status === 401) {
+        setAlert('Your session has expired. Please login again.', 'danger');
+        navigate('/login');
+      } else {
+        setAlert(
+          `Error ${direction === 'upvote' ? 'upvoting' : 'downvoting'} answer`,
+          'danger'
+        );
+      }
+    }
+  };
+
   const handleDeleteComment = async (commentId) => {
     if (window.confirm('Are you sure you want to delete this comment?')) {
       try {
@@ -274,7 +302,31 @@ const PostDetail = () => {
   const hasUpvoted = user && post.upvotes.includes(user._id);
   const hasDownvoted = user && post.downvotes.includes(user._id);
 
-  const topLevelComments = comments.filter((comment) => !comment.parentComment);
+  const getCommentVoteCount = (comment) =>
+    (comment.upvotes?.length || 0) - (comment.downvotes?.length || 0);
+
+  const sortTopLevelComments = (list, sortMode) => {
+    const sorted = [...list].sort((a, b) => {
+      if (sortMode === 'helpful') {
+        const voteDiff = getCommentVoteCount(b) - getCommentVoteCount(a);
+        if (voteDiff !== 0) return voteDiff;
+      }
+      return new Date(b.createdAt) - new Date(a.createdAt);
+    });
+
+    // The accepted answer stays pinned first regardless of sort order.
+    const acceptedIndex = sorted.findIndex((comment) => comment.isAnswer);
+    if (acceptedIndex > 0) {
+      const [accepted] = sorted.splice(acceptedIndex, 1);
+      sorted.unshift(accepted);
+    }
+    return sorted;
+  };
+
+  const topLevelComments = sortTopLevelComments(
+    comments.filter((comment) => !comment.parentComment),
+    commentSort
+  );
   const repliesByParent = comments.reduce((acc, comment) => {
     if (comment.parentComment) {
       const key = comment.parentComment;
@@ -450,6 +502,25 @@ const PostDetail = () => {
           </div>
         )}
 
+        {topLevelComments.length > 0 && (
+          <div className="comment-sort-toggle" role="group" aria-label="Sort answers">
+            <button
+              type="button"
+              className={`sort-toggle-btn${commentSort === 'helpful' ? ' active' : ''}`}
+              onClick={() => setCommentSort('helpful')}
+            >
+              Most helpful
+            </button>
+            <button
+              type="button"
+              className={`sort-toggle-btn${commentSort === 'newest' ? ' active' : ''}`}
+              onClick={() => setCommentSort('newest')}
+            >
+              Newest
+            </button>
+          </div>
+        )}
+
         <div className="comments-list">
           {topLevelComments.length > 0 ? (
             topLevelComments.map((comment) => (
@@ -504,6 +575,29 @@ const PostDetail = () => {
                         <i className="fas fa-flag"></i>
                       </button>
                     )}
+                  </div>
+                </div>
+                <div className="comment-vote-row">
+                  <div className="vote-buttons">
+                    <button
+                      className={`vote-btn upvote${comment.upvotes?.includes(user?._id) ? ' active' : ''}`}
+                      onClick={() => handleCommentVote(comment._id, 'upvote')}
+                      disabled={!isAuthenticated}
+                      aria-label="Upvote answer"
+                    >
+                      <i className="fas fa-arrow-up"></i>
+                    </button>
+                    <span className="vote-count" data-testid={`comment-vote-count-${comment._id}`}>
+                      {getCommentVoteCount(comment)}
+                    </span>
+                    <button
+                      className={`vote-btn downvote${comment.downvotes?.includes(user?._id) ? ' active' : ''}`}
+                      onClick={() => handleCommentVote(comment._id, 'downvote')}
+                      disabled={!isAuthenticated}
+                      aria-label="Downvote answer"
+                    >
+                      <i className="fas fa-arrow-down"></i>
+                    </button>
                   </div>
                 </div>
                 {comment.isAnswer && (

@@ -156,7 +156,7 @@ Two standing constraints for every item below:
   chip, and reply targets at 44px.
 
 
-- [ ] **Answer voting and "Most helpful" ordering.** `PUT /api/comments/:id/upvote`
+- [x] **Answer voting and "Most helpful" ordering.** Done: #67. `PUT /api/comments/:id/upvote`
   and `/downvote` exist and are unused. Add the per-answer vote control from
   `PostThread.dc.html` and the Most helpful / Newest sort toggle above the
   answer list, with the accepted answer pinned first under both orderings.
