@@ -113,7 +113,7 @@ Two standing constraints for every item below:
   `TrendingPosts`; no `setAlert` identity churn in effect deps (see the
   `AlertContext` note in `CLAUDE.md`).
 
-- [ ] **Answer from the feed, without a page change.** The lurker-to-contributor
+- [x] **Answer from the feed, without a page change.** Done: #64. The lurker-to-contributor
   step. Per `Main.dc.html`, the feed card's Answer button expands an inline
   composer that posts to the existing `POST /api/posts/:id/comments`; on
   success the new answer appears and the card leaves its "needs an answer"
