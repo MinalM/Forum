@@ -527,6 +527,37 @@
   margin-bottom: 1.5rem;
 }
 
+/* The accepted answer gets a green left border so it stands out from the
+   rest of the thread without needing to read every comment. */
+.comment--accepted {
+  border-left: 4px solid var(--success-color);
+}
+
+.comment-accepted-note {
+  color: var(--success-color);
+  font-size: 0.9rem;
+  font-weight: 500;
+  margin-bottom: 1rem;
+}
+
+.accept-answer-btn {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 1rem;
+  margin-right: 1rem;
+  background: transparent;
+  border: 1px solid var(--success-color);
+  border-radius: 4px;
+  color: var(--success-color);
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.accept-answer-btn:hover {
+  background: rgba(0, 200, 83, 0.08);
+}
+
 .comment-header {
   display: flex;
   justify-content: space-between;

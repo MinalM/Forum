@@ -1,7 +1,7 @@
 import React from 'react';
 import fs from 'fs';
 import path from 'path';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router';
 import axios from 'axios';
 import PostDetail from '../PostDetail';
@@ -15,7 +15,8 @@ jest.mock('axios', () => ({
   interceptors: {
     response: { use: jest.fn(), eject: jest.fn() }
   },
-  get: jest.fn()
+  get: jest.fn(),
+  put: jest.fn()
 }));
 
 const POST_ID = '000000000000000000000001';
@@ -212,5 +213,125 @@ describe('PostDetail vote button touch targets (WCAG 2.5.5)', () => {
       expect(parseFloat(style.minHeight)).toBeGreaterThanOrEqual(44);
       expect(parseFloat(style.minWidth)).toBeGreaterThanOrEqual(44);
     });
+  });
+
+});
+
+describe('PostDetail accepted answers', () => {
+  const ASKER = { _id: '000000000000000000000010', name: 'Asker', role: 'user' };
+  const OTHER_USER = { _id: '000000000000000000000011', name: 'Commenter', role: 'user' };
+  const MODERATOR = { _id: '000000000000000000000012', name: 'Mod', role: 'moderator' };
+
+  const answerComment = {
+    _id: '000000000000000000000020',
+    content: 'Here is an answer',
+    user: { _id: OTHER_USER._id, name: OTHER_USER.name },
+    createdAt: new Date().toISOString(),
+    isAnswer: false
+  };
+
+  const postWithAsker = {
+    ...basePost,
+    user: { _id: ASKER._id, name: ASKER.name }
+  };
+
+  const setupAsUser = (currentUser, comments = [answerComment], post = postWithAsker) => {
+    axios.get.mockReset();
+    axios.put.mockReset();
+    localStorage.clear();
+    localStorage.setItem('token', 'fake-token');
+    axios.get.mockImplementation((url) => {
+      if (url === '/api/users/me') {
+        return Promise.resolve({ data: { data: currentUser } });
+      }
+      if (url.endsWith('/comments')) {
+        return Promise.resolve({ data: { success: true, data: comments } });
+      }
+      return Promise.resolve({ data: { success: true, data: post } });
+    });
+  };
+
+  afterEach(() => {
+    localStorage.clear();
+  });
+
+  it('shows the accept control to the asker', async () => {
+    setupAsUser(ASKER);
+    renderPostDetail();
+
+    await screen.findByText('Orphaned post');
+    expect(
+      screen.getByRole('button', { name: /accept this answer/i })
+    ).toBeInTheDocument();
+  });
+
+  it('hides the accept control from a user who is not the asker or a moderator', async () => {
+    setupAsUser(OTHER_USER);
+    renderPostDetail();
+
+    await screen.findByText('Orphaned post');
+    expect(
+      screen.queryByRole('button', { name: /accept this answer/i })
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows the accept control to a moderator who is not the asker', async () => {
+    setupAsUser(MODERATOR);
+    renderPostDetail();
+
+    await screen.findByText('Orphaned post');
+    expect(
+      screen.getByRole('button', { name: /accept this answer/i })
+    ).toBeInTheDocument();
+  });
+
+  it('accepting an answer flips the comment card and the question badge', async () => {
+    setupAsUser(ASKER);
+    axios.put.mockResolvedValue({
+      data: { success: true, data: { ...answerComment, isAnswer: true } }
+    });
+    renderPostDetail();
+
+    await screen.findByText('Needs an answer');
+
+    fireEvent.click(screen.getByRole('button', { name: /accept this answer/i }));
+
+    await screen.findByText('Solved', { selector: 'span.badge-success' });
+    expect(screen.getByText(/accepted by asker/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^unaccept$/i })).toBeInTheDocument();
+  });
+
+  it('un-accepting an answer reverts the comment card and the question badge', async () => {
+    setupAsUser(
+      ASKER,
+      [{ ...answerComment, isAnswer: true }],
+      { ...postWithAsker, isSolved: true }
+    );
+    axios.put.mockResolvedValue({
+      data: { success: true, data: { ...answerComment, isAnswer: false } }
+    });
+    renderPostDetail();
+
+    await screen.findByText('Solved', { selector: 'span.badge-success' });
+
+    fireEvent.click(screen.getByRole('button', { name: /^unaccept$/i }));
+
+    await screen.findByText('Needs an answer');
+    expect(screen.queryByText(/accepted by/i)).not.toBeInTheDocument();
+  });
+
+  it('renders the accept-answer button at least 44x44', async () => {
+    setupAsUser(ASKER);
+
+    const style = document.createElement('style');
+    style.textContent = appCss;
+    document.head.appendChild(style);
+
+    renderPostDetail();
+
+    const button = await screen.findByRole('button', { name: /accept this answer/i });
+    const computed = getComputedStyle(button);
+    expect(parseFloat(computed.minHeight)).toBeGreaterThanOrEqual(44);
+    expect(parseFloat(computed.minWidth)).toBeGreaterThanOrEqual(44);
   });
 });

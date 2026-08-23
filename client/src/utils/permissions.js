@@ -15,6 +15,7 @@ const hasPermission = (user, permission) => {
     createComment: ['user', 'moderator', 'admin'],
     editComment: ['user', 'moderator', 'admin'], // User can edit own comments only
     deleteComment: ['user', 'moderator', 'admin'], // User can delete own comments only
+    markAnswer: ['moderator', 'admin'], // Post author can also mark answers - checked separately
     
     // Admin features
     manageUsers: ['admin'],
