@@ -302,6 +302,47 @@ describe('Comments API', () => {
       expect(res.status).toBe(200);
       expect(res.body.data.isAnswer).toBe(true);
     });
+
+    it('should revert the post to unsolved when un-accepting the answer', async () => {
+      await request(server)
+        .put(`/api/comments/${comment._id}/answer`)
+        .set('Authorization', `Bearer ${token}`);
+
+      const res = await request(server)
+        .put(`/api/comments/${comment._id}/answer`)
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.isAnswer).toBe(false);
+
+      const updatedPost = await Post.findById(post._id);
+      expect(updatedPost.isSolved).toBe(false);
+    });
+
+    it('should un-accept the previous answer when a new one is accepted', async () => {
+      const otherComment = await Comment.create({
+        content: 'Another comment',
+        user: user._id,
+        post: post._id
+      });
+
+      await request(server)
+        .put(`/api/comments/${comment._id}/answer`)
+        .set('Authorization', `Bearer ${token}`);
+
+      const res = await request(server)
+        .put(`/api/comments/${otherComment._id}/answer`)
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.isAnswer).toBe(true);
+
+      const previouslyAccepted = await Comment.findById(comment._id);
+      expect(previouslyAccepted.isAnswer).toBe(false);
+
+      const updatedPost = await Post.findById(post._id);
+      expect(updatedPost.isSolved).toBe(true);
+    });
   });
 
   describe('Comment Replies', () => {

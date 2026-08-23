@@ -261,11 +261,18 @@ exports.markAsAnswer = asyncHandler(async (req, res, next) => {
   comment.isAnswer = !comment.isAnswer;
   await comment.save();
 
-  // If marked as answer, mark the post as solved
   if (comment.isAnswer) {
+    // Only one accepted answer per post - un-accept any other comment
+    // currently holding that status.
+    await Comment.updateMany(
+      { post: comment.post, _id: { $ne: comment._id }, isAnswer: true },
+      { isAnswer: false }
+    );
     post.isSolved = true;
-    await post.save();
+  } else {
+    post.isSolved = false;
   }
+  await post.save();
 
   res.status(200).json({
     success: true,
