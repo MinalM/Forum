@@ -1,7 +1,7 @@
 import React from 'react';
 import fs from 'fs';
 import path from 'path';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router';
 import axios from 'axios';
 import PostDetail from '../PostDetail';
@@ -16,7 +16,9 @@ jest.mock('axios', () => ({
     response: { use: jest.fn(), eject: jest.fn() }
   },
   get: jest.fn(),
-  put: jest.fn()
+  put: jest.fn(),
+  post: jest.fn(),
+  delete: jest.fn()
 }));
 
 const POST_ID = '000000000000000000000001';
@@ -331,6 +333,142 @@ describe('PostDetail accepted answers', () => {
 
     const button = await screen.findByRole('button', { name: /accept this answer/i });
     const computed = getComputedStyle(button);
+    expect(parseFloat(computed.minHeight)).toBeGreaterThanOrEqual(44);
+    expect(parseFloat(computed.minWidth)).toBeGreaterThanOrEqual(44);
+  });
+});
+
+describe('PostDetail threaded replies', () => {
+  const ASKER = { _id: '000000000000000000000010', name: 'Asker', role: 'user' };
+  const ANSWERER = { _id: '000000000000000000000011', name: 'Answerer', role: 'user' };
+  const OTHER_USER = { _id: '000000000000000000000012', name: 'Other', role: 'user' };
+
+  const postWithAsker = {
+    ...basePost,
+    user: { _id: ASKER._id, name: ASKER.name }
+  };
+
+  const answerComment = {
+    _id: '000000000000000000000020',
+    content: 'Here is an answer',
+    user: { _id: ANSWERER._id, name: ANSWERER.name },
+    createdAt: new Date().toISOString(),
+    isAnswer: false,
+    parentComment: null
+  };
+
+  const askerReply = {
+    _id: '000000000000000000000021',
+    content: 'Thanks, that worked!',
+    user: { _id: ASKER._id, name: ASKER.name },
+    createdAt: new Date().toISOString(),
+    isAnswer: false,
+    parentComment: answerComment._id
+  };
+
+  const setupAsUser = (currentUser, comments, post = postWithAsker) => {
+    axios.get.mockReset();
+    axios.put.mockReset();
+    axios.post.mockReset();
+    localStorage.clear();
+    if (currentUser) {
+      localStorage.setItem('token', 'fake-token');
+    }
+    axios.get.mockImplementation((url) => {
+      if (url === '/api/users/me') {
+        return Promise.resolve({ data: { data: currentUser } });
+      }
+      if (url.endsWith('/comments')) {
+        return Promise.resolve({ data: { success: true, data: comments } });
+      }
+      return Promise.resolve({ data: { success: true, data: post } });
+    });
+  };
+
+  afterEach(() => {
+    localStorage.clear();
+  });
+
+  it('loads existing replies nested under their parent comment', async () => {
+    setupAsUser(ASKER, [answerComment, askerReply]);
+    renderPostDetail();
+
+    await screen.findByText('Here is an answer');
+    const repliesContainer = screen.getByTestId('comment-replies');
+    expect(within(repliesContainer).getByText('Thanks, that worked!')).toBeInTheDocument();
+  });
+
+  it('posting a new reply appears under the right parent', async () => {
+    setupAsUser(ASKER, [answerComment]);
+    axios.post.mockResolvedValue({
+      data: { success: true, data: askerReply }
+    });
+    renderPostDetail();
+
+    await screen.findByText('Here is an answer');
+    fireEvent.click(screen.getByRole('button', { name: /^reply$/i }));
+
+    const textarea = screen.getByPlaceholderText(/write a reply/i);
+    fireEvent.change(textarea, { target: { value: 'Thanks, that worked!' } });
+    fireEvent.click(screen.getByRole('button', { name: /post reply/i }));
+
+    const repliesContainer = await screen.findByTestId('comment-replies');
+    expect(within(repliesContainer).getByText('Thanks, that worked!', { selector: 'p' })).toBeInTheDocument();
+    expect(axios.post).toHaveBeenCalledWith(
+      `/api/comments/${answerComment._id}/replies`,
+      { content: 'Thanks, that worked!' }
+    );
+  });
+
+  it('does not offer the reply control on a locked thread', async () => {
+    setupAsUser(ASKER, [answerComment], { ...postWithAsker, isLocked: true });
+    renderPostDetail();
+
+    await screen.findByText('Here is an answer');
+    expect(screen.queryByRole('button', { name: /^reply$/i })).not.toBeInTheDocument();
+  });
+
+  it('marks a reply from the asker with an Asker chip', async () => {
+    setupAsUser(OTHER_USER, [answerComment, askerReply]);
+    renderPostDetail();
+
+    const repliesContainer = await screen.findByTestId('comment-replies');
+    expect(within(repliesContainer).getByText('Thanks, that worked!')).toBeInTheDocument();
+    expect(within(repliesContainer).getByText('Asker', { selector: 'span' })).toBeInTheDocument();
+  });
+
+  it('does not mark a non-asker reply with an Asker chip', async () => {
+    const otherReply = {
+      ...askerReply,
+      _id: '000000000000000000000022',
+      user: { _id: OTHER_USER._id, name: OTHER_USER.name }
+    };
+    setupAsUser(OTHER_USER, [answerComment, otherReply]);
+    renderPostDetail();
+
+    const repliesContainer = await screen.findByTestId('comment-replies');
+    expect(within(repliesContainer).getByText('Thanks, that worked!')).toBeInTheDocument();
+    expect(within(repliesContainer).queryByText('Asker', { selector: 'span' })).not.toBeInTheDocument();
+  });
+
+  it('renders the reply and post-reply buttons at least 44x44', async () => {
+    setupAsUser(ASKER, [answerComment]);
+
+    const style = document.createElement('style');
+    style.textContent = appCss;
+    document.head.appendChild(style);
+
+    renderPostDetail();
+
+    await screen.findByText('Here is an answer');
+    const replyButton = screen.getByRole('button', { name: /^reply$/i });
+    let computed = getComputedStyle(replyButton);
+    expect(parseFloat(computed.minHeight)).toBeGreaterThanOrEqual(44);
+    expect(parseFloat(computed.minWidth)).toBeGreaterThanOrEqual(44);
+
+    fireEvent.click(replyButton);
+    const postReplyButton = screen.getByRole('button', { name: /post reply/i });
+    computed = getComputedStyle(postReplyButton);
     expect(parseFloat(computed.minHeight)).toBeGreaterThanOrEqual(44);
     expect(parseFloat(computed.minWidth)).toBeGreaterThanOrEqual(44);
   });
