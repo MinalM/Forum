@@ -4,6 +4,7 @@ import axios from 'axios';
 import { useAlert } from '../context/AlertContext';
 import { useAuth } from '../context/AuthContext';
 import PostItem from '../components/posts/PostItem';
+import { FeedComposerProvider } from '../context/FeedComposerContext';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 const CategoryPosts = () => {
@@ -113,7 +114,9 @@ const CategoryPosts = () => {
 
       <div className="post-list">
         {posts.length > 0 ? (
-          posts.map(post => <PostItem key={post._id} post={post} />)
+          <FeedComposerProvider>
+            {posts.map(post => <PostItem key={post._id} post={post} />)}
+          </FeedComposerProvider>
         ) : (
           <div className="empty-state">
             <p>No posts in this category yet.</p>

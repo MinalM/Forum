@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router';
 import axios from 'axios';
 import PostItem from '../components/posts/PostItem';
+import { FeedComposerProvider } from '../context/FeedComposerContext';
 import { useFeatureFlag } from '../hooks/useFeatureFlag';
 import TrendingPosts from '../components/TrendingPosts';
 import { useAuth } from '../context/AuthContext';
@@ -133,7 +134,9 @@ const Home = () => {
                 {postsError ? (
                   <p>Error loading posts</p>
                 ) : posts.length > 0 ? (
-                  posts.map(post => <PostItem key={post._id} post={post} />)
+                  <FeedComposerProvider>
+                    {posts.map(post => <PostItem key={post._id} post={post} />)}
+                  </FeedComposerProvider>
                 ) : (
                   <p>No posts found</p>
                 )}

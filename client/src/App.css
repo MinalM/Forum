@@ -416,6 +416,90 @@
   border-left: 4px solid var(--warning-color);
 }
 
+/* Feed card inline answer/reply composer: answering a question shouldn't
+   require leaving the feed for the thread page. */
+.answer-btn {
+  min-height: 44px;
+  padding: 0 1rem;
+  margin-left: 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.answer-btn--filled {
+  background: var(--primary-color);
+  color: white;
+  border: none;
+}
+
+.answer-btn--filled:hover {
+  background: var(--primary-light);
+}
+
+.answer-btn--outline {
+  background: transparent;
+  color: var(--primary-color);
+  border: 1px solid var(--primary-color);
+}
+
+.answer-btn--outline:hover {
+  background: rgba(98, 0, 234, 0.08);
+}
+
+.answer-composer {
+  margin-top: 1rem;
+}
+
+.answer-composer textarea {
+  margin-bottom: 0.5rem;
+}
+
+.answer-composer-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.answer-composer-cancel,
+.answer-composer-submit {
+  min-height: 44px;
+  padding: 0 1rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.answer-composer-cancel {
+  background: var(--background-color);
+  color: #666;
+}
+
+.answer-composer-cancel:hover {
+  background: #e0e0e0;
+}
+
+.answer-composer-submit {
+  background: var(--primary-color);
+  color: white;
+}
+
+.answer-composer-submit:hover {
+  background: var(--primary-light);
+}
+
+.answer-composer-submit:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.answer-composer-signin {
+  margin-top: 1rem;
+}
+
 /* Post Detail */
 .post-detail {
   background: var(--surface-color);
