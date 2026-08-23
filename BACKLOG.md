@@ -125,7 +125,7 @@ Two standing constraints for every item below:
   surfacing an alert, unauthenticated users seeing a sign-in prompt instead of
   the composer, and only one composer open at a time.
 
-- [x] **Accepted answers on the thread.** Done: #PENDING. The mechanic that makes answering
+- [x] **Accepted answers on the thread.** Done: #65. The mechanic that makes answering
   worth doing, and it is almost entirely built already: `Comment.isAnswer`
   exists in the schema, and `PUT /api/comments/:id/answer`
   (`markAsAnswer` in `server/controllers/comments.js`) already authorises to
