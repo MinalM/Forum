@@ -73,7 +73,14 @@ exports.getSubscriptionStatus = asyncHandler(async (req, res, next) => {
 exports.getMySubscriptions = asyncHandler(async (req, res, next) => {
   const subscriptions = await Subscription.find({ user: req.user.id })
     .sort('-createdAt')
-    .populate({ path: 'post', select: 'title slug commentCount isSolved' });
+    .populate({
+      path: 'post',
+      // upvotes/downvotes must stay selected: Post.voteCount is a virtual
+      // getter (this.upvotes.length - this.downvotes.length) computed
+      // during toJSON({ virtuals: true }) serialization, so omitting them
+      // from a partial select throws instead of just hiding voteCount.
+      select: 'title slug commentCount isSolved upvotes downvotes'
+    });
 
   res.status(200).json({
     success: true,

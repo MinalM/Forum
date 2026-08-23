@@ -345,3 +345,32 @@ one PR rather than three.
   (currently 20.x or 22.x); full suite (unit + Playwright) re-verified
   green under the new version; `client/package.json` engines/version pins
   revisited if the bump also permits newer Vite/plugin-react majors.
+
+- [ ] **A `Post` populated with a partial `select` crashes on response
+  serialization if `upvotes`/`downvotes` are excluded.** Discovered
+  while building thread subscriptions (#68): `PostSchema.virtual('voteCount')`
+  (`server/models/Post.js`) computes `this.upvotes.length -
+  this.downvotes.length`, and `toJSON: { virtuals: true }` means that
+  getter runs on *every* serialization of a `Post` document, populated
+  subdocuments included. A `.populate({ path: 'post', select: '...' })`
+  that omits `upvotes`/`downvotes` leaves them `undefined` on the
+  populated doc, so `res.json()` throws `Cannot read properties of
+  undefined (reading 'length')` — a 500 with no useful error surfaced
+  (CI's job logs don't capture the server's `console.log`-based error
+  middleware output either, which cost real time to work around while
+  debugging #68). `server/controllers/reports.js`'s `getReports`/
+  `getReport` have the identical pattern today —
+  `.populate({ path: 'post', select: 'title content' })` /
+  `select: 'title content user'` — both missing `upvotes`/`downvotes`,
+  and neither is covered by a test (no `server/__tests__/integration/
+  reports.test.js` exists), so this is live and simply never triggered.
+  Fix options: always include `upvotes downvotes` in any partial `Post`
+  select (what #68 does locally), or make `voteCount` defensive
+  (`(this.upvotes || []).length - (this.downvotes || []).length`) so a
+  partial projection degrades gracefully instead of throwing — the
+  second is more robust since it protects every future partial-select
+  call site, not just the ones an author remembers to patch.
+  Acceptance: a regression test populates a `Post` with a `select` that
+  excludes `upvotes`/`downvotes` and asserts serialization succeeds
+  (`voteCount` either omitted or `0`, not a thrown error); `reports.js`'s
+  two affected populates fixed or covered; existing server suite green.

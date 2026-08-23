@@ -7,7 +7,12 @@ const Notification = require('../models/Notification');
 exports.getNotifications = asyncHandler(async (req, res, next) => {
   const notifications = await Notification.find({ user: req.user.id })
     .sort('-createdAt')
-    .populate({ path: 'post', select: 'title slug' })
+    .populate({
+      path: 'post',
+      // See the matching comment in controllers/subscriptions.js: Post's
+      // voteCount virtual needs upvotes/downvotes present or toJSON throws.
+      select: 'title slug upvotes downvotes'
+    })
     .populate({ path: 'comment', select: 'content' })
     .populate({ path: 'actor', select: 'name avatar' });
 
