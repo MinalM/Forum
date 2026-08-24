@@ -17,7 +17,9 @@ test('should allow user registration', async ({ page }) => {
   // Submit form
   await page.click('button[type="submit"]');
 
-  // Verify successful registration
-  await expect(page).toHaveURL('/dashboard');
+  // Verify successful registration - a fresh account lands on the
+  // post-signup onboarding step (track/skills chips), not the dashboard.
+  await expect(page).toHaveURL('/onboarding');
   await expect(page.locator('text="Registration successful! Welcome to the community."')).toBeVisible();
+  await expect(page.locator('text="Two questions, then your feed."')).toBeVisible();
 });
