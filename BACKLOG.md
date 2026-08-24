@@ -210,16 +210,39 @@ Two standing constraints for every item below:
   interval not firing after unmount, and 44px targets on the bell button,
   dropdown items and the subscribe toggle.
 
-- [ ] **Ask for a member's track at signup, not on a profile page nobody
-  visits.** `User.targetRole`, `User.aiMlExperience` and `User.skills` are
-  collected today only by `client/src/pages/EditProfile.js` and are used by
-  nothing at all. Per `Onboarding.dc.html`, add a step after registration
-  capturing target role and skills as selectable chips, showing a live preview
-  of what the resulting feed will contain, and skippable in one click.
-  Acceptance: tests for chip selection, the mutually-exclusive "Nothing yet"
-  option, the preview updating from the selection, skip going straight to the
-  feed, values persisting to the existing `User` fields via the existing update
-  endpoint, and the step not reappearing once completed or skipped.
+- [x] **Ask for a member's track at signup, not on a profile page nobody
+  visits.** Done: #70. Added a
+  `/onboarding` step (`client/src/pages/Onboarding.js`), per
+  `Onboarding.dc.html`: role and skill chips, a "Nothing yet" option
+  mutually exclusive with any real skill pick, a feed preview that updates
+  with the selected role, and a one-click skip. Both paths PUT through the
+  existing `/api/users/updatedetails` and set the new `User.onboardingCompleted`
+  field so the step never reappears once completed or skipped (it defaults
+  `true`, so existing accounts are unaffected; only a fresh local
+  registration or Google-OAuth signup starts `false`). Registering (and
+  Google OAuth signup) now routes into `/onboarding` instead of straight to
+  `/dashboard`. Also dropped `currentRole`/`targetRole`/`aiMlExperience`
+  from the register form itself - `registerUser` never read them from
+  `req.body`, so they were silently discarded on every signup and
+  duplicated (uselessly) what onboarding now asks.
+  Acceptance: covered by `client/src/pages/__tests__/Onboarding.test.js`
+  (chip selection incl. role swap and multi-skill, "Nothing yet"
+  mutual-exclusivity both directions, preview placeholder/update/swap,
+  skip persisting only `onboardingCompleted`, submit persisting the picked
+  role/skills, and no re-show once `onboardingCompleted` is already true),
+  `OnboardingTouchTargets.test.js` (44px chips/submit/skip), and new server
+  tests in `auth.test.js` (fresh registration starts `onboardingCompleted:
+  false`; `updatedetails` persists it plus `targetRole`/`skills`) and
+  `User.test.js` (schema default `true`).
+  Caveat: could not run the server suite in this environment -
+  `mongodb-memory-server`'s binary download is blocked by this sandbox's
+  egress policy (`fastdl.mongodb.org` → 403), which fails every existing
+  integration suite identically (verified against `comments.test.js`
+  unmodified), not something introduced by this change. Verified instead
+  by loading the edited modules directly (`models/User.js`,
+  `controllers/users.js`, `config/passport.js`) and booting the compiled
+  app in-process, both without error. Client suite ran clean: 38 suites,
+  182 tests.
 
 - [ ] **"For you" ranking and the "You can answer these" rail.** Uses what item
   11 collects. Rank the default feed by relevance to the member's

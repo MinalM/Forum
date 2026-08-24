@@ -131,4 +131,18 @@ describe('User Model Test', () => {
       expect(error.errors.role).toBeDefined();
     }
   });
+
+  // Defaults true so a document created (or hydrated from a pre-existing
+  // record) without the field explicitly set is never sent through the
+  // post-signup onboarding step - only registerUser/passport opt fresh
+  // signups in with an explicit false.
+  it('should default onboardingCompleted to true', async () => {
+    const user = await User.create({
+      name: 'Test User',
+      email: 'onboarding-default@example.com',
+      password: 'password123'
+    });
+
+    expect(user.onboardingCompleted).toBe(true);
+  });
 });

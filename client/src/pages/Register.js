@@ -11,22 +11,20 @@ const Register = () => {
     name: '',
     email: '',
     password: '',
-    password2: '',
-    currentRole: '',
-    targetRole: '',
-    aiMlExperience: 'beginner'
+    password2: ''
   });
 
-  const { name, email, password, password2, currentRole, targetRole, aiMlExperience } = formData;
+  const { name, email, password, password2 } = formData;
 
-  const { register, googleLogin, isAuthenticated, error, clearErrors } = useAuth();
+  const { register, googleLogin, user, isAuthenticated, error, clearErrors } = useAuth();
   const { setAlert } = useAlert();
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Redirect if authenticated
-    if (isAuthenticated) {
-      navigate('/dashboard');
+    // Redirect if authenticated - straight to the onboarding track step for
+    // an account that hasn't been through it yet, dashboard otherwise.
+    if (isAuthenticated && user) {
+      navigate(user.onboardingCompleted ? '/dashboard' : '/onboarding');
     }
 
     // Show error alert if registration fails
@@ -34,7 +32,7 @@ const Register = () => {
       setAlert(error, 'danger');
       clearErrors();
     }
-  }, [isAuthenticated, error, navigate, setAlert, clearErrors]);
+  }, [isAuthenticated, user, error, navigate, setAlert, clearErrors]);
 
   const onChange = e => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -49,10 +47,7 @@ const Register = () => {
       const success = await register({
         name,
         email,
-        password,
-        currentRole,
-        targetRole,
-        aiMlExperience
+        password
       });
 
       if (success) {
@@ -125,48 +120,6 @@ const Register = () => {
               autoComplete="new-password"
               required
             />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="currentRole">Current Role/Profession</label>
-            <input
-              type="text"
-              className="form-control"
-              id="currentRole"
-              name="currentRole"
-              value={currentRole}
-              onChange={onChange}
-              placeholder="e.g. Software Developer, Data Analyst, Student"
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="targetRole">Target AI/ML Role</label>
-            <input
-              type="text"
-              className="form-control"
-              id="targetRole"
-              name="targetRole"
-              value={targetRole}
-              onChange={onChange}
-              placeholder="e.g. Machine Learning Engineer, Data Scientist"
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="aiMlExperience">AI/ML Experience Level</label>
-            <select
-              className="form-control"
-              id="aiMlExperience"
-              name="aiMlExperience"
-              value={aiMlExperience}
-              onChange={onChange}
-            >
-              <option value="beginner">Beginner</option>
-              <option value="intermediate">Intermediate</option>
-              <option value="advanced">Advanced</option>
-              <option value="expert">Expert</option>
-            </select>
           </div>
 
           <button type="submit" className="btn btn-block">

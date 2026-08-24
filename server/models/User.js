@@ -57,6 +57,13 @@ const UserSchema = new mongoose.Schema({
     type: String
   },
   skills: [String],
+  // Defaults true so existing users are never retroactively sent through
+  // the post-signup onboarding step - only registerUser/passport set this
+  // false, for accounts created after the step existed.
+  onboardingCompleted: {
+    type: Boolean,
+    default: true
+  },
   avatar: {
     type: String,
     default: 'default-avatar.jpg'

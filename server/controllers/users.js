@@ -15,7 +15,8 @@ exports.registerUser = asyncHandler(async (req, res, next) => {
     name,
     email,
     password,
-    role: role || 'user'
+    role: role || 'user',
+    onboardingCompleted: false
   });
 
   // Increment signup counter
@@ -108,7 +109,8 @@ exports.updateDetails = asyncHandler(async (req, res, next) => {
     aiMlExperience: req.body.aiMlExperience,
     currentRole: req.body.currentRole,
     targetRole: req.body.targetRole,
-    skills: req.body.skills
+    skills: req.body.skills,
+    onboardingCompleted: req.body.onboardingCompleted
   };
 
   // Remove undefined fields
