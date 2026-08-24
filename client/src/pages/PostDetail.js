@@ -142,21 +142,6 @@ const PostDetail = () => {
     }
   };
 
-  const handleSolve = async () => {
-    try {
-      const res = await axios.put(`/api/posts/${id}/solve`);
-      setPost(res.data.data);
-      setAlert(
-        res.data.data.isSolved
-          ? 'Post marked as solved'
-          : 'Post marked as unsolved',
-        'success'
-      );
-    } catch (err) {
-      setAlert('Error updating post status', 'danger');
-    }
-  };
-
   const handleDelete = async () => {
     if (window.confirm('Are you sure you want to delete this post?')) {
       try {
@@ -444,16 +429,6 @@ const PostDetail = () => {
               <i className="fas fa-arrow-down"></i>
             </button>
           </div>
-
-          {isAuthor && (
-            <button
-              className={`btn btn-sm ${post.isSolved ? 'btn-success' : 'btn-secondary'}`}
-              onClick={handleSolve}
-            >
-              <i className={`fas fa-${post.isSolved ? 'check-circle' : 'question-circle'}`}></i>{' '}
-              {post.isSolved ? 'Solved' : 'Mark as Solved'}
-            </button>
-          )}
 
           {isAuthenticated && (
             <button
