@@ -37,19 +37,22 @@ const OAuthSuccess = () => {
           // Set the token in axios headers
           axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
           
-          // Fetch user data to ensure it's loaded
+          // Fetch user data to ensure it's loaded, and to know whether this
+          // account still needs the post-signup onboarding step.
+          let onboardingCompleted = true;
           try {
-            await axios.get('/api/users/me');
+            const meRes = await axios.get('/api/users/me');
+            onboardingCompleted = meRes.data?.data?.onboardingCompleted !== false;
           } catch (err) {
             console.error('Error fetching user data:', err);
           }
-          
+
           // Show success message
           setAlert('Successfully logged in with Google!', 'success');
-          
-          // Redirect to dashboard
+
+          // Redirect to dashboard, or onboarding for a fresh account
           setTimeout(() => {
-            navigate('/dashboard');
+            navigate(onboardingCompleted ? '/dashboard' : '/onboarding');
           }, 500); // Small delay to ensure token is processed
         } else {
           // If no token, show error and redirect to login
