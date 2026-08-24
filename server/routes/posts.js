@@ -9,7 +9,8 @@ const {
   downvotePost,
   solvePost,
   getPostsByLevel,
-  searchPosts
+  searchPosts,
+  getRecommendedUnanswered
 } = require('../controllers/posts');
 const {
   subscribeToPost,
@@ -21,7 +22,7 @@ const Post = require('../models/Post');
 
 const router = express.Router({ mergeParams: true });
 
-const { protect, authorize } = require('../middleware/auth');
+const { protect, authorize, optionalAuth } = require('../middleware/auth');
 const advancedResults = require('../middleware/advancedResults');
 
 // Comments router will be mounted at the app level
@@ -29,6 +30,7 @@ const advancedResults = require('../middleware/advancedResults');
 // Special routes
 router.get('/search', searchPosts);
 router.get('/level/:level', getPostsByLevel);
+router.get('/recommended', protect, getRecommendedUnanswered);
 router.put('/:id/upvote', protect, upvotePost);
 router.put('/:id/downvote', protect, downvotePost);
 router.put('/:id/solve', protect, solvePost);
@@ -42,6 +44,7 @@ router
 router
   .route('/')
   .get(
+    optionalAuth,
     advancedResults(Post, [
       { path: 'user', select: 'name avatar' },
       { path: 'category', select: 'name' },

@@ -9,6 +9,13 @@ const { trace, SpanStatusCode } = require('@opentelemetry/api');
 const { postCreatedCounter, postViewCounter } = require('../dist/instrumentation/metrics');
 const { getExperimentationService } = require('../dist/services/experimentation');
 const { subscribeUserToPost } = require('../utils/subscriptions');
+const { hasPersonalizationSignal, roleWordSet, scorePost } = require('../utils/feedRanking');
+
+// How many unanswered posts the "You can answer these" rail considers before
+// ranking/truncating to RECOMMENDED_LIMIT - bounded for the same reason as
+// PERSONALIZATION_CANDIDATE_POOL in middleware/advancedResults.js.
+const RECOMMENDED_CANDIDATE_POOL = 100;
+const RECOMMENDED_LIMIT = 5;
 
 // @desc    Get all posts. GET /api/posts supports ?feed=recent|unanswered|top
 //          (see server/middleware/advancedResults.js), plus the existing
@@ -503,6 +510,41 @@ exports.searchPosts = asyncHandler(async (req, res, next) => {
     count: posts.length,
     pagination,
     data: posts
+  });
+});
+
+// @desc    Unanswered questions ranked against the signed-in member's
+//          targetRole/skills/aiMlExperience (see server/utils/feedRanking.js)
+//          for the "You can answer these" rail. A member with no
+//          personalization signal set gets the plain oldest-first order
+//          instead - never an empty rail just because they skipped
+//          onboarding.
+// @route   GET /api/posts/recommended
+// @access  Private
+exports.getRecommendedUnanswered = asyncHandler(async (req, res, next) => {
+  const candidates = await Post.find({ commentCount: 0 })
+    .select('title tags aiMlLevel category createdAt')
+    .populate('category', 'name')
+    .sort('createdAt')
+    .limit(RECOMMENDED_CANDIDATE_POOL)
+    .lean();
+
+  let ranked = candidates;
+  if (hasPersonalizationSignal(req.user)) {
+    const roleWords = roleWordSet(req.user.targetRole);
+    // Stable sort: ties (including an all-zero score for every candidate,
+    // i.e. nothing matches) keep the oldest-first order fetched above.
+    ranked = [...candidates].sort(
+      (a, b) => scorePost(b, req.user, roleWords) - scorePost(a, req.user, roleWords)
+    );
+  }
+
+  const data = ranked.slice(0, RECOMMENDED_LIMIT);
+
+  res.status(200).json({
+    success: true,
+    count: data.length,
+    data
   });
 });
 
