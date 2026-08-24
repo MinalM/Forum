@@ -172,3 +172,37 @@ describe('Home trending posts gating', () => {
     expect(await screen.findByText('Trending')).toBeInTheDocument();
   });
 });
+
+describe('Home "You can answer these" rail', () => {
+  beforeEach(() => {
+    axios.get.mockReset();
+  });
+
+  it('renders the rail for an authenticated member', async () => {
+    axios.get.mockImplementation((url) => {
+      if (url.includes('/api/posts/recommended')) {
+        return Promise.resolve({
+          data: { data: [{ _id: 'p1', title: 'Matched question', category: { name: 'Deep Learning' } }] }
+        });
+      }
+      return Promise.resolve({ data: { data: [] } });
+    });
+
+    renderHome({ isAuthenticated: true, user: { _id: '1', username: 'alice' } });
+
+    expect(await screen.findByText('You can answer these')).toBeInTheDocument();
+    expect(await screen.findByText('Matched question')).toBeInTheDocument();
+  });
+
+  it('does not render the rail, or request it, for a signed-out visitor', async () => {
+    axios.get.mockResolvedValue({ data: { data: [] } });
+
+    renderHome({ isAuthenticated: false, user: null });
+
+    await screen.findByText('No posts found');
+    expect(screen.queryByText('You can answer these')).not.toBeInTheDocument();
+    expect(axios.get).not.toHaveBeenCalledWith(
+      expect.stringContaining('/api/posts/recommended')
+    );
+  });
+});

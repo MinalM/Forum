@@ -1,6 +1,15 @@
+const { hasPersonalizationSignal, roleWordSet, scorePost } = require('../utils/feedRanking');
+
 // Feed values for GET /api/posts — see parseSinceWindow for the `since` format.
 const POST_FEED_VALUES = ['recent', 'unanswered', 'top'];
 const DEFAULT_TOP_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+
+// How many of the most recent matching posts get considered for
+// personalized ranking (see BACKLOG.md item 11 / server/utils/feedRanking.js).
+// Bounded rather than scoring every matching post so a large forum doesn't
+// pay for a full collection scan+score on every "For you" request; a page
+// past this pool falls back to whatever recency order the pool already has.
+const PERSONALIZATION_CANDIDATE_POOL = 200;
 
 // Parses a `since` window like '7d', '12h', '2w' into milliseconds.
 // Returns null for anything else so the caller can fall back to a default.
@@ -54,6 +63,20 @@ const advancedResults = (model, populate) => async (req, res, next) => {
   }
 
   const combinedFilter = feedFilter ? { $and: [baseFilter, feedFilter] } : baseFilter;
+
+  // Personalize the default/recent feed for a signed-in member with a
+  // profile to rank against (req.user is only ever set here by
+  // optionalAuth — see routes/posts.js). Left off for every other feed,
+  // an explicit sort/select (which the ranked path below doesn't honour),
+  // or a search (whose own regex relevance takes priority).
+  const wantsRecentFeed = req.query.feed === undefined || req.query.feed === 'recent';
+  const personalize =
+    isPostModel &&
+    wantsRecentFeed &&
+    !req.query.sort &&
+    !req.query.select &&
+    !req.query.search &&
+    hasPersonalizationSignal(req.user);
 
   // Finding resource
   query = model.find(combinedFilter);
@@ -168,14 +191,44 @@ const advancedResults = (model, populate) => async (req, res, next) => {
     ? await model.countDocuments({ commentCount: 0 })
     : undefined;
 
-  query = query.skip(startIndex).limit(limit);
+  let results;
 
-  if (populate) {
-    query = query.populate(populate);
+  if (personalize) {
+    const roleWords = roleWordSet(req.user.targetRole);
+    const candidates = await model
+      .find(combinedFilter)
+      .select('tags aiMlLevel category createdAt')
+      .populate('category', 'name')
+      .sort('-createdAt')
+      .limit(PERSONALIZATION_CANDIDATE_POOL)
+      .lean();
+
+    // Array.prototype.sort is stable, so posts with an equal (including
+    // zero) score keep the -createdAt order they were fetched in above.
+    const rankedIds = candidates
+      .map(candidate => ({ id: candidate._id, score: scorePost(candidate, req.user, roleWords) }))
+      .sort((a, b) => b.score - a.score)
+      .slice(startIndex, endIndex)
+      .map(entry => entry.id);
+
+    let rankedQuery = model.find({ _id: { $in: rankedIds } });
+    if (populate) {
+      rankedQuery = rankedQuery.populate(populate);
+    }
+    const rankedDocs = await rankedQuery;
+
+    // $in doesn't preserve order - reassemble in ranked order.
+    const docsById = new Map(rankedDocs.map(doc => [doc._id.toString(), doc]));
+    results = rankedIds.map(id => docsById.get(id.toString())).filter(Boolean);
+  } else {
+    query = query.skip(startIndex).limit(limit);
+
+    if (populate) {
+      query = query.populate(populate);
+    }
+
+    results = await query;
   }
-
-  // Executing query
-  const results = await query;
 
   // Pagination result
   const pagination = {};

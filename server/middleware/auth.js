@@ -79,6 +79,40 @@ exports.protect = asyncHandler(async (req, res, next) => {
   }
 });
 
+// Attach req.user when a valid token is present, but never blocks the
+// request otherwise - for public routes (like GET /api/posts) that want to
+// personalize their response for signed-in members without requiring auth.
+exports.optionalAuth = asyncHandler(async (req, res, next) => {
+  let token;
+
+  if (
+    req.headers.authorization &&
+    req.headers.authorization.startsWith('Bearer')
+  ) {
+    token = req.headers.authorization.split(' ')[1];
+  } else if (req.cookies && req.cookies.token) {
+    token = req.cookies.token;
+  }
+
+  if (!token) {
+    return next();
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id);
+
+    if (user && !user.isBanned) {
+      req.user = user;
+    }
+  } catch (err) {
+    // Invalid/expired token on a public route - proceed unauthenticated
+    // rather than erroring.
+  }
+
+  next();
+});
+
 // Grant access to specific roles
 exports.authorize = (...roles) => {
   return (req, res, next) => {

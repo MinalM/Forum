@@ -244,17 +244,45 @@ Two standing constraints for every item below:
   app in-process, both without error. Client suite ran clean: 38 suites,
   182 tests.
 
-- [ ] **"For you" ranking and the "You can answer these" rail.** Uses what item
-  11 collects. Rank the default feed by relevance to the member's
-  `targetRole`/`skills`/`aiMlExperience` (matching category, tags and
-  `aiMlLevel`) rather than pure recency, and add the right-rail card from
-  `Main.dc.html` surfacing unanswered questions matching their skills.
-  Ranking stays simple and legible — a documented weighted score computed in
-  the query, not a learned model.
-  Acceptance: server tests for the ranking given fixture users and posts,
-  including the cold-start case (a member with no skills set falls back to
-  recency, never to an empty feed); client tests for the rail rendering,
-  its empty state, and links through to the thread.
+- [x] **"For you" ranking and the "You can answer these" rail.** Done: #71.
+  Added `server/utils/feedRanking.js`: a documented weighted score
+  (`TAG_WEIGHT` per matching `skills`/`tags`, `LEVEL_WEIGHT` for an
+  `aiMlLevel`/`aiMlExperience` match, `CATEGORY_WEIGHT` for a `targetRole`/
+  category-name word overlap, since `targetRole` is free text with no
+  structured link to `Category`), applied to `GET /api/posts`'s default/
+  `feed=recent` path via a new `optionalAuth` middleware
+  (`server/middleware/auth.js`) so a signed-in member's request can be
+  personalized without requiring one. Cold-start members (no `skills`, no
+  `targetRole`) and anonymous visitors fall back to plain recency, as do
+  every other feed value, an explicit `sort`/`select`, and `search` (whose
+  own regex relevance takes priority) - all unaffected by this change.
+  Ranking is bounded to the 200 most-recent matching posts before scoring
+  (`PERSONALIZATION_CANDIDATE_POOL`) rather than scanning the full
+  collection on every request. Added `GET /api/posts/recommended`
+  (protected), reusing the same scoring over unanswered posts with the
+  same cold-start fallback (oldest-first), and a new `RecommendedForYou`
+  right-rail component wired into `Home` for authenticated members.
+  Acceptance: covered by `server/__tests__/utils/feedRanking.test.js` (the
+  scoring formula in isolation) and
+  `server/__tests__/integration/forYouRanking.test.js` (ranking overriding
+  recency, cold-start and anonymous fallback, non-interference with
+  explicit sort/search/`feed=unanswered`, and `/recommended`'s auth
+  requirement, ranking, exclusion of answered posts, and cold-start
+  fallback); client coverage in
+  `client/src/components/__tests__/RecommendedForYou.test.js` (rendering,
+  empty state, thread links, hidden/no-fetch for signed-out visitors) and
+  `Home.test.js`/`mobileTouchTargets.test.js` for the rail's wiring and
+  44px link targets.
+  Caveat: could not run the server suite in this environment -
+  `mongodb-memory-server`'s binary download is blocked by this sandbox's
+  egress policy (`fastdl.mongodb.org` → 403), the same limitation noted on
+  #68/#70, not something introduced by this change (it fails the new
+  pure-unit `feedRanking.test.js` identically, since jest's global setup
+  boots the memory server for every file regardless of whether that file
+  touches the DB). Verified instead by running the scoring logic directly
+  via `node -e` against the same cases the unit test covers, and by
+  requiring the changed modules standalone plus booting the compiled app
+  in-process without error. Client suite ran clean: 39 suites, 190 tests.
 
 - [ ] **Mobile feed and bottom tab bar.** Per `Mobile.dc.html`: the feed at
   390px with compact cards and inline voting, and a bottom tab bar carrying
