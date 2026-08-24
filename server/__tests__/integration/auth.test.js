@@ -40,6 +40,15 @@ describe('Authentication & Authorization', () => {
       expect(user.name).toBe(validUser.name);
     });
 
+    it('starts a freshly registered user with onboardingCompleted: false', async () => {
+      await request(app)
+        .post('/api/users/register')
+        .send(validUser);
+
+      const user = await User.findOne({ email: validUser.email });
+      expect(user.onboardingCompleted).toBe(false);
+    });
+
     it('should not register user with existing email', async () => {
       await User.create(validUser);
 
@@ -224,6 +233,24 @@ describe('Authentication & Authorization', () => {
 
       expect(res.status).toBe(400);
       expect(res.body).toHaveProperty('success', false);
+    });
+
+    it('can mark onboarding complete and persist a picked target role and skills', async () => {
+      const res = await request(app)
+        .put('/api/users/updatedetails')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          onboardingCompleted: true,
+          targetRole: 'ML Engineer',
+          skills: ['Python', 'pandas']
+        });
+
+      expect(res.status).toBe(200);
+
+      const updatedUser = await User.findById(user._id);
+      expect(updatedUser.onboardingCompleted).toBe(true);
+      expect(updatedUser.targetRole).toBe('ML Engineer');
+      expect(updatedUser.skills).toEqual(['Python', 'pandas']);
     });
   });
 });
