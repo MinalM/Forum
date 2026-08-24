@@ -130,3 +130,10 @@ describe('feed tab buttons (Home) are at least 44px tall', () => {
     expect(minPx(rule, 'min-height')).toBeGreaterThanOrEqual(MIN_TARGET);
   });
 });
+
+describe('"You can answer these" rail links (Home) are at least 44px tall', () => {
+  it('declares a min-height of 44px on the recommended-for-you-item link', () => {
+    const rule = extractRule(appCss, '.recommended-for-you-item a');
+    expect(minPx(rule, 'min-height')).toBeGreaterThanOrEqual(MIN_TARGET);
+  });
+});

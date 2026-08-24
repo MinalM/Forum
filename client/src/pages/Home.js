@@ -5,11 +5,15 @@ import PostItem from '../components/posts/PostItem';
 import { FeedComposerProvider } from '../context/FeedComposerContext';
 import { useFeatureFlag } from '../hooks/useFeatureFlag';
 import TrendingPosts from '../components/TrendingPosts';
+import RecommendedForYou from '../components/RecommendedForYou';
 import { useAuth } from '../context/AuthContext';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 // Drives GET /api/posts?feed=... (see server/middleware/advancedResults.js).
-// "For you" is plain recency until personalisation ranking lands separately.
+// "For you" (feed=recent) is ranked server-side against the signed-in
+// member's profile when they have one to rank against (server/utils/
+// feedRanking.js) - plain recency otherwise, including for anonymous
+// visitors and cold-start members.
 const FEED_TABS = [
   { key: 'recent', label: 'For you' },
   { key: 'unanswered', label: 'Unanswered' },
@@ -152,6 +156,7 @@ const Home = () => {
 
           <div className="col-md-4">
             {showTrending && <TrendingPosts />}
+            <RecommendedForYou />
             <h2 className="mb-4">Popular Categories</h2>
             <div className="categories-sidebar">
               {categories.length > 0 ? (
