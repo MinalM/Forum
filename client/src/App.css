@@ -273,6 +273,7 @@
 
 .post-header {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
 }
@@ -307,6 +308,8 @@
 
 .post-footer {
   display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
   justify-content: space-between;
   align-items: center;
 }
