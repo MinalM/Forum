@@ -326,9 +326,9 @@ the autonomous cycle cannot do under the current ground rules, so they wait for
 a human-driven change — and since they touch the same file, they are probably
 one PR rather than three.
 
-- [ ] **`EditPost` can crash-redirect a valid edit request away when the
+- [x] **`EditPost` can crash-redirect a valid edit request away when the
   page is opened directly (a fresh load / hard refresh), before auth has
-  finished loading.** Discovered while adding this page's document-title
+  finished loading.** Done: #74. Discovered while adding this page's document-title
   test (see the per-page document titles item above): `EditPost`'s
   data-fetch `useEffect` in `client/src/pages/EditPost.js` reads
   `user._id` unconditionally (`if (user._id !== postData.user._id && ...)`)
