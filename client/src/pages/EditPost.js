@@ -7,7 +7,7 @@ import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 const EditPost = () => {
   const { id } = useParams();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { setAlert } = useAlert();
   const navigate = useNavigate();
   useDocumentTitle('Edit Post');
@@ -26,6 +26,19 @@ const EditPost = () => {
   const { title, content, category, tags, aiMlLevel } = formData;
 
   useEffect(() => {
+    // Wait for AuthContext to resolve `user` before comparing it against
+    // the fetched post's author — dereferencing it while auth is still in
+    // flight (a direct load / hard refresh) crashes and redirects away
+    // from a valid edit request.
+    if (authLoading) {
+      return;
+    }
+
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+
     const fetchData = async () => {
       try {
         // Fetch post details
@@ -60,7 +73,7 @@ const EditPost = () => {
     };
 
     fetchData();
-  }, [id, user, setAlert, navigate]);
+  }, [id, user, authLoading, setAlert, navigate]);
 
   const onChange = e => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
