@@ -68,9 +68,12 @@ CommentSchema.virtual('replies', {
   justOne: false
 });
 
-// Get vote count
+// Get vote count. Defensive against a partial `.populate({ select })` that
+// omits upvotes/downvotes — this getter runs on every serialization
+// (toJSON/toObject virtuals are on), including populated subdocuments, so an
+// unguarded `.length` throws and takes down the whole response.
 CommentSchema.virtual('voteCount').get(function() {
-  return this.upvotes.length - this.downvotes.length;
+  return (this.upvotes || []).length - (this.downvotes || []).length;
 });
 
 module.exports = mongoose.model('Comment', CommentSchema);
