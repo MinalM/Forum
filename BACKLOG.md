@@ -403,8 +403,8 @@ one PR rather than three.
   green under the new version; `client/package.json` engines/version pins
   revisited if the bump also permits newer Vite/plugin-react majors.
 
-- [ ] **`Post`/`Comment` populated with a partial `select` crash on response
-  serialization if `upvotes`/`downvotes` are excluded.** Discovered while
+- [x] **`Post`/`Comment` populated with a partial `select` crash on response
+  serialization if `upvotes`/`downvotes` are excluded.** Done: #75. Discovered while
   building thread subscriptions (#68), across two rounds of CI failures:
   both `PostSchema.virtual('voteCount')` (`server/models/Post.js`) and
   `CommentSchema.virtual('voteCount')` (`server/models/Comment.js`)
