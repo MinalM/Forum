@@ -284,19 +284,42 @@ Two standing constraints for every item below:
   requiring the changed modules standalone plus booting the compiled app
   in-process without error. Client suite ran clean: 39 suites, 190 tests.
 
-- [ ] **Mobile feed and bottom tab bar.** Per `Mobile.dc.html`: the feed at
-  390px with compact cards and inline voting, and a bottom tab bar carrying
-  Feed / Answer (badged with the unanswered count) / Ask / Saved / You.
-  The `.post-meta` horizontal-overflow bug this item used to carry has since
-  shipped on `main` (#53: `flex-wrap: wrap` on `.post-meta` in
-  `client/src/App.css`, guarded by `client/src/__tests__/postMetaOverflow.test.js`).
-  Do not redo it — but the redesigned meta rows must keep wrapping, and that
-  test must still pass against whatever replaces the rule.
-  Acceptance: no horizontal overflow (`scrollWidth <= clientWidth`) at 375px
-  on the feed and on a post detail page, tested either with Playwright or, if
-  no browser is available in the implementing environment, the raw-CSS-source
-  assertion pattern from `mobileTouchTargets.test.js`; every tab-bar target at
-  44px; the existing mobile menu still works.
+- [x] **Mobile feed and bottom tab bar.** Done: #72. Per
+  `Mobile.dc.html`: a new `MobileTabBar` component (`client/src/components/
+  layout/MobileTabBar.js`), fixed to the viewport and shown only at
+  `<=768px` (`.mobile-tab-bar` in `App.css`, hidden by default, `display:
+  flex` inside the existing mobile media query — same pattern as
+  `.mobile-menu-toggle`), rendered in `App.js` alongside `Navbar`/`Footer`.
+  Feed links to `/`; Answer links to `/?feed=unanswered` and carries the
+  unanswered count as a badge, polled every 60s from the same `GET
+  /api/posts?feed=unanswered` envelope `Home` already reads (`Home` now
+  seeds its `activeTab` from a `?feed=` query param on mount so the deep
+  link lands on the right tab, falling back to `recent` for anything it
+  doesn't recognise); Ask and You link to the existing `/create-post` and
+  `/dashboard` routes and rely on `PrivateRoute`'s existing sign-in
+  redirect for guests. Saved has no backing feature yet — nothing in this
+  app persists a member's bookmarks — so it surfaces a "Saved posts are
+  coming soon" alert instead of a dead link; see the new backlog item
+  below.
+  Fixed two real overflow sources at 375-390px along the way: `.post-header`
+  (PostDetail's title/badges/meta row) and `.post-footer` (the feed card's
+  tags/comment-count/Answer-button row) were both unwrapped flex rows with
+  no wrap, so a narrow viewport pushed them wider than the screen; both now
+  `flex-wrap: wrap`, covered by new regression tests alongside the existing
+  `.post-meta` one in `postMetaOverflow.test.js`. Card padding is also
+  reduced on mobile (`.card-body` 1.5rem → 1rem) for the "compact cards"
+  half of this item, and the fixed tab bar's own height is cleared with
+  bottom padding on `.footer` so it never sits over page content.
+  Acceptance: `postMetaOverflow.test.js` covers the `.post-header`/
+  `.post-footer` wrap fix (raw-CSS-source assertion, no browser available in
+  this environment); `MobileTabBarTouchTargets.test.js` covers the 44px
+  minimum on every tab and the raised Ask button; `MobileTabBar.test.js`
+  covers all five links/targets, the unanswered-count badge (including the
+  no-badge-at-zero case), active-tab highlighting on all four routes, the
+  Saved "coming soon" alert, and the polling interval clearing on unmount;
+  `Home.test.js` covers the new `?feed=` deep link and its fallback. Did not
+  touch `Navbar.js`/`Navbar.css`, so the existing mobile hamburger menu is
+  unchanged.
 
 - [ ] **`PostDetail`'s standalone "Mark as Solved" button can now diverge
   from the accepted-answer state.** Discovered while implementing accepted
@@ -438,3 +461,18 @@ one PR rather than three.
   serialization succeeds (`voteCount` either omitted or `0`, not a
   thrown error); `reports.js`'s four affected populates fixed or
   covered; existing server suite green.
+
+- [ ] **Build a real "Saved posts" feature.** Discovered while implementing
+  the mobile bottom tab bar (item above): `Mobile.dc.html`'s tab bar has a
+  Saved tab, but nothing in this app lets a member bookmark a post — no
+  model, no endpoint, no UI anywhere else either. The tab bar ships a
+  "Saved posts are coming soon" alert in place of a dead link
+  (`MobileTabBar.js`'s `handleSavedClick`) rather than inventing the
+  feature inline in that PR. Needs a `SavedPost` (or similar) model keyed
+  on user + post with a unique compound index (same shape as
+  `Subscription`), `POST`/`DELETE`/`GET /api/posts/:id/save` endpoints, a
+  save toggle on `PostItem`/`PostDetail`, and a listing page or view the
+  mobile tab bar's Saved link (and a desktop equivalent) can point to.
+  Acceptance: TBD once scoped - likely two items (server model +
+  endpoints, then the client toggle/listing), each with its own
+  acceptance criteria and tests.

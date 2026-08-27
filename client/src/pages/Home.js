@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import axios from 'axios';
 import PostItem from '../components/posts/PostItem';
 import { FeedComposerProvider } from '../context/FeedComposerContext';
@@ -20,13 +20,23 @@ const FEED_TABS = [
   { key: 'top', label: 'Top this week' }
 ];
 
+const FEED_TAB_KEYS = FEED_TABS.map(tab => tab.key);
+
 const feedQuery = (feedKey) =>
   feedKey === 'top' ? 'feed=top&since=7d' : `feed=${feedKey}`;
 
 const Home = () => {
   useDocumentTitle();
 
-  const [activeTab, setActiveTab] = useState('recent');
+  // Lets the mobile tab bar's Answer link (/?feed=unanswered) and any other
+  // deep link land straight on the right tab instead of always opening on
+  // "For you". An unrecognised value falls back to the default, same as the
+  // server does for an invalid `feed` query param.
+  const [searchParams] = useSearchParams();
+  const initialFeed = searchParams.get('feed');
+  const [activeTab, setActiveTab] = useState(
+    FEED_TAB_KEYS.includes(initialFeed) ? initialFeed : 'recent'
+  );
   const [posts, setPosts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [unansweredCount, setUnansweredCount] = useState(0);

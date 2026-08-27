@@ -21,3 +21,23 @@ describe('post detail meta row does not force horizontal overflow', () => {
     expect(rule).toMatch(/flex-wrap:\s*wrap/);
   });
 });
+
+describe('post detail header row does not force horizontal overflow', () => {
+  // .post-header lays the title, the Solved/Needs-an-answer badge and the
+  // .post-meta row out as flex siblings - on a narrow viewport that's three
+  // items wide enough on their own to overflow unless the row can wrap.
+  it('.post-header allows wrapping instead of forcing a single nowrap line', () => {
+    const rule = extractRule(appCss, '.post-header');
+    expect(rule).toMatch(/flex-wrap:\s*wrap/);
+  });
+});
+
+describe('feed card footer does not force horizontal overflow', () => {
+  // .post-footer lays the tag chips and the comment/view counts + Answer
+  // button out as flex siblings with no wrap - the same overflow risk as
+  // .post-header, just on the feed card (PostItem) instead of PostDetail.
+  it('.post-footer allows wrapping instead of forcing a single nowrap line', () => {
+    const rule = extractRule(appCss, '.post-footer');
+    expect(rule).toMatch(/flex-wrap:\s*wrap/);
+  });
+});

@@ -21,11 +21,11 @@ jest.mock('../../hooks/useFeatureFlag', () => ({
 
 const { useFeatureFlag } = require('../../hooks/useFeatureFlag');
 
-const renderHome = (authValue) => {
+const renderHome = (authValue, initialEntries = ['/']) => {
   return render(
     <AuthContext.Provider value={authValue}>
       <AlertProvider>
-        <MemoryRouter>
+        <MemoryRouter initialEntries={initialEntries}>
           <Home />
         </MemoryRouter>
       </AlertProvider>
@@ -77,6 +77,28 @@ describe('Home feed tabs', () => {
   it('requests the recent feed by default', async () => {
     axios.get.mockResolvedValue({ data: { data: [], unansweredCount: 0 } });
     renderHome({ isAuthenticated: false, user: null });
+
+    await waitFor(() => {
+      expect(axios.get).toHaveBeenCalledWith(expect.stringContaining('feed=recent'));
+    });
+  });
+
+  it('starts on the unanswered feed when linked in via ?feed=unanswered (mobile tab bar deep link)', async () => {
+    axios.get.mockResolvedValue({ data: { data: [], unansweredCount: 3 } });
+    renderHome({ isAuthenticated: false, user: null }, ['/?feed=unanswered']);
+
+    await waitFor(() => {
+      expect(axios.get).toHaveBeenCalledWith(expect.stringContaining('feed=unanswered'));
+    });
+    expect(await screen.findByRole('tab', { name: /Unanswered/ })).toHaveAttribute(
+      'aria-selected',
+      'true'
+    );
+  });
+
+  it('falls back to the recent feed for an unrecognised ?feed value', async () => {
+    axios.get.mockResolvedValue({ data: { data: [], unansweredCount: 0 } });
+    renderHome({ isAuthenticated: false, user: null }, ['/?feed=bogus']);
 
     await waitFor(() => {
       expect(axios.get).toHaveBeenCalledWith(expect.stringContaining('feed=recent'));

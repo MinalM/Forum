@@ -7,6 +7,7 @@ import Navbar from './components/layout/Navbar';
 import Footer from './components/layout/Footer';
 import Alert from './components/layout/Alert';
 import AnnouncementBanner from './components/AnnouncementBanner';
+import MobileTabBar from './components/layout/MobileTabBar';
 
 // Page Components
 import Home from './pages/Home';
@@ -91,6 +92,7 @@ const App = () => {
         </Routes>
       </div>
       <Footer />
+      <MobileTabBar />
       {showShortcuts && (
         <KeyboardShortcutsModal
           isOpen={shortcutsOpen}
