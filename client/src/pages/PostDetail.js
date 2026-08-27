@@ -24,6 +24,7 @@ const PostDetail = () => {
   const [replyText, setReplyText] = useState('');
   const [commentSort, setCommentSort] = useState('helpful');
   const [subscribed, setSubscribed] = useState(false);
+  const [saved, setSaved] = useState(false);
   const [reportModal, setReportModal] = useState({
     isOpen: false,
     type: 'post',
@@ -80,6 +81,37 @@ const PostDetail = () => {
       setSubscribed(res.data.data.subscribed);
     } catch (err) {
       setAlert('Error updating notification preference', 'danger');
+    }
+  };
+
+  useEffect(() => {
+    const fetchSaveStatus = async () => {
+      if (!isAuthenticated || !user) return;
+
+      try {
+        const res = await axios.get(`/api/posts/${id}/save`);
+        setSaved(res.data.data.saved);
+      } catch (err) {
+        // Non-fatal - the toggle just starts in the unsaved state.
+      }
+    };
+
+    fetchSaveStatus();
+  }, [id, isAuthenticated, user]);
+
+  const handleToggleSave = async () => {
+    if (!isAuthenticated || !user) {
+      setAlert('Please log in to save posts', 'danger');
+      return;
+    }
+
+    try {
+      const res = saved
+        ? await axios.delete(`/api/posts/${id}/save`)
+        : await axios.post(`/api/posts/${id}/save`);
+      setSaved(res.data.data.saved);
+    } catch (err) {
+      setAlert(`Error ${saved ? 'unsaving' : 'saving'} post`, 'danger');
     }
   };
 
@@ -438,6 +470,16 @@ const PostDetail = () => {
             >
               <i className={`fas fa-bell${subscribed ? '' : '-slash'}`}></i>{' '}
               {subscribed ? 'Notified' : 'Notify me of answers'}
+            </button>
+          )}
+
+          {isAuthenticated && (
+            <button
+              type="button"
+              className={`save-toggle-detail-btn${saved ? ' active' : ''}`}
+              onClick={handleToggleSave}
+            >
+              <i className="fas fa-bookmark"></i> {saved ? 'Saved' : 'Save'}
             </button>
           )}
 

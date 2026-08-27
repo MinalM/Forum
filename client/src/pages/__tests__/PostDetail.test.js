@@ -784,3 +784,88 @@ describe('PostDetail notify-me subscription toggle', () => {
     expect(parseFloat(computed.minWidth)).toBeGreaterThanOrEqual(44);
   });
 });
+
+describe('PostDetail save toggle', () => {
+  const MEMBER = { _id: '000000000000000000000041', name: 'Member', role: 'user' };
+
+  const setup = ({ saved = false } = {}) => {
+    axios.get.mockReset();
+    axios.put.mockReset();
+    axios.post.mockReset();
+    axios.delete.mockReset();
+    localStorage.clear();
+    localStorage.setItem('token', 'fake-token');
+    axios.get.mockImplementation((url) => {
+      if (url === '/api/users/me') {
+        return Promise.resolve({ data: { data: MEMBER } });
+      }
+      if (url.endsWith('/comments')) {
+        return Promise.resolve({ data: { success: true, data: [] } });
+      }
+      if (url.endsWith('/subscribe')) {
+        return Promise.resolve({ data: { success: true, data: { subscribed: false } } });
+      }
+      if (url.endsWith('/save')) {
+        return Promise.resolve({ data: { success: true, data: { saved } } });
+      }
+      return Promise.resolve({ data: { success: true, data: basePost } });
+    });
+  };
+
+  afterEach(() => {
+    localStorage.clear();
+  });
+
+  it('shows "Save" when not saved, and saves on click', async () => {
+    setup({ saved: false });
+    axios.post.mockResolvedValue({ data: { success: true, data: { saved: true } } });
+    renderPostDetail();
+
+    const btn = await screen.findByRole('button', { name: /^save$/i });
+    fireEvent.click(btn);
+
+    await screen.findByRole('button', { name: /^saved$/i });
+    expect(axios.post).toHaveBeenCalledWith(`/api/posts/${POST_ID}/save`);
+  });
+
+  it('shows "Saved" when already saved, and unsaves on click', async () => {
+    setup({ saved: true });
+    axios.delete.mockResolvedValue({ data: { success: true, data: { saved: false } } });
+    renderPostDetail();
+
+    const btn = await screen.findByRole('button', { name: /^saved$/i });
+    fireEvent.click(btn);
+
+    await screen.findByRole('button', { name: /^save$/i });
+    expect(axios.delete).toHaveBeenCalledWith(`/api/posts/${POST_ID}/save`);
+  });
+
+  it('does not show the save toggle for unauthenticated visitors', async () => {
+    axios.get.mockReset();
+    axios.get.mockImplementation((url) => {
+      if (url.endsWith('/comments')) {
+        return Promise.resolve({ data: { success: true, data: [] } });
+      }
+      return Promise.resolve({ data: { success: true, data: basePost } });
+    });
+    renderPostDetail();
+
+    await screen.findByText('Orphaned post');
+    expect(screen.queryByRole('button', { name: /^save$/i })).not.toBeInTheDocument();
+  });
+
+  it('renders the save toggle at least 44x44', async () => {
+    setup({ saved: false });
+
+    const style = document.createElement('style');
+    style.textContent = appCss;
+    document.head.appendChild(style);
+
+    renderPostDetail();
+
+    const button = await screen.findByRole('button', { name: /^save$/i });
+    const computed = getComputedStyle(button);
+    expect(parseFloat(computed.minHeight)).toBeGreaterThanOrEqual(44);
+    expect(parseFloat(computed.minWidth)).toBeGreaterThanOrEqual(44);
+  });
+});

@@ -494,7 +494,7 @@ one PR rather than three.
   the new router mounted, and confirming `POST /api/posts/:id/save`
   returns 401 without a token.
 
-- [ ] **Saved posts: client save toggle + listing view.** Second slice of
+- [x] **Saved posts: client save toggle + listing view.** Done: #77. Second slice of
   "Build a real Saved posts feature," now unblocked by the server item
   above. Needs a save toggle on `PostItem`/`PostDetail` wired to
   `POST`/`DELETE`/`GET /api/posts/:id/save`, and a listing page or view

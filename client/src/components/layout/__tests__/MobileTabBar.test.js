@@ -1,6 +1,5 @@
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import axios from 'axios';
 import MobileTabBar from '../MobileTabBar';
@@ -47,7 +46,10 @@ describe('MobileTabBar', () => {
       'href',
       '/create-post'
     );
-    expect(screen.getByRole('button', { name: /Saved/ })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Saved/ })).toHaveAttribute(
+      'href',
+      '/saved-posts'
+    );
     expect(screen.getByRole('link', { name: /You/ })).toHaveAttribute('href', '/dashboard');
   });
 
@@ -94,13 +96,9 @@ describe('MobileTabBar', () => {
     expect(screen.getByRole('link', { name: /You/ })).toHaveClass('active');
   });
 
-  it('shows a "coming soon" alert instead of navigating when Saved is tapped', async () => {
-    const user = userEvent.setup();
-    renderTabBar();
-
-    await user.click(screen.getByRole('button', { name: /Saved/ }));
-
-    expect(await screen.findByText(/coming soon/i)).toBeInTheDocument();
+  it('marks Saved active on "/saved-posts"', () => {
+    renderTabBar(['/saved-posts']);
+    expect(screen.getByRole('link', { name: /Saved/ })).toHaveClass('active');
   });
 
   it('stops polling for the unanswered count after unmount', async () => {

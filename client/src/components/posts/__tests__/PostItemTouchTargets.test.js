@@ -40,6 +40,14 @@ describe('PostItem vote button touch targets', () => {
   });
 });
 
+describe('PostItem save toggle touch targets', () => {
+  it('.save-toggle-btn is at least 44x44 unconditionally (feed cards render outside any mobile media query)', () => {
+    const rule = extractRule(appCss, '.save-toggle-btn');
+    expect(minPx(rule, 'min-width')).toBeGreaterThanOrEqual(44);
+    expect(minPx(rule, 'min-height')).toBeGreaterThanOrEqual(44);
+  });
+});
+
 describe('PostItem answer composer touch targets', () => {
   it('.answer-btn is at least 44px tall', () => {
     const rule = extractRule(appCss, '.answer-btn');
