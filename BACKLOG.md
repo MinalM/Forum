@@ -321,23 +321,27 @@ Two standing constraints for every item below:
   touch `Navbar.js`/`Navbar.css`, so the existing mobile hamburger menu is
   unchanged.
 
-- [ ] **`PostDetail`'s standalone "Mark as Solved" button can now diverge
-  from the accepted-answer state.** Discovered while implementing accepted
-  answers (item above): `handleSolve` in `client/src/pages/PostDetail.js`
-  calls `PUT /api/posts/:id/solve` (`solvePost` in
-  `server/controllers/posts.js`), a manual toggle of `post.isSolved`
-  completely independent of any comment's `isAnswer` flag. Now that
-  accepting an answer also sets `post.isSolved` (and un-accepting clears
-  it), a post can end up "Solved" with no accepted answer (asker clicked
-  the standalone button) or "Needs an answer" while a comment still shows
-  the green "Accepted by" state (asker un-solved the post directly instead
-  of un-accepting the answer). Low priority - not a regression from this
-  item, the two controls already both wrote `isSolved` before it, but the
-  new accepted-answer UI makes the split more visible. Worth resolving by
-  either removing the standalone button in favour of accept-driven solving,
-  or having each path clear the other's state.
-  Acceptance: decide and document which control owns `isSolved`; a test
-  demonstrates the two paths can no longer disagree.
+- [x] **`PostDetail`'s standalone "Mark as Solved" button can now diverge
+  from the accepted-answer state.** Done: #73.
+  Removed the standalone control (`handleSolve`
+  and its button in `client/src/pages/PostDetail.js`) rather than
+  reconciling two writers: the accept-answer flow is now the sole owner of
+  `post.isSolved` in the UI, which is what the redesign's answering-loop
+  thesis already implies — solving is meant to be a consequence of an
+  accepted answer, not a separate asker action. `PUT /api/posts/:id/solve`
+  (`solvePost` in `server/controllers/posts.js`) is left in place
+  unchanged since it is covered by pre-existing server tests
+  (`server/__tests__/integration/post-operations.test.js`) and removing it
+  was out of scope for a client-only divergence fix.
+  Acceptance: a regression test asserts no "Mark as Solved" control is
+  rendered for the asker, and a second test asserts accepting an answer is
+  the only path that flips `isSolved` in the UI (no call to the `/solve`
+  endpoint); full client suite green (39 suites, 192 tests). Could not run
+  the server suite in this environment — `mongodb-memory-server`'s binary
+  download is blocked by this sandbox's egress policy
+  (`fastdl.mongodb.org` → 403), a pre-existing environment limitation (see
+  #68's caveat), not something this change triggers; no server files were
+  touched by this PR.
 
 ### Carried over from the previous queue
 

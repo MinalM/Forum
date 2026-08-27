@@ -336,6 +336,38 @@ describe('PostDetail accepted answers', () => {
     expect(parseFloat(computed.minHeight)).toBeGreaterThanOrEqual(44);
     expect(parseFloat(computed.minWidth)).toBeGreaterThanOrEqual(44);
   });
+
+  it('does not offer a standalone "Mark as Solved" control to the asker — accepting an answer is the only way to solve a post', async () => {
+    setupAsUser(ASKER);
+    renderPostDetail();
+
+    await screen.findByText('Orphaned post');
+    expect(
+      screen.queryByRole('button', { name: /mark as solved/i })
+    ).not.toBeInTheDocument();
+  });
+
+  it('the two isSolved paths cannot disagree: solving is driven only by accepting/unaccepting an answer', async () => {
+    setupAsUser(ASKER);
+    axios.put.mockResolvedValue({
+      data: { success: true, data: { ...answerComment, isAnswer: true } }
+    });
+    renderPostDetail();
+
+    await screen.findByText('Needs an answer');
+
+    fireEvent.click(screen.getByRole('button', { name: /accept this answer/i }));
+
+    await screen.findByText('Solved', { selector: 'span.badge-success' });
+    // No standalone control exists that could set isSolved independently
+    // of the accepted-answer state, so the two can never diverge.
+    expect(
+      screen.queryByRole('button', { name: /mark as solved/i })
+    ).not.toBeInTheDocument();
+    expect(axios.put).not.toHaveBeenCalledWith(
+      expect.stringContaining('/solve')
+    );
+  });
 });
 
 describe('PostDetail threaded replies', () => {
