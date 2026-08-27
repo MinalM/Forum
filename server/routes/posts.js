@@ -17,6 +17,11 @@ const {
   unsubscribeFromPost,
   getSubscriptionStatus
 } = require('../controllers/subscriptions');
+const {
+  savePost,
+  unsavePost,
+  getSaveStatus
+} = require('../controllers/savedPosts');
 
 const Post = require('../models/Post');
 
@@ -40,6 +45,12 @@ router
   .get(protect, getSubscriptionStatus)
   .post(protect, subscribeToPost)
   .delete(protect, unsubscribeFromPost);
+
+router
+  .route('/:id/save')
+  .get(protect, getSaveStatus)
+  .post(protect, savePost)
+  .delete(protect, unsavePost);
 
 router
   .route('/')

@@ -466,17 +466,45 @@ one PR rather than three.
   thrown error); `reports.js`'s four affected populates fixed or
   covered; existing server suite green.
 
-- [ ] **Build a real "Saved posts" feature.** Discovered while implementing
-  the mobile bottom tab bar (item above): `Mobile.dc.html`'s tab bar has a
-  Saved tab, but nothing in this app lets a member bookmark a post — no
-  model, no endpoint, no UI anywhere else either. The tab bar ships a
-  "Saved posts are coming soon" alert in place of a dead link
-  (`MobileTabBar.js`'s `handleSavedClick`) rather than inventing the
-  feature inline in that PR. Needs a `SavedPost` (or similar) model keyed
-  on user + post with a unique compound index (same shape as
-  `Subscription`), `POST`/`DELETE`/`GET /api/posts/:id/save` endpoints, a
-  save toggle on `PostItem`/`PostDetail`, and a listing page or view the
-  mobile tab bar's Saved link (and a desktop equivalent) can point to.
-  Acceptance: TBD once scoped - likely two items (server model +
-  endpoints, then the client toggle/listing), each with its own
-  acceptance criteria and tests.
+- [x] **Saved posts: server model + endpoints.** Done: #76.
+  First slice of "Build a real Saved posts feature" — that item was too
+  large for one PR, so it's split into this item and the client one below
+  it. Added `SavedPost` (`user` +
+  `post` + `createdAt`, unique compound index — same shape as
+  `Subscription`) and `server/controllers/savedPosts.js` with
+  `POST`/`DELETE`/`GET /api/posts/:id/save` (save, unsave, status — all
+  idempotent, matching the `subscribeUserToPost` upsert pattern in
+  `server/utils/subscriptions.js`) plus `GET /api/saved-posts` (list mine,
+  newest first, `protect`-scoped to `req.user.id`). No UI yet — that's the
+  item below.
+  Acceptance: new `server/__tests__/integration/savedPosts.test.js` covers
+  the unique index, save/unsave idempotency, save status for the owner vs.
+  another user, 404 on a non-existent post, listing only the current
+  user's saved posts (newest first, no leakage across users), and
+  per-endpoint auth requirements.
+  Caveat: could not run the server suite in this environment —
+  `mongodb-memory-server`'s binary download is blocked by this sandbox's
+  egress policy (`fastdl.mongodb.org` → 403), which fails every existing
+  integration suite identically (verified against `comments.test.js`
+  unmodified), not something introduced by this change — the same
+  limitation noted on #68/#70/#71/#73. Verified instead by confirming the
+  test fails correctly before the implementation existed (missing
+  `SavedPost` module), then after implementing: requiring the new modules
+  standalone, booting the compiled app in-process (`NODE_ENV=test`) with
+  the new router mounted, and confirming `POST /api/posts/:id/save`
+  returns 401 without a token.
+
+- [ ] **Saved posts: client save toggle + listing view.** Second slice of
+  "Build a real Saved posts feature," now unblocked by the server item
+  above. Needs a save toggle on `PostItem`/`PostDetail` wired to
+  `POST`/`DELETE`/`GET /api/posts/:id/save`, and a listing page or view
+  (desktop nav + the mobile tab bar's existing Saved link, which currently
+  shows a "Saved posts are coming soon" alert via `MobileTabBar.js`'s
+  `handleSavedClick`) backed by `GET /api/saved-posts`.
+  Acceptance: component tests for the toggle (saved/unsaved states,
+  optimistic update, unauthenticated case disabled-not-hidden, 44px
+  target) on both `PostItem` and `PostDetail`, and for the listing view
+  (renders saved posts, empty state, links into the thread); the mobile
+  tab bar's Saved link points at the new view instead of the "coming
+  soon" alert, with `MobileTabBarTouchTargets.test.js`/
+  `MobileTabBar.test.js` updated accordingly.
