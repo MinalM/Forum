@@ -466,7 +466,7 @@ one PR rather than three.
   thrown error); `reports.js`'s four affected populates fixed or
   covered; existing server suite green.
 
-- [x] **Saved posts: server model + endpoints.** Done: #PR_NUMBER_PLACEHOLDER.
+- [x] **Saved posts: server model + endpoints.** Done: #76.
   First slice of "Build a real Saved posts feature" — that item was too
   large for one PR, so it's split into this item and the client one below
   it. Added `SavedPost` (`user` +
