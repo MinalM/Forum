@@ -15,7 +15,8 @@ jest.mock('axios', () => ({
   },
   get: jest.fn(),
   put: jest.fn(),
-  post: jest.fn()
+  post: jest.fn(),
+  delete: jest.fn()
 }));
 
 const POST_ID = '000000000000000000000001';
@@ -81,6 +82,7 @@ beforeEach(() => {
   axios.get.mockReset();
   axios.put.mockReset();
   axios.post.mockReset();
+  axios.delete.mockReset();
 });
 
 describe('PostItem excerpt', () => {
@@ -230,6 +232,91 @@ describe('PostItem voting, authenticated', () => {
     expect(voteCount()).toBe('1');
 
     await waitFor(() => expect(voteCount()).toBe('0'));
+  });
+});
+
+describe('PostItem save toggle, unauthenticated', () => {
+  it('renders the save control disabled rather than hidden', () => {
+    renderPostItem(basePost);
+
+    expect(screen.getByLabelText('Save post')).toBeDisabled();
+  });
+
+  it('does not call the save endpoint when disabled', () => {
+    renderPostItem(basePost);
+
+    fireEvent.click(screen.getByLabelText('Save post'));
+
+    expect(axios.post).not.toHaveBeenCalled();
+    expect(axios.delete).not.toHaveBeenCalled();
+  });
+});
+
+describe('PostItem save toggle, authenticated', () => {
+  const signInWithSaveStatus = (saved) => {
+    localStorage.setItem('token', 'test-token');
+    axios.get.mockImplementation((url) => {
+      if (url === '/api/users/me') {
+        return Promise.resolve({ data: { data: CURRENT_USER } });
+      }
+      if (url === `/api/posts/${POST_ID}/save`) {
+        return Promise.resolve({ data: { data: { saved } } });
+      }
+      return Promise.reject(new Error(`unexpected GET ${url}`));
+    });
+  };
+
+  it('fetches save status on mount and reflects an already-saved post', async () => {
+    signInWithSaveStatus(true);
+
+    renderPostItem(basePost);
+
+    expect(await screen.findByLabelText('Unsave post')).toHaveClass('active');
+  });
+
+  it('optimistically saves a post and calls the server', async () => {
+    signInWithSaveStatus(false);
+    axios.post.mockResolvedValue({ data: { data: { saved: true } } });
+
+    renderPostItem(basePost);
+
+    await waitFor(() => expect(screen.getByLabelText('Save post')).toBeEnabled());
+
+    fireEvent.click(screen.getByLabelText('Save post'));
+
+    expect(screen.getByLabelText('Unsave post')).toHaveClass('active');
+    await waitFor(() =>
+      expect(axios.post).toHaveBeenCalledWith(`/api/posts/${POST_ID}/save`)
+    );
+  });
+
+  it('unsaves an already-saved post', async () => {
+    signInWithSaveStatus(true);
+    axios.delete.mockResolvedValue({ data: { data: { saved: false } } });
+
+    renderPostItem(basePost);
+
+    fireEvent.click(await screen.findByLabelText('Unsave post'));
+
+    await waitFor(() =>
+      expect(axios.delete).toHaveBeenCalledWith(`/api/posts/${POST_ID}/save`)
+    );
+    expect(screen.getByLabelText('Save post')).not.toHaveClass('active');
+  });
+
+  it('rolls back the optimistic update if the save call fails', async () => {
+    signInWithSaveStatus(false);
+    axios.post.mockRejectedValue(new Error('network error'));
+
+    renderPostItem(basePost);
+
+    await waitFor(() => expect(screen.getByLabelText('Save post')).toBeEnabled());
+
+    fireEvent.click(screen.getByLabelText('Save post'));
+
+    expect(screen.getByLabelText('Unsave post')).toBeInTheDocument();
+
+    await screen.findByLabelText('Save post');
   });
 });
 

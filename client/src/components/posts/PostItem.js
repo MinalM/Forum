@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router';
 import PropTypes from 'prop-types';
 import axios from 'axios';
@@ -22,6 +22,7 @@ const PostItem = ({ post: initialPost }) => {
   const [post, setPost] = useState(initialPost);
   const [draftText, setDraftText] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [saved, setSaved] = useState(false);
 
   // Coordinates with sibling feed cards when a FeedComposerProvider is
   // present; falls back to local-only state otherwise (e.g. in isolation).
@@ -60,6 +61,40 @@ const PostItem = ({ post: initialPost }) => {
   const hasDownvoted = Boolean(user && downvotes.includes(user._id));
   const needsAnswer = !isSolved && commentCount === 0;
   const isQuestion = commentCount === 0;
+
+  useEffect(() => {
+    const fetchSaveStatus = async () => {
+      if (!isAuthenticated || !user) return;
+
+      try {
+        const res = await axios.get(`/api/posts/${_id}/save`);
+        setSaved(res.data.data.saved);
+      } catch (err) {
+        // Non-fatal - the toggle just starts in the unsaved state.
+      }
+    };
+
+    fetchSaveStatus();
+  }, [_id, isAuthenticated, user]);
+
+  const handleToggleSave = async () => {
+    if (!isAuthenticated || !user) {
+      setAlert('Please log in to save posts', 'danger');
+      return;
+    }
+
+    const wasSaved = saved;
+    setSaved(!wasSaved);
+
+    try {
+      await (wasSaved
+        ? axios.delete(`/api/posts/${_id}/save`)
+        : axios.post(`/api/posts/${_id}/save`));
+    } catch (err) {
+      setSaved(wasSaved);
+      setAlert(`Error ${wasSaved ? 'unsaving' : 'saving'} post`, 'danger');
+    }
+  };
 
   const isComposerOpen = feedComposer
     ? feedComposer.openPostId === _id
@@ -237,6 +272,15 @@ const PostItem = ({ post: initialPost }) => {
                 <div className="post-action">
                   <i className="fas fa-eye"></i> {views}
                 </div>
+                <button
+                  type="button"
+                  className={`save-toggle-btn ${saved ? 'active' : ''}`}
+                  onClick={handleToggleSave}
+                  disabled={!isAuthenticated}
+                  aria-label={saved ? 'Unsave post' : 'Save post'}
+                >
+                  <i className="fas fa-bookmark"></i>
+                </button>
                 <button
                   type="button"
                   className={`answer-btn ${isQuestion ? 'answer-btn--filled' : 'answer-btn--outline'}`}
