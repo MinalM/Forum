@@ -27,6 +27,7 @@ const categories = require('../routes/categories');
 const reports = require('../routes/reports');
 const subscriptions = require('../routes/subscriptions');
 const notifications = require('../routes/notifications');
+const savedPosts = require('../routes/savedPosts');
 const errorMiddleware = require('../middleware/error');
 require('../config/passport');
 const app = (0, express_1.default)();
@@ -103,6 +104,7 @@ app.use('/api/comments', comments);
 app.use('/api/reports', reports);
 app.use('/api/subscriptions', subscriptions);
 app.use('/api/notifications', notifications);
+app.use('/api/saved-posts', savedPosts);
 app.get('/api/health', (req, res) => {
     res.status(200).json({
         status: 'UP',
