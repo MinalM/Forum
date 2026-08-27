@@ -79,6 +79,11 @@ const Navbar = () => {
           Create Post
         </Link>
       </li>
+      <li className="nav-item">
+        <Link className="nav-link" to="/saved-posts">
+          <i className="fas fa-bookmark"></i> Saved
+        </Link>
+      </li>
       {/* Admin dropdown menu */}
       {user && hasPermission(user, 'accessAdminDashboard') && (
         <li className={`nav-item dropdown ${showAdminDropdown ? 'show' : ''}`}>

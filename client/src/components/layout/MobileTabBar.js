@@ -1,18 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useLocation } from 'react-router';
 import axios from 'axios';
-import { useAlert } from '../../context/AlertContext';
 
 const POLL_INTERVAL_MS = 60000;
 
 // Bottom tab bar for mobile (<=768px, hidden on desktop via CSS - see
-// .mobile-tab-bar in App.css). "Saved" has no backing feature yet (there is
-// no bookmarks/saved-posts model in this app), so it surfaces a "coming
-// soon" alert instead of a dead link; a real implementation is tracked as
-// its own BACKLOG.md item.
+// .mobile-tab-bar in App.css).
 const MobileTabBar = () => {
   const location = useLocation();
-  const { setAlert } = useAlert();
   const [unansweredCount, setUnansweredCount] = useState(0);
 
   const fetchUnansweredCount = useCallback(async () => {
@@ -36,11 +31,8 @@ const MobileTabBar = () => {
     location.pathname === '/' && new URLSearchParams(location.search).get('feed') === 'unanswered';
   const isFeedActive = location.pathname === '/' && !isUnansweredView;
   const isAskActive = location.pathname === '/create-post';
+  const isSavedActive = location.pathname === '/saved-posts';
   const isYouActive = location.pathname === '/dashboard';
-
-  const handleSavedClick = () => {
-    setAlert('Saved posts are coming soon', 'info');
-  };
 
   return (
     <nav className="mobile-tab-bar" aria-label="Primary">
@@ -74,10 +66,14 @@ const MobileTabBar = () => {
         <i className="fas fa-plus"></i>
       </Link>
 
-      <button type="button" className="mobile-tab-bar-item" onClick={handleSavedClick}>
+      <Link
+        to="/saved-posts"
+        className={`mobile-tab-bar-item${isSavedActive ? ' active' : ''}`}
+        aria-current={isSavedActive ? 'page' : undefined}
+      >
         <i className="fas fa-bookmark"></i>
         <span>Saved</span>
-      </button>
+      </Link>
 
       <Link
         to="/dashboard"

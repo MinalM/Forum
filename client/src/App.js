@@ -21,6 +21,7 @@ import Categories from './pages/Categories';
 import CategoryPosts from './pages/CategoryPosts';
 import SearchResults from './pages/SearchResults';
 import PostDetail from './pages/PostDetail';
+import SavedPosts from './pages/SavedPosts';
 import CreatePost from './pages/CreatePost';
 import EditPost from './pages/EditPost';
 import AdminUsers from './pages/AdminUsers';
@@ -82,6 +83,7 @@ const App = () => {
           <Route path="/categories/:categoryId" element={<CategoryPosts />} />
           <Route path="/search" element={<SearchResults />} />
           <Route path="/posts/:id" element={<PostDetail />} />
+          <Route path="/saved-posts" element={<PrivateRoute><SavedPosts /></PrivateRoute>} />
           <Route path="/create-post" element={<PrivateRoute><CreatePost /></PrivateRoute>} />
           <Route path="/edit-post/:id" element={<PrivateRoute><EditPost /></PrivateRoute>} />
           <Route path="/admin/users" element={<AdminRoute><AdminUsers /></AdminRoute>} />
