@@ -95,6 +95,20 @@ describe('Post Model Test', () => {
     expect(post.voteCount).toBe(0);
   });
 
+  it('should not throw serializing a voteCount when upvotes/downvotes are excluded by a partial select', async () => {
+    const post = await Post.create({
+      title: 'Test Post',
+      content: 'Test content',
+      user: user._id,
+      category: category._id,
+      upvotes: [user._id]
+    });
+
+    const partial = await Post.findById(post._id).select('title content');
+    expect(() => partial.toJSON()).not.toThrow();
+    expect(partial.toJSON().voteCount).toBe(0);
+  });
+
   it('should reject more than 10 tags', async () => {
     const postWithTooManyTags = new Post({
       title: 'Test Post',
