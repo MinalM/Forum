@@ -49,7 +49,6 @@ const advancedResults = (model, populate) => async (req, res, next) => {
   const isPostModel = model.modelName === 'Post';
   let feedFilter = null;
   let feedSort = null;
-  let isUnansweredFeed = false;
 
   if (isPostModel && req.query.feed !== undefined) {
     const feed = POST_FEED_VALUES.includes(req.query.feed) ? req.query.feed : 'recent';
@@ -59,7 +58,12 @@ const advancedResults = (model, populate) => async (req, res, next) => {
       // directly (see findUnansweredPostIds / server/utils/postCounters.js)
       // rather than the denormalised `commentCount` field, which some posts
       // were written without at all and so can't be trusted for filtering.
-      isUnansweredFeed = true;
+      // Narrowing to this id set here, rather than branching the query path
+      // below, lets it flow through the same sort/search/pagination/populate
+      // handling as every other feed (an explicit ?sort= still overrides it).
+      const unansweredIds = await findUnansweredPostIds(model, baseFilter);
+      feedFilter = { _id: { $in: unansweredIds } };
+      feedSort = 'createdAt';
     } else if (feed === 'top') {
       const windowMs = parseSinceWindow(req.query.since) ?? DEFAULT_TOP_WINDOW_MS;
       feedFilter = { createdAt: { $gte: new Date(Date.now() - windowMs) } };
@@ -191,35 +195,17 @@ const advancedResults = (model, populate) => async (req, res, next) => {
     countQuery = combinedFilter;
   }
 
-  // The unanswered feed's own listing is scoped by baseFilter like any other
-  // feed; the envelope's badge count (returned on every feed, not just
-  // `feed=unanswered`) always reflects the whole collection, matching prior
-  // behaviour.
-  const unansweredIds = isUnansweredFeed
-    ? await findUnansweredPostIds(model, baseFilter)
-    : null;
+  const total = await model.countDocuments(countQuery);
+  // The envelope's badge count is returned on every feed, not just
+  // `feed=unanswered`, and always reflects the whole collection (no
+  // baseFilter), matching prior behaviour.
   const unansweredCount = isPostModel
     ? (await findUnansweredPostIds(model, {})).length
     : undefined;
 
-  const total = isUnansweredFeed ? unansweredIds.length : await model.countDocuments(countQuery);
-
   let results;
 
-  if (isUnansweredFeed) {
-    const pageIds = unansweredIds.slice(startIndex, endIndex);
-
-    let unansweredQuery = model.find({ _id: { $in: pageIds } });
-    if (populate) {
-      unansweredQuery = unansweredQuery.populate(populate);
-    }
-    const pageDocs = await unansweredQuery;
-
-    // $in doesn't preserve order - reassemble in the oldest-first order
-    // findUnansweredPostIds already sorted.
-    const docsById = new Map(pageDocs.map(doc => [doc._id.toString(), doc]));
-    results = pageIds.map(id => docsById.get(id.toString())).filter(Boolean);
-  } else if (personalize) {
+  if (personalize) {
     const roleWords = roleWordSet(req.user.targetRole);
     const candidates = await model
       .find(combinedFilter)

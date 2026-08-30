@@ -4,7 +4,7 @@ const advancedResults = require('../../middleware/advancedResults');
 // exercise advancedResults' query-building logic without a real database
 // (mongodb-memory-server's binary download is blocked in this environment).
 function makeFakeModel({ modelName, collectionName, results = [] }) {
-  const calls = { find: [], sort: [], countDocuments: [] };
+  const calls = { find: [], sort: [], countDocuments: [], aggregate: [] };
 
   const query = {
     select: jest.fn().mockReturnThis(),
@@ -28,6 +28,14 @@ function makeFakeModel({ modelName, collectionName, results = [] }) {
     countDocuments: jest.fn((filter) => {
       calls.countDocuments.push(filter);
       return Promise.resolve(results.length);
+    }),
+    // findUnansweredPostIds (server/utils/postCounters.js) runs a $lookup
+    // aggregation against the real Comment collection instead of trusting
+    // commentCount — stub it to hand back `results`' ids, same source the
+    // other fakes above use.
+    aggregate: jest.fn((pipeline) => {
+      calls.aggregate.push(pipeline);
+      return Promise.resolve(results.map((doc) => ({ _id: doc._id })));
     })
   };
 
@@ -53,13 +61,20 @@ describe('advancedResults feed handling (unit)', () => {
     expect(next).toHaveBeenCalled();
   });
 
-  it('filters to commentCount: 0 and sorts oldest-first for feed=unanswered', async () => {
-    const { model, calls } = makeFakeModel({ modelName: 'Post', collectionName: 'posts' });
+  it('resolves feed=unanswered against real comments (via aggregation) and sorts oldest-first', async () => {
+    const { model, calls } = makeFakeModel({
+      modelName: 'Post',
+      collectionName: 'posts',
+      results: [{ _id: 'p1' }, { _id: 'p2' }]
+    });
     const { req, res, next } = makeReqRes({ feed: 'unanswered' });
 
     await advancedResults(model)(req, res, next);
 
-    expect(calls.find[0]).toEqual({ $and: [{}, { commentCount: 0 }] });
+    // findUnansweredPostIds' first pipeline stage scopes the aggregation to
+    // any other active filters (none here) before checking real comments.
+    expect(calls.aggregate[0][0]).toEqual({ $match: {} });
+    expect(calls.find[0]).toEqual({ $and: [{}, { _id: { $in: ['p1', 'p2'] } }] });
     expect(calls.sort[0]).toBe('createdAt');
   });
 
@@ -111,12 +126,17 @@ describe('advancedResults feed handling (unit)', () => {
   });
 
   it('adds unansweredCount to the envelope for the Post model, independent of the active feed', async () => {
-    const { model } = makeFakeModel({ modelName: 'Post', collectionName: 'posts', results: [{ _id: 1 }] });
+    const { model, calls } = makeFakeModel({
+      modelName: 'Post',
+      collectionName: 'posts',
+      results: [{ _id: 1 }]
+    });
     const { req, res, next } = makeReqRes({ feed: 'top' });
 
     await advancedResults(model)(req, res, next);
 
-    expect(model.countDocuments).toHaveBeenCalledWith({ commentCount: 0 });
+    // Unfiltered - the envelope count ignores the active feed=top filter.
+    expect(calls.aggregate[0][0]).toEqual({ $match: {} });
     expect(res.advancedResults.unansweredCount).toBe(1);
   });
 
