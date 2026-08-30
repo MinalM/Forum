@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const { MAX_TAG_LENGTH, MAX_TAGS } = require('../utils/normalizeTags');
+const { isTitleContentMismatch } = require('../utils/titleContentMismatch');
 
 const PostSchema = new mongoose.Schema({
   title: {
@@ -14,7 +15,16 @@ const PostSchema = new mongoose.Schema({
   },
   content: {
     type: String,
-    required: [true, 'Please add content']
+    required: [true, 'Please add content'],
+    validate: {
+      // Guards against the title/content pairing shuffle seen in live data
+      // (BACKLOG.md): content opening with a "Title: X" line naming a
+      // different subject than the post's own title.
+      validator: function(content) {
+        return !isTitleContentMismatch(this.title, content);
+      },
+      message: 'content starts with a "Title:" line naming a different subject than this post\'s own title'
+    }
   },
   user: {
     type: mongoose.Schema.ObjectId,
