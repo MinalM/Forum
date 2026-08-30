@@ -128,7 +128,18 @@
 /* Mobile touch targets: WCAG 2.5.5 wants pointer targets >= 44x44 CSS px.
    Scoped to mobile so desktop's compact search bar is unchanged. */
 @media (max-width: 768px) {
+  /* .navbar-container gets flex-wrap in App.css at this breakpoint; a
+     flex-basis of 100% here forces this form onto its own row below the
+     brand/toggle row instead of being squeezed off the right edge of the
+     viewport at its full desktop width (the mobile horizontal-overflow
+     source on every page). */
+  .navbar-search {
+    flex: 1 1 100%;
+    margin: 0.5rem 0 0;
+  }
+
   .navbar-search-input {
+    flex: 1;
     min-height: 44px;
   }
 
