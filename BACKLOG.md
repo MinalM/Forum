@@ -370,8 +370,22 @@ Two standing constraints for every item below:
   it rejects a mismatched `Title:` line, accepts a matching one, and accepts
   content with no `Title:` line.
 
-- [ ] **The home feed has no `<h1>` anywhere on the page, and its one
-  heading jumps from nothing straight to `<h3>`.** Found reviewing the live
+- [x] **The home feed has no `<h1>` anywhere on the page, and its one
+  heading jumps from nothing straight to `<h3>`.** Done: see PR for this
+  item. Added a visually-hidden `<h1>Home</h1>` at the top of `Home.js`
+  (rendered before the value bar in the anonymous state and before the feed
+  tabs in the authenticated state, so it is always the first heading in both
+  cases), plus a new `.visually-hidden` clip-technique utility class in
+  `client/src/index.css` for it. That alone would still leave a level-2 skip
+  from `h1` straight to the `<h3>` post-card titles, so also added a
+  visually-hidden `<h2>Feed</h2>` immediately before the feed tabs to bridge
+  it — the full sequence is now `h1, h2 (Feed), h3 × N (post titles), h2
+  (Popular Categories)`, which never increases by more than one level.
+  Acceptance covered by new `client/src/pages/__tests__/HomeHeadingLevel.test.js`
+  (style of `FooterHeadingLevel.test.js`), for both the anonymous and
+  authenticated states; existing `Home.test.js` assertions unaffected; full
+  client suite green (45 suites, 228 tests).
+  Original finding, reviewing the live
   site with Playwright: on `https://cerulean-marshmallow-003d16.netlify.app/`
   (both signed-out and signed-in), `document.querySelectorAll('h1')` returns
   zero matches, and the page's only headings are five-plus `<h3>` feed-card

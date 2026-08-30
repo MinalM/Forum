@@ -94,6 +94,8 @@ const Home = () => {
 
   return (
     <div className="main-content">
+      <h1 className="visually-hidden">Home</h1>
+
       {!isAuthenticated && (
         <section className="value-bar">
           <div className="container value-bar-inner">
@@ -121,6 +123,7 @@ const Home = () => {
       <section className="container mt-5">
         <div className="row">
           <div className="col-md-8">
+            <h2 className="visually-hidden">Feed</h2>
             <div className="feed-tabs" role="tablist" aria-label="Feed">
               {FEED_TABS.map(tab => (
                 <button
