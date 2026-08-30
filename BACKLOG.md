@@ -244,6 +244,264 @@ Two standing constraints for every item below:
   app in-process, both without error. Client suite ran clean: 38 suites,
   182 tests.
 
+- [ ] **The "Unanswered" feed tab returns zero posts in production, and
+  every post — answered or not — shows the "Needs an answer" badge.**
+  Found reviewing the live site: `GET
+  https://aiml-forum.onrender.com/api/posts?feed=unanswered` returns
+  `{"count":0,"pagination":{"total":0,...},"data":[],"unansweredCount":0}`,
+  while the plain `?feed=recent&limit=50` call on the same live data
+  returns 31 posts, every one of them with `"commentCount":0` in the
+  response body — so the `unanswered` filter (`{ commentCount: 0 }` in
+  `server/middleware/advancedResults.js:46-48`) should be matching all 31
+  and is matching none. The same middleware's `unansweredCount`
+  (`advancedResults.js:167-169`, `model.countDocuments({ commentCount: 0
+  })`, no other conditions) independently returns `0` too, on every feed
+  request. On the live front end this means the Home feed's "Unanswered"
+  tab badge reads `0` and clicking it renders "No posts found"
+  (`https://cerulean-marshmallow-003d16.netlify.app/`, click the
+  "Unanswered" tab) even though dozens of genuinely-unanswered posts are
+  sitting right there in "For you". Worse, `commentCount` itself is stale
+  against real data, not just uncounted: post
+  `https://cerulean-marshmallow-003d16.netlify.app/posts/6925386a88cb7b8de046eddf`
+  renders both a "Needs an answer" badge (`.post-status-badges`, driven by
+  `commentCount: 0`) and, two lines below it, `Comments (7)` — its thread
+  actually has seven real comments (confirmed via
+  `GET /api/posts/6925386a88cb7b8de046eddf`, `comments.length === 7`). A
+  full-catalogue check (`GET /api/posts?limit=100`) found this is not one
+  bad row: all 31 live posts have `commentCount !== comments.length`,
+  every one of them stuck at `0`. `server/__tests__/integration/post-feed.test.js`
+  passes today because its fixtures are written via `Post.create(...)`
+  (proper Mongoose casting); the live mismatch — a stored value that
+  doesn't equality-match a query for the same value even though it
+  serializes identically in `GET` responses — is consistent with the live
+  documents holding `commentCount` as a type `model.find({commentCount:
+  0})` can't match (e.g. written by something outside the
+  `Post.create`/`findByIdAndUpdate`-with-casting path this field was
+  designed for), though a test environment with real Mongo access is
+  needed to confirm the exact stored type rather than infer it from
+  symptoms. `score`/vote counts show the same live/query split on a
+  smaller sample (only 1 of the 31 posts currently has any votes, but its
+  `score` also fails the `score === upvotes.length - downvotes.length`
+  check), suggesting this isn't unique to `commentCount`.
+  Acceptance: an integration test against a seeded-the-same-way-as-live
+  fixture (not just `Post.create`) reproduces `feed=unanswered` wrongly
+  returning 0 and then asserts the fix returns the expected posts; a
+  regression test confirms a post's "Needs an answer"/"Solved" badge never
+  disagrees with its own rendered comment count; if the root cause is
+  confirmed to be bad stored data rather than a query bug, this item
+  covers making the query robust to it (e.g. an aggregation/cast-safe
+  match) since the same live database can't be assumed clean going
+  forward, not just documenting that a human should run a one-off fix.
+
+- [ ] **Mobile horizontal overflow on every page — the navbar search box.**
+  Found reviewing the live site at a 375px viewport with Playwright:
+  `document.documentElement` has `scrollWidth: 418` against
+  `clientWidth: 375` on every page checked (`/`, `/categories`, `/search`,
+  `/login`, `/register`, a category page, a post detail page, the 404
+  page) — a 43px horizontal scrollbar on first load, no interaction
+  needed. The offending element is the same everywhere:
+  `.navbar-search` (`client/src/components/layout/Navbar.css:2-6`,
+  `display: flex; margin: 0 1rem;`) has no rule at any narrow-viewport
+  breakpoint that hides or restacks it — the file's only mobile media
+  block (`Navbar.css:130-139`, `@media (max-width: 768px)`) just adds
+  `min-height`/`min-width: 44px` to the search input/button for the
+  touch-target fix, so the search form stays at its full desktop width
+  and gets pushed off the right edge of a 375px screen (measured:
+  `.navbar-search` at `left: 173, right: 418`). This is a different bug
+  from the mobile overflow items already fixed on `main` (`.post-meta`
+  wrapping, #53; the `Navbar.css` import fix; `.post-header`/`.post-footer`
+  wrapping, #72) — re-verified `.post-header` specifically while filing
+  this: on `/posts/6925386a88cb7b8de046eddf` at 375px it now computes
+  `flex-wrap: wrap` and every `.post-meta-item` sits within the viewport
+  (max `right: 335.97` against `clientWidth: 375`), so that part is
+  already fixed and not re-filed here — the only remaining overflow
+  source, on every page, is `.navbar-search`.
+  Acceptance: at 375px, `scrollWidth <= clientWidth` (the existing
+  `document.documentElement` measurement approach, or the raw-CSS-source
+  assertion pattern from `mobileTouchTargets.test.js` if no browser is
+  available in the implementing environment) on the home page, a category
+  page, and a post detail page; `.navbar-search` either hides, collapses
+  into the existing mobile menu, or restacks below the brand row at
+  narrow widths; the existing `postMetaOverflow.test.js` and
+  `mobileTouchTargets.test.js` assertions keep passing against whatever
+  CSS replaces the rule.
+
+- [ ] **A third of live posts show a body that answers a different question
+  than their own title — visible on the home feed, not just the thread.**
+  Found reviewing the live site: `GET https://aiml-forum.onrender.com/api/posts?limit=100`
+  returns 31 posts, and 10 of them have a `content` field that opens with a
+  literal `Title: <different topic>` line naming a subject unrelated to the
+  post's own `title` field. Example:
+  `https://cerulean-marshmallow-003d16.netlify.app/posts/6925386a88cb7b8de046eddf`
+  is titled "Implementing Efficient Attention Mechanisms in Transformers for
+  Natural Language Processing" but its rendered body starts "Title: Exploring
+  Transfer Learning in Deep Learning Models" and goes on to discuss transfer
+  learning, never attention mechanisms — confirmed both via the API
+  (`content` field) and via Playwright against the rendered page (`.post-content`
+  text matches the API body verbatim). This is not confined to the thread
+  page: `PostItem`'s excerpt renders the same mismatched content on the home
+  feed itself, so a signed-out visitor sees a card titled "Building a Smart
+  Home Automation System with Machine Learning" whose preview text opens
+  "Title: Image Classification Model in Python" without opening anything —
+  reproduced live on `/` for 3 of the top 5 feed cards. The paired comments
+  read as if written against the *title*, not the *content* (e.g. the above
+  post's top comment discusses "attention mechanisms in Transformers", not
+  transfer learning), so this looks like a title/content pairing shuffle
+  from however the live data was originally seeded — the same "seeded some
+  other way, predates the versioned scripts" root cause the tag-pollution
+  item (`docs/BACKLOG-ARCHIVE.md`, done #33) found for `Post.tags`, but
+  affecting `title`/`content` pairing instead of tags, and not covered by
+  that fix or its cleanup script. `server/seeder.js`, `scripts/generate-seed.js`
+  and `scripts/seed-mongo.js` should be audited the same way #33 audited them
+  for tags, to confirm current seed sources pair title/content correctly
+  before deciding whether this needs a live-data cleanup script, a
+  server-side invariant (e.g. reject/flag a `content` whose leading `Title:`
+  line doesn't match `title`), or both.
+  Acceptance: an audit of the three seed scripts confirms whether they can
+  produce a title/content mismatch (fix them if so, matching #33's pattern);
+  a regression test asserts the seed path never persists a `content` whose
+  leading `Title:` line differs from the post's own `title`; a decision is
+  documented on whether the 10 already-mismatched live rows need a one-off
+  cleanup script (following the `scripts/cleanup-post-tags.js` precedent) or
+  a human data fix, since — as with the tags item — an autonomous PR cannot
+  itself touch the live database.
+
+- [ ] **The home feed has no `<h1>` anywhere on the page, and its one
+  heading jumps from nothing straight to `<h3>`.** Found reviewing the live
+  site with Playwright: on `https://cerulean-marshmallow-003d16.netlify.app/`
+  (both signed-out and signed-in), `document.querySelectorAll('h1')` returns
+  zero matches, and the page's only headings are five-plus `<h3>` feed-card
+  titles (`.post-title` in `client/src/components/posts/PostItem.js:192`)
+  followed by an `<h2>Popular Categories</h2>` (`client/src/pages/Home.js:160`)
+  — so the sequence is `h3, h3, h3, h3, h3, h2`: no `h1`, and a heading level
+  that goes *up* after a run of `h3`s instead of the page ever establishing
+  a top-level heading first. Every other page checked (`/categories`,
+  `/search`, `/login`, `/register`, a category page, a post detail page, the
+  404 page) has exactly one `h1` as its first heading, matching the pattern
+  the earlier footer-heading fix assumed held everywhere
+  (`docs/BACKLOG-ARCHIVE.md`, "Every page skips from `<h1>` straight to
+  `<h3>`" item, whose own regression test only covers `Login` + `Footer`
+  together) — Home is the one page that no longer has an `h1` at all, most
+  likely lost when the marketing hero (which presumably carried one) was
+  replaced by the feed (item "Replace the Home marketing page with the
+  feed", done #63). This affects screen-reader users navigating by heading
+  (no page landmark heading to jump to) and is a plain heading-order
+  violation (WCAG 2.4.6 / 1.3.1) on the single highest-traffic page in the
+  app.
+  Acceptance: `Home.js` renders exactly one `h1` before any `h3`/`h2` content
+  for both the authenticated-feed and anonymous-value-bar states; a
+  regression test in the style of `client/src/components/__tests__/FooterHeadingLevel.test.js`
+  renders `Home` and asserts the full heading sequence never skips a level
+  and starts with `h1`; existing `Home.test.js` assertions unaffected.
+
+- [ ] **Login, Register and the footer ship interactive controls well
+  below the 44px minimum the rest of the app now enforces.** Found
+  reviewing the live site at a 375px viewport with Playwright
+  (`getBoundingClientRect`/`getComputedStyle` — these are layout heights,
+  re-checked after a settle so they are not transition artefacts). On
+  `https://cerulean-marshmallow-003d16.netlify.app/login` and `/register`
+  the primary submit buttons — `button.btn.btn-block` ("Login",
+  "Register", "Login with Google", "Register with Google") — compute to
+  **34px tall** with `min-height: 0`: `.btn` (`client/src/index.css:58-70`)
+  only sets `padding: 0.5rem 1.5rem` and nothing in a `@media (max-width:
+  768px)` block raises it. The `input.form-control` fields (email,
+  password, name) compute to **42px** (`client/src/index.css:143-155`,
+  same story). Every footer link — `.footer-link a`
+  (`client/src/App.css:180`): Home, Categories, AI/ML Resources, Kaggle,
+  Coursera, Udacity, Fast.ai — is a bare inline anchor **21px tall** with
+  only `margin-bottom: 0.5rem` (8px) between rows, on every page. This is
+  the same WCAG 2.5.5 / project-standard gap that
+  `client/src/__tests__/mobileTouchTargets.test.js` already guards for the
+  navbar, pagination, sidebar and feed-tab controls; the archived "Mobile
+  touch targets below the 44px minimum" item fixed a named subset and
+  explicitly left the rest. Login and Register are the two highest-value
+  pages for a not-yet-signed-in visitor.
+  Scope: mobile-scoped (`@media (max-width: 768px)`) `min-height: 44px` on
+  `.btn`/`.btn-block` and `.form-control`, and on `.footer-link a` (an
+  inline anchor ignores `min-height`, so it also needs `display: flex`/
+  `block` plus alignment, the same treatment `.categories-sidebar
+  .category-item a` got in the earlier item); no desktop layout change.
+  The post-detail author/category/`.comment-username` links (21-23px) are
+  the same defect if it is a small addition, but Login/Register/footer is
+  the core of this item.
+  Acceptance: `client/src/__tests__/mobileTouchTargets.test.js` gains
+  raw-CSS-source assertions (its existing pattern) that `.btn`,
+  `.form-control` and `.footer-link a` each declare `min-height >= 44px`
+  within the mobile media block, and that `.footer-link a` declares a
+  `display` that lets it take effect; a render-based check on `Login`/
+  `Register` in the style of the archived `PostDetail` vote-button test
+  (inject the real CSS as a `<style>` tag, assert computed `min-height >=
+  44px` on the submit button); existing `mobileTouchTargets.test.js`
+  assertions unchanged.
+
+- [ ] **An unknown or deleted category id renders a raw "Error fetching
+  category data" alert instead of a clean not-found page.** Found
+  reviewing the live site:
+  `https://cerulean-marshmallow-003d16.netlify.app/categories/000000000000000000000000`
+  (a well-formed but non-existent ObjectId — the shape a stale bookmark or
+  a since-deleted category produces) shows a red error toast reading
+  "Error fetching category data" stacked above a persistent red
+  "Category not found" bar, with no `<h1>` and `document.title` left at the
+  bare "AI/ML Career Forum" (contrast `/a-route-that-does-not-exist`,
+  which renders the proper `NotFound` page titled "Page Not Found | AI/ML
+  Career Forum"). The API is correct — `GET
+  https://aiml-forum.onrender.com/api/categories/000000000000000000000000`
+  returns 404 — so this is purely `client/src/pages/CategoryPosts.js`'s
+  single `catch` (`CategoryPosts.js:51-56`) firing
+  `setAlert('Error fetching category data', 'danger')` unconditionally and
+  not distinguishing a 404 ("this category does not exist") from a real
+  transport failure, then falling through to the `!category` branch
+  (`CategoryPosts.js:82-88`) which has no heading and leaves
+  `useDocumentTitle(category?.name)` with nothing to set. No console
+  error, no crash — just an ugly dead end with a developer-sounding
+  message.
+  Scope: `CategoryPosts.js`, client-only. On a 404 from the category (or
+  its posts) fetch, render the app's existing not-found treatment (reuse
+  `NotFound`, or an inline empty state with a real heading) and set a
+  sensible `useDocumentTitle`; reserve the red `setAlert` for genuine
+  non-404 failures.
+  Acceptance: a test renders `CategoryPosts` with the category fetch
+  mocked to 404 and asserts no `alert`-role error is shown, a not-found
+  message with a heading renders, and `document.title` is not the bare
+  site name; a second test with a 500/network failure still surfaces the
+  danger alert; existing `CategoryPosts.test.js` assertions unaffected.
+
+- [ ] **The category-page "Filter" `<select>` and its `.btn-sm` siblings
+  are interactive controls well below the 44px minimum the rest of the
+  app now enforces.** Found reviewing the live site at a 375px viewport
+  with Playwright (`getBoundingClientRect`/`getComputedStyle`, re-checked
+  after a settle). On
+  `https://cerulean-marshmallow-003d16.netlify.app/categories/67cbb5ca71e8be810c50104c`
+  the Solved/Unsolved filter `<select id="post-filter">`
+  (`client/src/pages/CategoryPosts.js:108`) computes to **78×19px** with
+  `min-height: 0`, `padding: 0`, `font-size: 13.3px` — it carries no class
+  and no rule anywhere raises it. The "All Categories" back link
+  (`CategoryPosts.js:159`, `.btn.btn-secondary.btn-sm`) computes to
+  **139×33px**, and the page's other `.btn-sm` links (create-post / login
+  prompt, pagination) are the same height. Control case: a bare injected
+  `<select>` with no app CSS also measured ~19px, so part of the height is
+  the browser default — but the project standard (and the existing
+  `client/src/__tests__/mobileTouchTargets.test.js` pattern) is that
+  interactive controls get an explicit `min-height: 44px` plus padding,
+  and this `<select>` gets neither. This is the same WCAG 2.5.5 /
+  project-standard gap already guarded for the navbar, pagination, Home
+  sidebar and feed-tab controls and filed for Login/Register/footer
+  above; `mobileTouchTargets.test.js` does not currently cover any
+  `CategoryPosts` control.
+  Scope: `CategoryPosts.js` / `App.css`, client-only. Give `#post-filter`
+  (or a class on it) and the page's `.btn-sm` controls a mobile-scoped
+  (`@media (max-width: 768px)`) `min-height: 44px` with padding; a
+  `<select>` respects `min-height` directly so no `display` change is
+  needed there, unlike the inline-anchor footer links. No desktop layout
+  change.
+  Acceptance: `mobileTouchTargets.test.js` gains raw-CSS-source assertions
+  (its existing pattern) that the category filter select and the
+  `.btn-sm` rule each declare `min-height >= 44px` within the mobile media
+  block; a render-based check on `CategoryPosts` (inject the real CSS as a
+  `<style>` tag, assert computed `min-height >= 44px` on the filter
+  `<select>`); existing `CategoryPosts.test.js` and
+  `mobileTouchTargets.test.js` assertions unchanged.
+
 - [x] **"For you" ranking and the "You can answer these" rail.** Done: #71.
   Added `server/utils/feedRanking.js`: a documented weighted score
   (`TAG_WEIGHT` per matching `skills`/`tags`, `LEVEL_WEIGHT` for an
@@ -342,6 +600,202 @@ Two standing constraints for every item below:
   (`fastdl.mongodb.org` → 403), a pre-existing environment limitation (see
   #68's caveat), not something this change triggers; no server files were
   touched by this PR.
+
+### Growth: adoption and engagement
+
+Net-new features, not part of the engagement redesign above or the
+carried-over queue below. They target two gaps the redesign did not
+touch: the app has almost no organic discoverability (the SPA serves an
+empty shell — no prerender, no per-page metadata, no sitemap), and
+nothing reaches a member when they are not on the site (no email at all;
+the notification bell only works in an open tab). Ordered by priority.
+Do the review-found data bugs above (the `title`/`content` mismatch, the
+empty `feed=unanswered`) before the two SEO items — indexing broken
+content is worse than not indexing it. The last item
+(reputation/leaderboard) is deliberately parked until the forum has
+enough traffic for it to work.
+
+- [ ] **Per-page metadata, Open Graph / Twitter tags, and `QAPage`
+  structured data.** `client/index.html` ships one static block of
+  `<meta>`: `og:title`/`og:description`/`twitter:*` hard-coded to the
+  generic site name and blurb, `og:url` resolving to the site root, and
+  no `og:image` at all — so every shared link (a post, a category)
+  unfurls identically as "AI/ML Career Forum" and every deep link points
+  at `/`. Verified live: `/`, `/posts/:id` and `/categories/:id` return
+  byte-identical OG tags. `document.title` is already per-route via
+  `useDocumentTitle`; the description and OG tags are not. For a Q&A site
+  the search snippet and the social unfurl are the main acquisition
+  surface and both are blind. Add per-route `<head>` management (e.g.
+  `react-helmet-async`): `description`, `canonical`, `og:title` /
+  `og:description` / `og:url` / `og:type`, `twitter:card` + image, all
+  driven by the post or category actually being viewed. On post pages
+  emit `QAPage` + `Question` / `Answer` JSON-LD (the accepted answer as
+  `acceptedAnswer`, the rest as `suggestedAnswer`, vote counts as
+  `upvoteCount`) so Google can render a Q&A rich result — the JSON-LD
+  must describe only what is visibly on the page. Supersedes the static
+  block from the archived "No Open Graph metadata" item.
+  Acceptance: a test per route type (home, post, category, search, 404)
+  asserts the rendered `<head>` carries a route-specific `description`
+  and `og:title`/`og:url` rather than the site default; a post-page test
+  asserts the emitted JSON-LD parses, is `@type: QAPage`, and its
+  `acceptedAnswer` / `upvoteCount` match the fixture; the client suite
+  runs with no helmet-provider warnings.
+
+- [ ] **Prerendering for crawlers, `sitemap.xml`, and `robots.txt`.**
+  Even with per-route tags (item above), a crawler that does not execute
+  JavaScript still receives `client/index.html`'s empty
+  `<div id="root">` — the client has no SSR or prerender step, so post
+  bodies are invisible to non-JS indexers, and there is no `sitemap.xml`
+  or `robots.txt` (`client/public/` holds only `images/` and
+  `manifest.json`). Add crawler prerendering (Netlify's built-in
+  prerender service, or a build-time pass such as `react-snap` /
+  `@prerenderer` over the static routes plus a sample of post URLs) and
+  serve a `sitemap.xml` covering every public post and category
+  (generated at build, or a small `GET /sitemap.xml` route that streams
+  from the collection) plus a `robots.txt` that allows crawling and
+  names the sitemap.
+  Acceptance: an e2e/integration check fetches a post URL with a non-JS
+  user agent (or inspects the prerendered artifact) and asserts the post
+  title and body text are in the raw HTML; `sitemap.xml` is valid XML,
+  has one `<url>` per seeded post and category, and gains an entry when a
+  post is added; `robots.txt` is served with a `Sitemap:` line; the
+  existing Playwright suite against the live SPA still passes.
+
+- [ ] **Email delivery, password reset, and welcome email.** The server
+  has no email capability — no mail dependency, no `sendEmail`, no
+  reset-token fields on `User`. Two consequences: a member who registered
+  with a local password and forgets it is permanently locked out with no
+  recovery path, and there is no channel to bring anyone back. Add a mail
+  transport (a provider SDK — Resend / Postmark / SES — configured by
+  env, a no-op logger transport under test/dev), `resetPasswordToken` +
+  `resetPasswordExpire` on `User`, `POST /api/auth/forgot-password`
+  (always 200; emails a time-boxed single-use link only when the address
+  exists) and `POST /api/auth/reset-password/:token`, a "Forgot
+  password?" flow off `/login`, and a welcome email on registration.
+  Google-OAuth accounts (no local password) stay out of the reset path.
+  Acceptance: integration tests for forgot-password (known and unknown
+  email both 200; a token row is written only for the known one),
+  reset-password (valid token sets the new password and clears the
+  token; expired / used / blank token 400s; an OAuth-only account cannot
+  reset), and that registration enqueues exactly one welcome send;
+  delivery is asserted through a test double, never a real send; existing
+  auth tests unchanged.
+
+- [ ] **Weekly digest email and notification preferences.** Builds on
+  the email item above. The in-app notification bell (#69) only fires
+  while a tab is open, so a member who does not visit gets nothing. Add
+  an opt-out weekly digest — new answers/replies on posts they authored
+  or subscribed to since the last send, plus up to N unanswered
+  questions matching their `skills` / `targetRole` (reusing
+  `server/utils/feedRanking.js`) — sent by a scheduled job. Add a
+  `notificationPrefs` object on `User` (`digest: 'weekly' | 'off'`,
+  default `weekly`), a preferences screen, and a one-click unsubscribe
+  link (signed token, no login required) in every digest footer.
+  Acceptance: a test drives the digest builder against a fixture with a
+  mix of subscribed / authored / skill-matching posts and asserts the
+  recipient list and each recipient's contents (a member with
+  `digest: 'off'` is skipped; one with nothing new is not emailed); the
+  unsubscribe token flips `digest` to `off` with no session; the
+  scheduled entry point is covered and sends no real mail in tests.
+
+- [ ] **Follow a tag or topic.** `Subscription` is post-only
+  (`user` + `post`, `server/models/Subscription.js`) — a member can be
+  told about replies on one thread but cannot say "tell me about new
+  questions tagged `pytorch`." Generalise it to an optional `tag` target
+  (a `tag` field alongside `post`, exactly one of the two set, each with
+  its own unique compound index — or a separate `TagSubscription` model
+  if that reads cleaner), a follow/unfollow control on tag chips and
+  category pages, and a hook in `createPost` that calls `notifySubscribers`
+  for every follower of any of the new post's tags, never the author.
+  Feeds the digest item above.
+  Acceptance: integration tests for follow/unfollow idempotency, a new
+  post notifying every tag follower except its author, no duplicate
+  notification when a follower follows two of the post's tags, and
+  per-user isolation on the "tags I follow" listing; the existing
+  post-subscribe tests still pass.
+
+- [ ] **Markdown composer with a preview tab and a formatting toolbar.**
+  Post and comment bodies render Markdown now (archived items), but the
+  composer is a bare `<textarea>` (`client/src/pages/CreatePost.js:127`,
+  and the same in the inline answer/reply composers) with no formatting
+  affordance and no preview — high friction on an AI/ML forum where
+  answers are mostly code, error output and links. Add a lightweight
+  editor: a small toolbar (bold, inline code, code block, link, list)
+  that wraps the current selection, and a Write / Preview toggle that
+  renders through the *same* Markdown renderer the display side already
+  uses. Not a WYSIWYG — the stored value stays Markdown text.
+  Acceptance: component tests for each toolbar action transforming the
+  selection correctly, the preview toggle producing output identical to
+  the post/comment display renderer for a sample document, and the field
+  still submitting the raw Markdown string; applied to the create-post
+  form and the inline answer/reply composers; keyboard focus and 44px
+  targets on the toolbar buttons.
+
+- [ ] **`@mentions` in posts and comments.** No way to pull a specific
+  person into a thread. Parse `@username` tokens on post/comment save,
+  resolve them to users, write a `mention`-type `Notification`
+  (extending the model's `type` enum), and render the mention as a link
+  to `/profile/:id`. Cap at a few mentions per body to prevent
+  notification spam, and never notify someone mentioning themselves.
+  Acceptance: tests for parsing (valid handle, unknown handle ignored,
+  `@` mid-word ignored, self-mention produces nothing), a `mention`
+  notification landing for each distinct valid handle up to the cap, and
+  the rendered body linking the mention; the notification bell and
+  unread count surface the new type with no further change.
+
+- [ ] **"Related questions" on the post thread.** A thread is a dead end
+  once read. Below the post (or beside the comments) show 3–5 other
+  questions by tag overlap and title/body similarity, reusing the
+  existing `GET /api/posts/search` relevance, excluding the current
+  post. Interlinks content for crawlers as well as readers.
+  Acceptance: a test renders `PostDetail` with the related endpoint
+  mocked and asserts 3–5 distinct links excluding the current post, an
+  empty state when there are no matches, and that each links into a
+  thread; the query is capped and does not re-fire on in-page
+  vote/comment updates.
+
+- [ ] **Draft autosave for the composer.** A long answer lost to an
+  accidental navigation or refresh is a silent contribution killed.
+  Autosave the create-post and answer/reply composer contents to
+  `localStorage` (debounced, keyed by route/target), restore on return
+  behind a visible "Draft restored — discard?" affordance, and clear the
+  key on successful submit or explicit discard.
+  Acceptance: tests for debounced save-on-change, restore-on-mount
+  populating the field, the discard control clearing storage, and a
+  successful submit clearing the key; storage access is wrapped so a
+  storage-disabled browser degrades to no autosave rather than throwing.
+
+- [ ] **RSS / Atom feeds.** Power users and aggregators cannot follow the
+  forum without an account. Add `GET /api/feed.xml` (newest questions)
+  and `GET /api/categories/:id/feed.xml`, each a valid Atom document of
+  the N most recent posts (title, author, summary, link, timestamp),
+  linked with `<link rel="alternate" type="application/atom+xml">` in the
+  relevant page `<head>`.
+  Acceptance: integration tests assert each endpoint returns valid Atom
+  (parses; required elements present), the item set and order match
+  `feed=recent` for the same scope, and the category feed 404s for an
+  unknown id; the `<head>` alternate link is present on the home and
+  category pages.
+
+- [ ] **Reputation, badges, and a leaderboard. (Parked — not yet.)** A
+  Q&A community's contribution incentive: points for upvotes received and
+  accepted answers, a small fixed badge set (first answer, first accepted
+  answer, N upvotes, …), a reputation number on profiles and post/answer
+  author rows, and a `/leaderboard`. The vote and accept mechanics it
+  builds on already exist (#65, #67). **Deliberately not queued yet** —
+  on a forum with ~30 posts and few active members a leaderboard is
+  hollow and can discourage newcomers; revisit once the SEO and email
+  items above have grown daily actives enough that a ranking means
+  something. When picked up: a denormalised `reputation` on `User`
+  maintained in the vote/accept controllers, a backfill script following
+  `scripts/cleanup-post-tags.js`'s dry-run-by-default pattern, and
+  Statsig gating so it can ship as an experiment.
+  Acceptance (when unparked): unit tests for the points formula,
+  integration tests that each rep-changing event (upvote, retraction,
+  accept, un-accept) moves the author's stored `reputation` and that a
+  fetch reflects it, a backfill test reconciling deliberately-wrong
+  values against seeded data, badge-award idempotency, and the
+  leaderboard endpoint's ordering and pagination.
 
 ### Carried over from the previous queue
 
