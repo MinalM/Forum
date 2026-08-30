@@ -329,45 +329,46 @@ Two standing constraints for every item below:
   `mobileTouchTargets.test.js` assertions keep passing against whatever
   CSS replaces the rule.
 
-- [ ] **A third of live posts show a body that answers a different question
+- [x] **A third of live posts show a body that answers a different question
   than their own title — visible on the home feed, not just the thread.**
-  Found reviewing the live site: `GET https://aiml-forum.onrender.com/api/posts?limit=100`
-  returns 31 posts, and 10 of them have a `content` field that opens with a
-  literal `Title: <different topic>` line naming a subject unrelated to the
-  post's own `title` field. Example:
-  `https://cerulean-marshmallow-003d16.netlify.app/posts/6925386a88cb7b8de046eddf`
-  is titled "Implementing Efficient Attention Mechanisms in Transformers for
-  Natural Language Processing" but its rendered body starts "Title: Exploring
-  Transfer Learning in Deep Learning Models" and goes on to discuss transfer
-  learning, never attention mechanisms — confirmed both via the API
-  (`content` field) and via Playwright against the rendered page (`.post-content`
-  text matches the API body verbatim). This is not confined to the thread
-  page: `PostItem`'s excerpt renders the same mismatched content on the home
-  feed itself, so a signed-out visitor sees a card titled "Building a Smart
-  Home Automation System with Machine Learning" whose preview text opens
-  "Title: Image Classification Model in Python" without opening anything —
-  reproduced live on `/` for 3 of the top 5 feed cards. The paired comments
-  read as if written against the *title*, not the *content* (e.g. the above
-  post's top comment discusses "attention mechanisms in Transformers", not
-  transfer learning), so this looks like a title/content pairing shuffle
-  from however the live data was originally seeded — the same "seeded some
-  other way, predates the versioned scripts" root cause the tag-pollution
-  item (`docs/BACKLOG-ARCHIVE.md`, done #33) found for `Post.tags`, but
-  affecting `title`/`content` pairing instead of tags, and not covered by
-  that fix or its cleanup script. `server/seeder.js`, `scripts/generate-seed.js`
-  and `scripts/seed-mongo.js` should be audited the same way #33 audited them
-  for tags, to confirm current seed sources pair title/content correctly
-  before deciding whether this needs a live-data cleanup script, a
-  server-side invariant (e.g. reject/flag a `content` whose leading `Title:`
-  line doesn't match `title`), or both.
-  Acceptance: an audit of the three seed scripts confirms whether they can
-  produce a title/content mismatch (fix them if so, matching #33's pattern);
-  a regression test asserts the seed path never persists a `content` whose
-  leading `Title:` line differs from the post's own `title`; a decision is
-  documented on whether the 10 already-mismatched live rows need a one-off
-  cleanup script (following the `scripts/cleanup-post-tags.js` precedent) or
-  a human data fix, since — as with the tags item — an autonomous PR cannot
-  itself touch the live database.
+  Done: #82. Audited `server/seeder.js`, `scripts/generate-seed.js`, and
+  `scripts/seed-mongo.js` the same way #33 audited them for tags: all three
+  already pair `title`/`content` correctly, so no code change was needed
+  there — matching #33's pattern, the mismatched live rows predate these
+  scripts and were seeded some other way. Added the server-side invariant
+  instead: a `Post.content` schema validator (`server/utils/titleContentMismatch.js`'s
+  `isTitleContentMismatch`) now rejects a `content` whose leading `Title:`
+  line names a different subject than the post's own `title`, going forward.
+  Note this only covers writes that go through the Mongoose model — item 79
+  found `scripts/seed-mongo.js` writes via the raw driver
+  (`db.posts.insertMany`), which bypasses Mongoose validation entirely, so a
+  future raw-driver seed script could still reintroduce the shuffle; that's
+  an existing, accepted gap shared with the tags/counters validators, not
+  something this item widens.
+  For the 10 already-mismatched live rows: unlike tag pollution, there is no
+  mechanical fix — a polluted tag can be dropped by a length rule, but a
+  mismatched post's correct content isn't derivable from its title (it's
+  presumably paired with some *other* post's title elsewhere in the data, or
+  missing entirely). Decision: this needs a human data fix, not a
+  `--apply`-style cleanup script. Added `scripts/audit-post-title-mismatch.js`,
+  a read-only one-off (no `--apply` mode, matching the "cannot itself touch
+  the live database" constraint) that reports mismatched posts for a human
+  to review and re-pair or delete by hand.
+  Acceptance: `server/__tests__/utils/titleContentMismatch.test.js` covers
+  the util directly; `server/__tests__/models/Post.test.js` covers the
+  schema validator rejecting a mismatched `Title:` line, accepting a
+  matching one, and accepting content with no `Title:` line at all;
+  `server/__tests__/tooling/auditPostTitleMismatch.test.js` covers the audit
+  script reporting a mismatched row, leaving it unwritten, and leaving a
+  correctly-paired post unreported.
+  Caveat: could not run the server suite in this environment —
+  `mongodb-memory-server`'s binary download is blocked by this sandbox's
+  egress policy (`fastdl.mongodb.org` → 403), the same limitation noted
+  against items 9 and 15. Verified the validator directly instead, via a
+  standalone script constructing `Post` documents and calling `.validate()`
+  (no DB connection required for schema-level custom validators): confirmed
+  it rejects a mismatched `Title:` line, accepts a matching one, and accepts
+  content with no `Title:` line.
 
 - [ ] **The home feed has no `<h1>` anywhere on the page, and its one
   heading jumps from nothing straight to `<h3>`.** Found reviewing the live
