@@ -296,8 +296,8 @@ Two standing constraints for every item below:
   against item 9. Verified instead by full client suite (43 suites/224
   tests green) and `node --check` on every changed/added server file.
 
-- [ ] **Mobile horizontal overflow on every page — the navbar search box.**
-  Found reviewing the live site at a 375px viewport with Playwright:
+- [x] **Mobile horizontal overflow on every page — the navbar search box.**
+  Done: #80. Found reviewing the live site at a 375px viewport with Playwright:
   `document.documentElement` has `scrollWidth: 418` against
   `clientWidth: 375` on every page checked (`/`, `/categories`, `/search`,
   `/login`, `/register`, a category page, a post detail page, the 404
