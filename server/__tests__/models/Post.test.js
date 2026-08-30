@@ -155,6 +155,44 @@ describe('Post Model Test', () => {
     await expect(post.validate()).resolves.toBeUndefined();
   });
 
+  it('should reject content whose leading "Title:" line names a different subject than the post\'s own title', async () => {
+    const post = new Post({
+      title: 'Implementing Efficient Attention Mechanisms in Transformers',
+      content: 'Title: Exploring Transfer Learning in Deep Learning Models\n\nTransfer learning lets you reuse a pretrained model...',
+      user: user._id,
+      category: category._id
+    });
+
+    try {
+      await post.validate();
+      throw new Error('expected validation to fail');
+    } catch (error) {
+      expect(error.errors.content).toBeDefined();
+    }
+  });
+
+  it('should accept content whose leading "Title:" line matches the post\'s own title', async () => {
+    const post = new Post({
+      title: 'Getting Started with Machine Learning',
+      content: 'Title: Getting Started with Machine Learning\n\nWhat are the best resources...',
+      user: user._id,
+      category: category._id
+    });
+
+    await expect(post.validate()).resolves.toBeUndefined();
+  });
+
+  it('should accept content with no leading "Title:" line', async () => {
+    const post = new Post({
+      title: 'Getting Started with Machine Learning',
+      content: 'What are the best resources for someone new to ML?',
+      user: user._id,
+      category: category._id
+    });
+
+    await expect(post.validate()).resolves.toBeUndefined();
+  });
+
   it('should validate aiMlLevel enum values', async () => {
     const postWithInvalidLevel = new Post({
       title: 'Test Post',
