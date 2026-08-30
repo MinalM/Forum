@@ -45,12 +45,18 @@ const PostItem = ({ post: initialPost }) => {
     aiMlLevel
   } = post;
 
-  const commentCount =
-    typeof post.commentCount === 'number'
-      ? post.commentCount
-      : comments
-      ? comments.length
-      : 0;
+  // Prefer the real comment list over the denormalised `commentCount` field
+  // when it's available (every list/detail endpoint that renders PostItem
+  // populates `comments` except the user-profile posts list) — some posts
+  // were written with `commentCount` missing or stale (see
+  // server/utils/postCounters.js on the server), and trusting it over the
+  // actual comments is what made "Needs an answer" disagree with the
+  // thread's own rendered comment count.
+  const commentCount = Array.isArray(comments)
+    ? comments.length
+    : typeof post.commentCount === 'number'
+    ? post.commentCount
+    : 0;
 
   const formattedDate = formatDistanceToNow(new Date(createdAt), {
     addSuffix: true
@@ -133,11 +139,14 @@ const PostItem = ({ post: initialPost }) => {
 
     setSubmitting(true);
     try {
-      await axios.post(`/api/posts/${_id}/comments`, { content: draftText });
+      const res = await axios.post(`/api/posts/${_id}/comments`, { content: draftText });
       setPost(prev => ({
         ...prev,
         commentCount:
-          (typeof prev.commentCount === 'number' ? prev.commentCount : 0) + 1
+          (typeof prev.commentCount === 'number' ? prev.commentCount : 0) + 1,
+        comments: Array.isArray(prev.comments)
+          ? [...prev.comments, res.data.data]
+          : prev.comments
       }));
       closeComposer();
     } catch (err) {

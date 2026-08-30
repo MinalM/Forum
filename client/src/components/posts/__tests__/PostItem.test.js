@@ -146,7 +146,12 @@ describe('PostItem post/solved/needs-answer states', () => {
   });
 
   it('shows neither badge for a post that already has discussion but is not marked solved', () => {
-    renderPostItem({ ...basePost, commentCount: 3, isSolved: false });
+    renderPostItem({
+      ...basePost,
+      comments: [{ _id: 'c1' }, { _id: 'c2' }, { _id: 'c3' }],
+      commentCount: 3,
+      isSolved: false
+    });
 
     expect(screen.queryByText('Solved')).not.toBeInTheDocument();
     expect(screen.queryByText('Needs an answer')).not.toBeInTheDocument();
@@ -331,7 +336,11 @@ describe('PostItem answer composer', () => {
   });
 
   it('shows an outline Reply button once a post already has discussion', () => {
-    renderPostItem({ ...basePost, commentCount: 2 });
+    renderPostItem({
+      ...basePost,
+      comments: [{ _id: 'c1' }, { _id: 'c2' }],
+      commentCount: 2
+    });
 
     const button = screen.getByRole('button', { name: 'Reply' });
     expect(button).toHaveClass('answer-btn--outline');

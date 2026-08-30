@@ -10,6 +10,7 @@ const { postCreatedCounter, postViewCounter } = require('../dist/instrumentation
 const { getExperimentationService } = require('../dist/services/experimentation');
 const { subscribeUserToPost } = require('../utils/subscriptions');
 const { hasPersonalizationSignal, roleWordSet, scorePost } = require('../utils/feedRanking');
+const { findUnansweredPostIds } = require('../utils/postCounters');
 
 // How many unanswered posts the "You can answer these" rail considers before
 // ranking/truncating to RECOMMENDED_LIMIT - bounded for the same reason as
@@ -102,6 +103,25 @@ exports.getPost = asyncHandler(async (req, res, next) => {
     return next(
       new ErrorResponse(`Post not found with id of ${req.params.id}`, 404)
     );
+  }
+
+  // Self-heal a stale/missing commentCount or score against the data this
+  // request already loaded (the populated `comments` virtual and the
+  // upvotes/downvotes arrays), so the thread page and this post's next
+  // appearance in a feed/unanswered listing never disagree with the actual
+  // comment count. Needed because some posts were written with `commentCount`
+  // missing entirely (see server/utils/postCounters.js) and the denormalised
+  // counters (BACKLOG.md item 1) only stay in sync for writes that go through
+  // the comment/vote controllers.
+  const actualCommentCount = post.comments.length;
+  const actualScore = post.upvotes.length - post.downvotes.length;
+  if (post.commentCount !== actualCommentCount || post.score !== actualScore) {
+    await Post.updateOne(
+      { _id: post._id },
+      { $set: { commentCount: actualCommentCount, score: actualScore } }
+    );
+    post.commentCount = actualCommentCount;
+    post.score = actualScore;
   }
 
   // Increment view count without triggering full-document validators
@@ -522,12 +542,17 @@ exports.searchPosts = asyncHandler(async (req, res, next) => {
 // @route   GET /api/posts/recommended
 // @access  Private
 exports.getRecommendedUnanswered = asyncHandler(async (req, res, next) => {
-  const candidates = await Post.find({ commentCount: 0 })
+  const unansweredIds = (await findUnansweredPostIds(Post)).slice(0, RECOMMENDED_CANDIDATE_POOL);
+
+  const candidateDocs = await Post.find({ _id: { $in: unansweredIds } })
     .select('title tags aiMlLevel category createdAt')
     .populate('category', 'name')
-    .sort('createdAt')
-    .limit(RECOMMENDED_CANDIDATE_POOL)
     .lean();
+
+  // $in doesn't preserve order - reassemble in the oldest-first order
+  // findUnansweredPostIds already sorted.
+  const docsById = new Map(candidateDocs.map(doc => [doc._id.toString(), doc]));
+  const candidates = unansweredIds.map(id => docsById.get(id.toString())).filter(Boolean);
 
   let ranked = candidates;
   if (hasPersonalizationSignal(req.user)) {

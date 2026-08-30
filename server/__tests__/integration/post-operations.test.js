@@ -4,6 +4,7 @@ const app = require('../../server');
 const { createTestUser, createTestAdmin, cleanupTestData } = require('./setup');
 const Category = require('../../models/Category');
 const Post = require('../../models/Post');
+const Comment = require('../../models/Comment');
 
 describe('Additional Post Operations', () => {
   let token;
@@ -86,6 +87,71 @@ describe('Additional Post Operations', () => {
       expect(res.body.success).toBe(true);
       expect(res.body.data._id).toBe(post._id.toString());
       expect(res.body.data.views).toBe(1);
+    });
+
+    // BACKLOG.md: "The Unanswered feed tab returns zero posts in
+    // production, and every post shows the 'Needs an answer' badge" —
+    // production posts can have a `commentCount` that disagrees with their
+    // actual comments (drifted, or never written at all for posts inserted
+    // outside the Post model). A single-post fetch must never hand the
+    // client a commentCount/score that disagrees with the comments/votes it
+    // returns alongside it, and should correct the stored drift so later
+    // requests (including a feed listing) see the fix too.
+    it('self-heals a drifted commentCount/score to match its real comments and votes', async () => {
+      await Comment.create({ content: 'An answer', user: user._id, post: post._id });
+      await Comment.create({ content: 'Another answer', user: user._id, post: post._id });
+      post.commentCount = 999;
+      post.score = 999;
+      post.upvotes = [user._id];
+      await post.save({ validateBeforeSave: false });
+
+      const res = await request(server).get(`/api/posts/${post._id}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.commentCount).toBe(2);
+      expect(res.body.data.comments.length).toBe(2);
+      expect(res.body.data.score).toBe(1);
+
+      const stored = await Post.findById(post._id);
+      expect(stored.commentCount).toBe(2);
+      expect(stored.score).toBe(1);
+    });
+
+    it('self-heals a commentCount missing entirely, as for a post written outside the Post model', async () => {
+      // Mirrors how scripts/seed-mongo.js / scripts/generate-seed.js write
+      // posts in production: a raw driver insert, bypassing Mongoose (and
+      // so the commentCount/score schema defaults) entirely.
+      const { insertedId } = await Post.collection.insertOne({
+        title: 'Raw seeded post',
+        slug: `raw-seeded-post-${new mongoose.Types.ObjectId()}`,
+        content: 'content',
+        user: user._id,
+        category: category._id,
+        createdAt: new Date()
+      });
+      await Comment.create({ content: 'A real answer', user: user._id, post: insertedId });
+
+      const res = await request(server).get(`/api/posts/${insertedId}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.commentCount).toBe(1);
+      expect(res.body.data.comments.length).toBe(1);
+
+      const stored = await Post.findById(insertedId);
+      expect(stored.commentCount).toBe(1);
+    });
+
+    it('leaves an already-accurate commentCount/score untouched', async () => {
+      await Comment.create({ content: 'An answer', user: user._id, post: post._id });
+      post.commentCount = 1;
+      await post.save({ validateBeforeSave: false });
+
+      const res = await request(server).get(`/api/posts/${post._id}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.commentCount).toBe(1);
+      const stored = await Post.findById(post._id);
+      expect(stored.commentCount).toBe(1);
     });
   });
 

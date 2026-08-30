@@ -1,4 +1,5 @@
 const { hasPersonalizationSignal, roleWordSet, scorePost } = require('../utils/feedRanking');
+const { findUnansweredPostIds } = require('../utils/postCounters');
 
 // Feed values for GET /api/posts — see parseSinceWindow for the `since` format.
 const POST_FEED_VALUES = ['recent', 'unanswered', 'top'];
@@ -53,7 +54,15 @@ const advancedResults = (model, populate) => async (req, res, next) => {
     const feed = POST_FEED_VALUES.includes(req.query.feed) ? req.query.feed : 'recent';
 
     if (feed === 'unanswered') {
-      feedFilter = { commentCount: 0 };
+      // "No comments yet" is resolved against the Comment collection
+      // directly (see findUnansweredPostIds / server/utils/postCounters.js)
+      // rather than the denormalised `commentCount` field, which some posts
+      // were written without at all and so can't be trusted for filtering.
+      // Narrowing to this id set here, rather than branching the query path
+      // below, lets it flow through the same sort/search/pagination/populate
+      // handling as every other feed (an explicit ?sort= still overrides it).
+      const unansweredIds = await findUnansweredPostIds(model, baseFilter);
+      feedFilter = { _id: { $in: unansweredIds } };
       feedSort = 'createdAt';
     } else if (feed === 'top') {
       const windowMs = parseSinceWindow(req.query.since) ?? DEFAULT_TOP_WINDOW_MS;
@@ -187,8 +196,11 @@ const advancedResults = (model, populate) => async (req, res, next) => {
   }
 
   const total = await model.countDocuments(countQuery);
+  // The envelope's badge count is returned on every feed, not just
+  // `feed=unanswered`, and always reflects the whole collection (no
+  // baseFilter), matching prior behaviour.
   const unansweredCount = isPostModel
-    ? await model.countDocuments({ commentCount: 0 })
+    ? (await findUnansweredPostIds(model, {})).length
     : undefined;
 
   let results;
