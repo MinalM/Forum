@@ -505,6 +505,180 @@ Two standing constraints for every item below:
   `<select>`); existing `CategoryPosts.test.js` and
   `mobileTouchTargets.test.js` assertions unchanged.
 
+- [ ] **`/posts/<id>` for a deleted or never-existent post id shows a raw
+  "Error fetching post data" alert over a bare "Post not found", with no
+  heading, the wrong `document.title`, and a console error — the same dead
+  end the unknown-category item above describes, on the higher-traffic post
+  route.** Found reviewing the live site:
+  `https://cerulean-marshmallow-003d16.netlify.app/posts/000000000000000000000000`
+  (a well-formed but non-existent ObjectId — what a stale bookmark, a shared
+  link to a since-deleted post, or a search hit on removed content produces)
+  renders a red "Error fetching post data" toast stacked above a persistent
+  "Post not found" line, logs `Failed to load resource: the server responded
+  with a status of 404` to the console, renders no `<h1>`, and leaves
+  `document.title` at the bare "AI/ML Career Forum". Contrast
+  `/a-route-that-does-not-exist`, which renders the proper `NotFound` page
+  (`<h1>404</h1>`, title "Page Not Found | AI/ML Career Forum"). The API is
+  correct — `GET
+  https://aiml-forum.onrender.com/api/posts/000000000000000000000000`
+  returns 404 — so this is `client/src/pages/PostDetail.js`'s fetch `catch`
+  firing `setAlert('Error fetching post data', 'danger')` unconditionally,
+  not distinguishing a 404 from a real transport failure, then falling
+  through to a `!post` branch with no heading and a
+  `useDocumentTitle(post?.title)` that never receives a value. This is the
+  same defect already filed for `CategoryPosts.js` ("An unknown or deleted
+  category id renders a raw 'Error fetching category data' alert…") but on
+  `PostDetail.js`, which that item's scope ("`CategoryPosts.js`,
+  client-only") explicitly excludes — and post links are the primary
+  shareable surface of a forum, so a stale post link is the more common dead
+  end of the two.
+  Scope: `PostDetail.js`, client-only. On a 404 from the post fetch, render
+  the app's existing not-found treatment (reuse `NotFound`, or an inline
+  empty state with a real heading) and set a sensible `useDocumentTitle`;
+  reserve the red `setAlert` for genuine non-404 failures. Keep it
+  consistent with whatever the `CategoryPosts.js` item lands.
+  Acceptance: a test renders `PostDetail` with the post fetch mocked to 404
+  and asserts no `alert`-role error is shown, a not-found message with a
+  heading renders, and `document.title` is not the bare site name; a second
+  test with a 500/network failure still surfaces the danger alert; existing
+  `PostDetail.test.js` assertions unaffected.
+
+- [ ] **No page has a `<main>` landmark or a skip link — every keyboard and
+  screen-reader user re-traverses the navbar and search box before reaching
+  content on every page.** Found reviewing the live site with Playwright:
+  `document.querySelector('main, [role="main"]')` is `null` on every route
+  checked (`/`, `/categories`, a category page, `/posts/:id`, `/search`,
+  `/login`, `/register`, the 404 page), and there is no skip link
+  (`a[href^="#"]` / `.skip-link` — none present; the first Tab stop on every
+  page is the "AI/ML Career Forum" brand link, then the two nav links, then
+  the navbar search input and button, before any page content). The only
+  landmarks exposed are `NAV`, `FORM[role="search"]`, and `FOOTER`. This is
+  a WCAG 2.4.1 (Bypass Blocks) failure and a 1.3.1 (Info and Relationships)
+  gap: assistive-tech users have no "jump to main content" target and no way
+  to skip the repeated header block, on a multi-page app where that block is
+  byte-identical on every load.
+  Scope: client-only, layout level. Wrap the routed content in a single
+  `<main id="main-content">` (in `client/src/App.js` around `<Routes>`), and
+  add a visually-hidden-until-focused skip link as the first focusable
+  element in `App.js` pointing at it. No visual change at rest.
+  Acceptance: a test rendering the app asserts exactly one `<main>` /
+  `role="main"` element wraps the routed content and that it is present on
+  at least two different routes (not page-specific); a second test asserts a
+  skip link is the first focusable element and its `href` targets the main
+  region's id; existing `App`/layout test assertions unaffected.
+
+- [ ] **`/categories`, a category page, and `/search` jump straight from
+  `<h1>` to `<h3>` — the card and result lists have no `<h2>` and
+  `PostItem`/the category card use `<h3>` titles.** Found reviewing the live
+  site with Playwright: on
+  `https://cerulean-marshmallow-003d16.netlify.app/categories` the heading
+  sequence is `h1` ("Forum Categories") then six `h3`s (category-card names
+  plus the sidebar promo); on a category page
+  (`/categories/67cbb5ca71e8be810c50104c`) it is `h1` ("Learning Resources")
+  then `h3` × N (`.post-title` feed-card titles,
+  `client/src/components/posts/PostItem.js`); on `/search?q=learning` it is
+  `h1` ("Search Results") then `h3` × 10. Each skips the `h2` level (a
+  measured max jump of 2 on all three) — a WCAG 1.3.1 / 2.4.6 heading-order
+  violation on three of the app's main browsing surfaces. This is distinct
+  from the filed Home item (Home has *no* `h1` at all) and from the archived
+  footer-heading fix (which only demoted the footer's own `<h3>`s and whose
+  regression test pairs `Login` + `Footer`, neither of which renders a card
+  list): these three pages have a correct `h1` but nothing bridges it to the
+  `h3` titles.
+  Scope: client-only. Give each list a real section heading at `h2` (the
+  "Showing results for …" line already rendered as a `<p>` on `/search`
+  could become the `h2`; `/categories` and the category page need a
+  "Categories" / "Discussions" `h2`), or demote the card titles to the level
+  the surrounding structure implies — one consistent approach across the
+  three pages, coordinated with the `PostItem` heading level the Home
+  no-`h1` item settles on so the two don't contradict.
+  Acceptance: a test per page (`Categories`, `CategoryPosts`,
+  `SearchResults`) renders it with a non-empty list fixture and asserts the
+  heading-level sequence never increases by more than one and that an `h2`
+  sits between the `h1` and the first card `h3`; existing
+  `Categories`/`CategoryPosts`/`SearchResults` assertions unaffected.
+
+- [ ] **Every live post shows category-name/description fragments and the
+  literal words "discussion" and "help" as tag chips — and
+  `scripts/cleanup-post-tags.js` (the #33 remediation) cannot remove them.**
+  Found reviewing the live site: `GET
+  https://aiml-forum.onrender.com/api/posts?limit=100` returns 31 posts and
+  **every one** carries polluted `tags`, rendered as purple chips in
+  `.post-tags` on the home feed, `/search`, category pages and `/posts/:id`
+  (`client/src/components/posts/PostItem.js`, `PostDetail.js`). Two shapes:
+  a whole category name+description stored as one tag — `"deep learning
+  topics related to neural networks"` (48 chars), `"project showcase  share
+  and discuss your ai/ml projects and portfolios"` (69 chars), `"machine
+  learning fundamentals  discussions about core machine learning concepts"`
+  — and the same descriptions comma-split into standalone fragment tags:
+  `"learning resources  recommendations for courses"`, `"books"`,
+  `"tutorials"`, `"and other learning materials"`; `"deep learning
+  frameworks"`, `"and applications"`; `"algorithms"`, `"and techniques"`.
+  On top of that, the literal tokens `"discussion"` and `"help"` are present
+  on all 31 posts. Rendered example, home feed first card
+  (`https://cerulean-marshmallow-003d16.netlify.app/`): the chips read
+  "deep learning topics related to neural networks", "deep learning
+  frameworks", "and applications", "discussion", "help" — confirmed via
+  Playwright against the live DOM. At a 375px viewport the long
+  single-phrase chips run off the feed card's right edge (`.post-tags`
+  measured `right ≈ 511` against `clientWidth 375`; the card clips it, so
+  this is a chip-overflow-within-the-card defect, separate from and not
+  fixed by the already-filed document-level `.navbar-search` scrollbar
+  item).
+  This is the pollution the archived tags item
+  (`docs/BACKLOG-ARCHIVE.md`, done #33) describes, but that fix does not
+  reach it. #33 added `normalizeTags()` + Post schema validators (≤10 tags,
+  ≤30 chars each) and `scripts/cleanup-post-tags.js` for the live rows, and
+  its Done note asserts the length filter "is what removes the
+  category-description fragments — they're all far longer than a real tag."
+  That is false for this data: `cleanup-post-tags.js` (read in full) only
+  drops tags with `length > MAX_TAG_LENGTH` (30) and caps the count at
+  `MAX_TAGS` (10), so the comma-split fragments and the `discussion`/`help`
+  tokens — all ≤30 chars, ≤6 tags per post — survive it untouched. Running
+  `--apply` against live would strip one or two strings per post and leave
+  every card still showing 3–5 meaningless chips. The three versioned seed
+  scripts (`server/seeder.js`, `scripts/generate-seed.js`,
+  `scripts/seed-mongo.js`) all emit clean short tags (`beginner`, `pytorch`,
+  `nlp`, …) and never `discussion`/`help`, consistent with #33's conclusion
+  that these rows were seeded some other way.
+  Scope: a live-data cleanup that handles this shape — a new one-off
+  following `scripts/cleanup-post-tags.js`'s dry-run-by-default / `--apply`
+  pattern that drops multi-word category-name/description phrases and the
+  fixed `discussion`/`help` junk rather than only length-filtering (an
+  autonomous PR cannot touch the live DB, so this ships as a documented
+  script a human runs) — plus a defensive cap on `.post-tags` chip width /
+  count in `PostItem` so a future bad row cannot run off the card. Server
+  enforcement from #33 stays as-is.
+  Acceptance: a test feeds the new cleanup routine a fixture built from the
+  real live tag arrays above and asserts the result contains no multi-word
+  category-description phrase, no bare `and …` / `discussion` / `help`
+  fragment, and preserves any genuine short tag it is given; a `.post-tags`
+  render test asserts a card given an over-long tag string keeps every chip
+  within the card box at 375px; existing `cleanup-post-tags` /
+  `normalizeTags` / `PostItem` assertions unaffected.
+
+- [ ] **The post's own up/down vote buttons on `/posts/:id` have no
+  accessible name — a screen reader announces them as bare "button".**
+  Found reviewing the live site with Playwright: on
+  `https://cerulean-marshmallow-003d16.netlify.app/posts/6925386a88cb7b8de046eddf`
+  the two `.vote-btn.upvote` / `.vote-btn.downvote` controls for the post
+  itself (inside `.vote-buttons` in `client/src/pages/PostDetail.js`) expose
+  `aria-label: null`, `aria-labelledby: null`, `title: null` and empty text
+  content — the visible label is a Font Awesome `<i>` glyph — so their
+  computed accessible name is empty. The per-answer vote buttons in the same
+  list are correct: each carries `aria-label="Upvote answer"` /
+  `"Downvote answer"` (added with #67). Only the question's vote control was
+  missed. This is a WCAG 4.1.2 (Name, Role, Value) gap on the primary
+  action of every thread page, and unlike the archived "vote buttons have no
+  CSS" item (which only added `.vote-btn` sizing) nothing has given these
+  two an accessible name.
+  Scope: `client/src/pages/PostDetail.js`, client-only — give the post's two
+  vote buttons an `aria-label` (`"Upvote question"` / `"Downvote question"`
+  or equivalent), matching the pattern already used for answers.
+  Acceptance: a `PostDetail` test asserts both of the post's vote buttons
+  have a non-empty accessible name; the existing per-answer vote-button
+  `aria-label` assertions from #67 are unaffected.
+
 - [x] **"For you" ranking and the "You can answer these" rail.** Done: #71.
   Added `server/utils/feedRanking.js`: a documented weighted score
   (`TAG_WEIGHT` per matching `skills`/`tags`, `LEVEL_WEIGHT` for an
@@ -603,6 +777,155 @@ Two standing constraints for every item below:
   (`fastdl.mongodb.org` → 403), a pre-existing environment limitation (see
   #68's caveat), not something this change triggers; no server files were
   touched by this PR.
+
+### Logged-in experience: review findings
+
+From a review of the signed-in experience (logged in as an admin account)
+on the live site at desktop and 375px with Playwright — navigation, the
+post-detail layout, and the accept-answer flow. Bug first, then design.
+
+- [ ] **Accepting an answer leaves the post on "Needs an answer" and
+  returns 400, on any post whose stored `tags` exceed the #33 caps.**
+  Reproduced live, logged in as admin. Clicking a comment's "Accept this
+  answer" on
+  `https://cerulean-marshmallow-003d16.netlify.app/posts/6925386a88cb7b8de046eddf`:
+  the amber "Needs an answer" badge does not change — immediately or
+  after a reload — and `GET /api/posts/6925386a88cb7b8de046eddf`
+  afterwards still reads `isSolved: false` even though the target comment
+  now has `isAnswer: true` (a split write), with a `400` in the browser
+  console. The same steps on
+  `https://cerulean-marshmallow-003d16.netlify.app/posts/67cbb5cb71e8be810c501056`
+  (tags `portfolio`, `projects`, `job hunting` — all short) work: badge
+  flips to "Solved", `isSolved: true`, no error. Root cause:
+  `markAsAnswer` (`server/controllers/comments.js:247`) runs
+  `await comment.save()` first (succeeds), then
+  `post.isSolved = true; await post.save()` — and `post.save()`
+  full-document-validates `tags`, which throws `ValidationError` on any
+  post whose legacy tags violate the `MAX_TAGS = 10` /
+  `MAX_TAG_LENGTH = 30` validators added in #33
+  (`server/models/Post.js:29-40`); `6925386a…` carries a 48-char tag.
+  `asyncHandler` turns the throw into a 400 after the comment flag has
+  already persisted. Same `post.save()`-hits-tag-validator failure the
+  archived `GET /api/posts/:id` 400 item fixed with `$inc`, but
+  `markAsAnswer` still uses `.save()`; and archived #73 made
+  accept-answer the sole owner of `isSolved`, so on these posts there is
+  now no working path to "Solved" at all. Related to the open
+  tag-pollution items but a distinct code path.
+  Acceptance: an integration test with a fixture post whose stored `tags`
+  exceed the #33 caps reproduces `PUT /api/comments/:id/answer` returning
+  non-2xx with `post.isSolved` staying `false` while `comment.isAnswer`
+  flips, then asserts the fix persists `isSolved` regardless of legacy
+  tag data (targeted `updateOne` / `$set`, or `validateModifiedOnly`, so
+  unrelated fields are not revalidated) and that the comment flag and
+  post flag never persist independently; a client regression test
+  asserts accept → "Solved" badge + `.comment--accepted` and un-accept
+  reverts both; existing `markAsAnswer` tests still pass.
+
+- [ ] **The signed-in navbar is overcrowded and has no visual
+  hierarchy.** Measured live logged in as admin: at 1280px the navbar is
+  **160px tall** — it wraps to three rows because the brand ("AI/ML
+  Career Forum" itself wraps to three lines), the search box and **ten**
+  top-level items (Home, Categories, notification bell, Dashboard, Create
+  Post — which wraps to two lines — Saved, Admin ▾, Moderator ▾, Profile,
+  Logout) do not fit one row, while the centre of the bar is empty.
+  Nothing is prioritised: "Create Post", the primary contributor action,
+  is a plain text link identical to the other nine; "Admin" and
+  "Moderator" are two separate top-level dropdowns for one staff surface;
+  and the dropdown items (User Management, Admin Dashboard, Reports
+  Dashboard) sit in the layout/accessibility tree rather than behind a
+  disclosure. On mobile the bar is 128px (brand row + full-width search
+  row) and the same ten links fill the hamburger, duplicating most of
+  the bottom `MobileTabBar` (Feed / Answer / Ask / Saved / You).
+  Scope: `client/src/components/layout/Navbar.js` / `Navbar.css`,
+  client-only, no route changes. Reduce the top level to: brand · search
+  · Home · Categories · a visually distinct **Create** button ·
+  notification bell · one user menu (avatar/name → Dashboard, Saved,
+  Profile, Log out) · for staff, one "Admin" menu merging the current
+  Admin + Moderator destinations. The bar fits one row at ≥1024px; the
+  brand does not wrap; dropdown contents are unmounted until opened.
+  Acceptance: a test renders `Navbar` with an admin user and asserts
+  exactly one top-level "Create" affordance styled as a button (not
+  `.nav-link`), a single user menu containing Dashboard/Saved/Profile/
+  Logout, a single staff menu containing the admin + moderator
+  destinations, and that menu items are absent from the tree when the
+  menu is closed; an assertion (jsdom bounding-box or raw-CSS) that the
+  top-level item count is ≤ 7; existing `Navbar` tests updated;
+  `mobileTouchTargets.test.js` still green.
+
+- [ ] **The post-detail header and action row are dense, noisy, and
+  overflow on mobile.** Measured logged in as admin on
+  `/posts/6925386a…`: above the post body the page stacks five
+  full-width bands — status badge, title, meta (author · category · date
+  · views), a row of tag chips, then a **nine-button action row** (`↑/↓`
+  vote, "Notify me of answers", "Save", "Edit", "Delete", "Lock", "Pin",
+  "Report") in **four different colour variants** (`btn-danger`,
+  `btn-outline-warning`, `btn-outline-info`, `btn-outline-danger`,
+  plain). On desktop that row is one 44px line; at 375px it does not wrap
+  cleanly — "Lock", "Pin", "Report" run past the right edge of the
+  viewport (the `.post-header` block alone is 236px tall on mobile,
+  pushing the body far down). The eight destructive/mod controls have the
+  same weight as the two a reader needs; the `Post Comment` button in the
+  same area is 34px where the surrounding controls are 44px.
+  Scope: `PostDetail.js` / `App.css`, client-only. Split the action row
+  into reader actions (vote, Save, Notify) shown inline and
+  author/moderator actions (Edit, Delete, Lock, Pin, Report) collapsed
+  into a single overflow "⋯" menu; give those buttons one consistent
+  quiet style rather than four alert colours; tighten the header to
+  title + one meta line + tags; guarantee the header and action area fit
+  within 375px with no horizontal overflow; bring `Post Comment` to the
+  44px baseline.
+  Acceptance: a test renders `PostDetail` as the author (and as an
+  admin) and asserts the inline action set is just vote/Save/Notify with
+  the mod/author actions behind one toggle; a raw-CSS/jsdom check that at
+  375px `.post-header` and `.post-actions` produce no element wider than
+  the viewport (extend `postMetaOverflow.test.js`'s pattern); all
+  post-detail controls including `Post Comment` assert
+  `min-height >= 44px`; existing `PostDetail` tests updated.
+
+- [ ] **"Accept this answer" renders as a loud full-size button on every
+  comment.** On a seven-comment thread an author/moderator sees seven
+  identical 172px green "✓ Accept this answer" buttons marching down the
+  page (measured; visible in the review screenshot), each paired with red
+  Delete and Report icon buttons — so the accept control, used at most
+  once per thread, is the most prominent repeated element in the
+  discussion.
+  Scope: `PostDetail.js` / `App.css`, client-only. Make the per-comment
+  accept affordance quiet by default (an outline check icon, or
+  text-link weight) and prominent only on hover/focus or only on the
+  current top-voted answer; keep it obviously actionable for the asker;
+  separate it from the Delete/Report icon cluster so "accept" and
+  "remove" don't sit adjacent at equal weight; once an answer is
+  accepted, de-emphasise the control on the other comments further.
+  Acceptance: a component test asserts the default rendered state of the
+  accept control on a non-accepted comment is the quiet variant
+  (class/markup assertion), that it stays keyboard-reachable and
+  labelled, and that Delete/Report are a separate group; the accepted
+  state still shows the green border + "Answer" badge; existing
+  accept-answer tests updated.
+
+- [ ] **Comment and post-author avatars are broken images for every user
+  on the default avatar.** `User.avatar` defaults to the bare string
+  `'default-avatar.jpg'` (`server/models/User.js:67`) and the API
+  returns it verbatim. `PostDetail.js:594` / `:731` render
+  `<img src={comment.user?.avatar || '/images/default-avatar1.png'}>` —
+  the stored value is truthy so the `||` fallback never fires, and
+  `"default-avatar.jpg"` resolves relative to the current route (e.g.
+  `/posts/default-avatar.jpg`) → 404 → a broken-image icon on the post
+  author and every comment/reply (visible in the review screenshot; the
+  real fallback `client/public/images/default-avatar1.png` exists and is
+  never used). Affects effectively every thread.
+  Scope: pick one fix and apply it consistently — normalise `avatar` to
+  a usable URL (default to `/images/default-avatar1.png`, or resolve a
+  bare filename to `/images/<file>` at the API or a client helper),
+  and/or add an `onError` fallback to the avatar `<img>`s. Cover
+  `PostItem`, `PostDetail` (comments and replies), `Profile`, and the
+  navbar user menu if it shows an avatar.
+  Acceptance: a model/server test asserts a newly created user's
+  `avatar` resolves to an existing asset path (not a bare filename); a
+  client test renders a comment whose `user.avatar` is the default and
+  asserts the `<img>` `src` is `/images/default-avatar1.png` (or that
+  `onError` swaps to it); the Playwright run makes no failed request for
+  the default avatar.
 
 ### Growth: adoption and engagement
 
