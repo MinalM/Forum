@@ -4,6 +4,7 @@ const app = require('../../server');
 const { createTestUser, cleanupTestData } = require('./setup');
 const Category = require('../../models/Category');
 const Post = require('../../models/Post');
+const Comment = require('../../models/Comment');
 const User = require('../../models/User');
 const jwt = require('jsonwebtoken');
 
@@ -228,6 +229,10 @@ describe('For you ranking', () => {
         commentCount: 3,
         createdAt: new Date(now - 3 * DAY_MS)
       });
+      // The "unanswered" set is resolved against real Comment documents
+      // (see server/utils/postCounters.js), not the commentCount field
+      // above, so this post needs an actual comment to be excluded.
+      await Comment.create({ content: 'An answer', user: author._id, post: answered._id });
     });
 
     it('requires authentication', async () => {

@@ -1,4 +1,5 @@
 const { hasPersonalizationSignal, roleWordSet, scorePost } = require('../utils/feedRanking');
+const { findUnansweredPostIds } = require('../utils/postCounters');
 
 // Feed values for GET /api/posts — see parseSinceWindow for the `since` format.
 const POST_FEED_VALUES = ['recent', 'unanswered', 'top'];
@@ -48,13 +49,17 @@ const advancedResults = (model, populate) => async (req, res, next) => {
   const isPostModel = model.modelName === 'Post';
   let feedFilter = null;
   let feedSort = null;
+  let isUnansweredFeed = false;
 
   if (isPostModel && req.query.feed !== undefined) {
     const feed = POST_FEED_VALUES.includes(req.query.feed) ? req.query.feed : 'recent';
 
     if (feed === 'unanswered') {
-      feedFilter = { commentCount: 0 };
-      feedSort = 'createdAt';
+      // "No comments yet" is resolved against the Comment collection
+      // directly (see findUnansweredPostIds / server/utils/postCounters.js)
+      // rather than the denormalised `commentCount` field, which some posts
+      // were written without at all and so can't be trusted for filtering.
+      isUnansweredFeed = true;
     } else if (feed === 'top') {
       const windowMs = parseSinceWindow(req.query.since) ?? DEFAULT_TOP_WINDOW_MS;
       feedFilter = { createdAt: { $gte: new Date(Date.now() - windowMs) } };
@@ -186,14 +191,35 @@ const advancedResults = (model, populate) => async (req, res, next) => {
     countQuery = combinedFilter;
   }
 
-  const total = await model.countDocuments(countQuery);
+  // The unanswered feed's own listing is scoped by baseFilter like any other
+  // feed; the envelope's badge count (returned on every feed, not just
+  // `feed=unanswered`) always reflects the whole collection, matching prior
+  // behaviour.
+  const unansweredIds = isUnansweredFeed
+    ? await findUnansweredPostIds(model, baseFilter)
+    : null;
   const unansweredCount = isPostModel
-    ? await model.countDocuments({ commentCount: 0 })
+    ? (await findUnansweredPostIds(model, {})).length
     : undefined;
+
+  const total = isUnansweredFeed ? unansweredIds.length : await model.countDocuments(countQuery);
 
   let results;
 
-  if (personalize) {
+  if (isUnansweredFeed) {
+    const pageIds = unansweredIds.slice(startIndex, endIndex);
+
+    let unansweredQuery = model.find({ _id: { $in: pageIds } });
+    if (populate) {
+      unansweredQuery = unansweredQuery.populate(populate);
+    }
+    const pageDocs = await unansweredQuery;
+
+    // $in doesn't preserve order - reassemble in the oldest-first order
+    // findUnansweredPostIds already sorted.
+    const docsById = new Map(pageDocs.map(doc => [doc._id.toString(), doc]));
+    results = pageIds.map(id => docsById.get(id.toString())).filter(Boolean);
+  } else if (personalize) {
     const roleWords = roleWordSet(req.user.targetRole);
     const candidates = await model
       .find(combinedFilter)

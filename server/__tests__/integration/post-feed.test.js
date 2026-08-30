@@ -4,6 +4,7 @@ const app = require('../../server');
 const { createTestUser, cleanupTestData } = require('./setup');
 const Category = require('../../models/Category');
 const Post = require('../../models/Post');
+const Comment = require('../../models/Comment');
 
 describe('GET /api/posts feed parameter', () => {
   let user;
@@ -109,6 +110,11 @@ describe('GET /api/posts feed parameter', () => {
         commentCount: 2,
         createdAt: new Date('2026-02-01')
       });
+      // The "unanswered" set is resolved against real Comment documents
+      // (see server/utils/postCounters.js), not the commentCount field
+      // above, so this post needs actual comments to be excluded.
+      await Comment.create({ content: 'First answer', user: user._id, post: answered._id });
+      await Comment.create({ content: 'Second answer', user: user._id, post: answered._id });
     });
 
     it('filters to posts with no comments, oldest first', async () => {
@@ -139,6 +145,84 @@ describe('GET /api/posts feed parameter', () => {
 
       expect(res.status).toBe(200);
       expect(res.body.unansweredCount).toBe(2);
+    });
+  });
+
+  // BACKLOG.md: "The 'Unanswered' feed tab returns zero posts in
+  // production ... `?feed=unanswered` returns {"count":0,...}, while
+  // `?feed=recent&limit=50` on the same live data returns 31 posts, every
+  // one with `commentCount:0`". scripts/seed-mongo.js and
+  // scripts/generate-seed.js write posts via the raw MongoDB driver
+  // (`db.posts.insertMany`), bypassing the Post model — so `commentCount`
+  // never gets its schema default and is simply absent from the stored
+  // document, not literally 0. `Post.find({ commentCount: 0 })` only
+  // matches an explicit 0, so it silently drops these posts. Reproduce
+  // that here with a fixture inserted the same way, not via Post.create.
+  describe('feed=unanswered against posts seeded outside Mongoose', () => {
+    async function insertRawPost(overrides = {}) {
+      const { insertedId } = await Post.collection.insertOne({
+        title: 'Raw seeded post',
+        slug: `raw-seeded-post-${new mongoose.Types.ObjectId()}`,
+        content: 'content',
+        user: user._id,
+        category: category._id,
+        createdAt: new Date('2026-01-01'),
+        ...overrides
+      });
+      return insertedId;
+    }
+
+    it('reproduces feed=unanswered wrongly returning nothing for a raw-inserted post with no commentCount field', async () => {
+      const rawId = await insertRawPost();
+
+      // Confirms the raw insert actually reproduces the missing-field
+      // shape (a plain `{ commentCount: 0 }` match would find nothing).
+      const stored = await Post.collection.findOne({ _id: rawId });
+      expect(Object.prototype.hasOwnProperty.call(stored, 'commentCount')).toBe(false);
+
+      const res = await request(server).get('/api/posts?feed=unanswered');
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.map(p => p._id)).toContain(rawId.toString());
+    });
+
+    it('counts a raw-inserted, actually-unanswered post in unansweredCount too', async () => {
+      await insertRawPost();
+
+      const res = await request(server).get('/api/posts?feed=recent');
+
+      expect(res.status).toBe(200);
+      expect(res.body.unansweredCount).toBe(1);
+    });
+
+    it('excludes a raw-inserted post that genuinely has comments, even with commentCount missing', async () => {
+      const rawId = await insertRawPost();
+      await Comment.create({ content: 'A real answer', user: user._id, post: rawId });
+
+      const res = await request(server).get('/api/posts?feed=unanswered');
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.map(p => p._id)).not.toContain(rawId.toString());
+      expect(res.body.unansweredCount).toBe(0);
+    });
+
+    it('excludes a post whose stored commentCount is stale/wrong but genuinely has comments', async () => {
+      // e.g. a post created through the app whose counter later drifted —
+      // covered separately by scripts/backfill-post-counters.js, but the
+      // unanswered feed itself must not trust the stale field either.
+      const staleAnswered = await Post.create({
+        title: 'Stale but answered',
+        content: 'content',
+        user: user._id,
+        category: category._id,
+        commentCount: 0,
+        createdAt: new Date('2026-01-01')
+      });
+      await Comment.create({ content: 'A real answer', user: user._id, post: staleAnswered._id });
+
+      const res = await request(server).get('/api/posts?feed=unanswered');
+
+      expect(res.body.data.map(p => p._id)).not.toContain(staleAnswered._id.toString());
     });
   });
 
