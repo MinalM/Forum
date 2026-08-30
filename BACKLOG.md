@@ -244,54 +244,57 @@ Two standing constraints for every item below:
   app in-process, both without error. Client suite ran clean: 38 suites,
   182 tests.
 
-- [ ] **The "Unanswered" feed tab returns zero posts in production, and
+- [x] **The "Unanswered" feed tab returns zero posts in production, and
   every post — answered or not — shows the "Needs an answer" badge.**
-  Found reviewing the live site: `GET
-  https://aiml-forum.onrender.com/api/posts?feed=unanswered` returns
-  `{"count":0,"pagination":{"total":0,...},"data":[],"unansweredCount":0}`,
-  while the plain `?feed=recent&limit=50` call on the same live data
-  returns 31 posts, every one of them with `"commentCount":0` in the
-  response body — so the `unanswered` filter (`{ commentCount: 0 }` in
-  `server/middleware/advancedResults.js:46-48`) should be matching all 31
-  and is matching none. The same middleware's `unansweredCount`
-  (`advancedResults.js:167-169`, `model.countDocuments({ commentCount: 0
-  })`, no other conditions) independently returns `0` too, on every feed
-  request. On the live front end this means the Home feed's "Unanswered"
-  tab badge reads `0` and clicking it renders "No posts found"
-  (`https://cerulean-marshmallow-003d16.netlify.app/`, click the
-  "Unanswered" tab) even though dozens of genuinely-unanswered posts are
-  sitting right there in "For you". Worse, `commentCount` itself is stale
-  against real data, not just uncounted: post
-  `https://cerulean-marshmallow-003d16.netlify.app/posts/6925386a88cb7b8de046eddf`
-  renders both a "Needs an answer" badge (`.post-status-badges`, driven by
-  `commentCount: 0`) and, two lines below it, `Comments (7)` — its thread
-  actually has seven real comments (confirmed via
-  `GET /api/posts/6925386a88cb7b8de046eddf`, `comments.length === 7`). A
-  full-catalogue check (`GET /api/posts?limit=100`) found this is not one
-  bad row: all 31 live posts have `commentCount !== comments.length`,
-  every one of them stuck at `0`. `server/__tests__/integration/post-feed.test.js`
-  passes today because its fixtures are written via `Post.create(...)`
-  (proper Mongoose casting); the live mismatch — a stored value that
-  doesn't equality-match a query for the same value even though it
-  serializes identically in `GET` responses — is consistent with the live
-  documents holding `commentCount` as a type `model.find({commentCount:
-  0})` can't match (e.g. written by something outside the
-  `Post.create`/`findByIdAndUpdate`-with-casting path this field was
-  designed for), though a test environment with real Mongo access is
-  needed to confirm the exact stored type rather than infer it from
-  symptoms. `score`/vote counts show the same live/query split on a
-  smaller sample (only 1 of the 31 posts currently has any votes, but its
-  `score` also fails the `score === upvotes.length - downvotes.length`
-  check), suggesting this isn't unique to `commentCount`.
-  Acceptance: an integration test against a seeded-the-same-way-as-live
-  fixture (not just `Post.create`) reproduces `feed=unanswered` wrongly
-  returning 0 and then asserts the fix returns the expected posts; a
-  regression test confirms a post's "Needs an answer"/"Solved" badge never
-  disagrees with its own rendered comment count; if the root cause is
-  confirmed to be bad stored data rather than a query bug, this item
-  covers making the query robust to it (e.g. an aggregation/cast-safe
-  match) since the same live database can't be assumed clean going
-  forward, not just documenting that a human should run a one-off fix.
+  Done: #79. Root cause confirmed as two separate bugs, both traced to
+  `scripts/seed-mongo.js`/`scripts/generate-seed.js` writing posts via the
+  raw MongoDB driver (`db.posts.insertMany`), bypassing the Post model
+  entirely — those documents never get `commentCount`'s schema default
+  applied, so the field is simply *absent*, not `0`:
+  1. `Model.find({ commentCount: 0 })`/`countDocuments({ commentCount: 0 })`
+     is a raw match that only finds an explicit `0` and silently skips a
+     document where the field is missing, which is why `feed=unanswered`
+     and `unansweredCount` returned nothing against live data.
+  2. `client/src/components/posts/PostItem.js` computed its badge/count
+     from `post.commentCount` whenever it was a number — which it always
+     is, because Mongoose applies the schema default on *read* even for a
+     genuinely-missing field — so it never fell back to the real,
+     already-populated `comments` array, even though every endpoint that
+     renders `PostItem` populates `comments` for exactly this purpose.
+  Fixed by resolving "no comments yet" against the `Comment` collection
+  directly (`server/utils/postCounters.js`'s `findUnansweredPostIds`, an
+  aggregation with a `$lookup`), used by `feed=unanswered`, the envelope's
+  `unansweredCount`, and `getRecommendedUnanswered` — robust regardless of
+  whether `commentCount` is missing, stale, or simply wrong, not just
+  robust to the missing-field case. `getPost` now also self-heals a
+  drifted `commentCount`/`score` against the data it already loaded on
+  every single-post fetch, so a visited thread's counters converge without
+  a human running `scripts/backfill-post-counters.js`. `PostItem` now
+  prefers the real `comments` array over `commentCount` when populated,
+  fixing the "Needs an answer" mismatch outright.
+  Acceptance: `server/__tests__/integration/post-feed.test.js` reproduces
+  `feed=unanswered` wrongly returning nothing against a fixture inserted
+  the same way as `scripts/seed-mongo.js` (raw `Post.collection.insertOne`,
+  not `Post.create`), then asserts the fix includes it — and, separately,
+  that a raw-inserted or stale-but-genuinely-answered post is correctly
+  *excluded*, which a simpler "treat missing as 0" filter would have
+  gotten wrong; `server/__tests__/integration/post-operations.test.js`
+  covers the `getPost` self-heal (missing field, drifted counters, and an
+  already-correct post left untouched); `PostItem.test.js` covers the
+  client precedence fix, including the optimistic post-answer update
+  keeping `comments`/`commentCount` in sync. Two pre-existing fixtures
+  (`server/__tests__/integration/post-feed.test.js`'s original
+  `feed=unanswered` block and `forYouRanking.test.js`'s recommended-posts
+  block) set `commentCount` to a non-zero value without ever creating a
+  matching `Comment` document — a shorthand valid under the old
+  trust-the-field behaviour but not the new source-of-truth check — so
+  those two fixtures got a real `Comment.create` added; their assertions
+  are unchanged.
+  Caveat: could not run the server suite in this environment —
+  `mongodb-memory-server`'s binary download is blocked by this sandbox's
+  egress policy (`fastdl.mongodb.org` → 403), the same limitation noted
+  against item 9. Verified instead by full client suite (43 suites/224
+  tests green) and `node --check` on every changed/added server file.
 
 - [ ] **Mobile horizontal overflow on every page — the navbar search box.**
   Found reviewing the live site at a 375px viewport with Playwright:
