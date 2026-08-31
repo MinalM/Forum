@@ -514,11 +514,24 @@ Two standing constraints for every item below:
   controls; existing `CategoryPosts.test.js` and `mobileTouchTargets.test.js`
   assertions unchanged. Full client suite green: 47 suites, 238 tests.
 
-- [ ] **`/posts/<id>` for a deleted or never-existent post id shows a raw
+- [x] **`/posts/<id>` for a deleted or never-existent post id shows a raw
   "Error fetching post data" alert over a bare "Post not found", with no
   heading, the wrong `document.title`, and a console error — the same dead
   end the unknown-category item above describes, on the higher-traffic post
-  route.** Found reviewing the live site:
+  route.** Done: see PR for this item.
+  `PostDetail.js`'s fetch `catch` now checks `err.response?.status`: a 404
+  sets a `notFound` flag instead of firing the alert, which renders an
+  inline not-found state (`<h1>Post Not Found</h1>`, explanatory copy, a
+  link back to `/`) and drives `useDocumentTitle` to "Post Not Found"
+  rather than leaving it at the bare site name; any other failure (500,
+  network error) is unchanged — same danger alert, same "Post not found"
+  text. Client-only, `PostDetail.js` alone, mirroring the `CategoryPosts.js`
+  fix from the item above (#85).
+  Acceptance covered by new tests in `client/src/pages/__tests__/PostDetail.test.js`'s
+  `PostDetail 404 handling` block (404 renders the heading with no alert
+  and a non-default title; a non-404 failure still surfaces the alert);
+  full client suite green (47 suites, 240 tests); no new lint issues.
+  Original finding, reviewing the live site:
   `https://cerulean-marshmallow-003d16.netlify.app/posts/000000000000000000000000`
   (a well-formed but non-existent ObjectId — what a stale bookmark, a shared
   link to a since-deleted post, or a search hit on removed content produces)
