@@ -1,5 +1,28 @@
 /* App specific styles */
 
+/* Skip link: visually hidden until it receives keyboard focus, so it does
+   not affect sighted-mouse users but gives keyboard/screen-reader users a
+   way to bypass the repeated navbar/search block on every page. */
+.skip-link {
+  position: absolute;
+  top: -60px;
+  left: 0;
+  z-index: 1000;
+  background: var(--primary-color);
+  color: var(--text-on-primary);
+  padding: 0.75rem 1.5rem;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  border-radius: 0 0 4px 0;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.skip-link:focus {
+  top: 0;
+}
+
 /* Main layout */
 .main-content {
   min-height: calc(100vh - 140px); /* Adjust based on navbar and footer height */

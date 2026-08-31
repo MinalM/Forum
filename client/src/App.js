@@ -67,31 +67,34 @@ const App = () => {
 
   return (
     <>
+      <a href="#main-content" className="skip-link">Skip to main content</a>
       <AnnouncementBanner />
       <Navbar />
       <div className="container">
         <Alert />
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/onboarding" element={<PrivateRoute><Onboarding /></PrivateRoute>} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
-          <Route path="/profile/:id" element={<Profile />} />
-          <Route path="/edit-profile" element={<PrivateRoute><EditProfile /></PrivateRoute>} />
-          <Route path="/categories" element={<Categories />} />
-          <Route path="/categories/:categoryId" element={<CategoryPosts />} />
-          <Route path="/search" element={<SearchResults />} />
-          <Route path="/posts/:id" element={<PostDetail />} />
-          <Route path="/saved-posts" element={<PrivateRoute><SavedPosts /></PrivateRoute>} />
-          <Route path="/create-post" element={<PrivateRoute><CreatePost /></PrivateRoute>} />
-          <Route path="/edit-post/:id" element={<PrivateRoute><EditPost /></PrivateRoute>} />
-          <Route path="/admin/users" element={<AdminRoute><AdminUsers /></AdminRoute>} />
-          <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
-          <Route path="/moderator" element={<ModeratorRoute><ModeratorDashboard /></ModeratorRoute>} />
-          <Route path="/oauth-success" element={<OAuthSuccess />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <main id="main-content" tabIndex={-1}>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/onboarding" element={<PrivateRoute><Onboarding /></PrivateRoute>} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+            <Route path="/profile/:id" element={<Profile />} />
+            <Route path="/edit-profile" element={<PrivateRoute><EditProfile /></PrivateRoute>} />
+            <Route path="/categories" element={<Categories />} />
+            <Route path="/categories/:categoryId" element={<CategoryPosts />} />
+            <Route path="/search" element={<SearchResults />} />
+            <Route path="/posts/:id" element={<PostDetail />} />
+            <Route path="/saved-posts" element={<PrivateRoute><SavedPosts /></PrivateRoute>} />
+            <Route path="/create-post" element={<PrivateRoute><CreatePost /></PrivateRoute>} />
+            <Route path="/edit-post/:id" element={<PrivateRoute><EditPost /></PrivateRoute>} />
+            <Route path="/admin/users" element={<AdminRoute><AdminUsers /></AdminRoute>} />
+            <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+            <Route path="/moderator" element={<ModeratorRoute><ModeratorDashboard /></ModeratorRoute>} />
+            <Route path="/oauth-success" element={<OAuthSuccess />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </main>
       </div>
       <Footer />
       <MobileTabBar />
