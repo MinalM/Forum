@@ -412,45 +412,37 @@ Two standing constraints for every item below:
   renders `Home` and asserts the full heading sequence never skips a level
   and starts with `h1`; existing `Home.test.js` assertions unaffected.
 
-- [ ] **Login, Register and the footer ship interactive controls well
-  below the 44px minimum the rest of the app now enforces.** Found
-  reviewing the live site at a 375px viewport with Playwright
-  (`getBoundingClientRect`/`getComputedStyle` — these are layout heights,
-  re-checked after a settle so they are not transition artefacts). On
-  `https://cerulean-marshmallow-003d16.netlify.app/login` and `/register`
-  the primary submit buttons — `button.btn.btn-block` ("Login",
-  "Register", "Login with Google", "Register with Google") — compute to
-  **34px tall** with `min-height: 0`: `.btn` (`client/src/index.css:58-70`)
-  only sets `padding: 0.5rem 1.5rem` and nothing in a `@media (max-width:
-  768px)` block raises it. The `input.form-control` fields (email,
-  password, name) compute to **42px** (`client/src/index.css:143-155`,
-  same story). Every footer link — `.footer-link a`
-  (`client/src/App.css:180`): Home, Categories, AI/ML Resources, Kaggle,
-  Coursera, Udacity, Fast.ai — is a bare inline anchor **21px tall** with
-  only `margin-bottom: 0.5rem` (8px) between rows, on every page. This is
-  the same WCAG 2.5.5 / project-standard gap that
-  `client/src/__tests__/mobileTouchTargets.test.js` already guards for the
-  navbar, pagination, sidebar and feed-tab controls; the archived "Mobile
-  touch targets below the 44px minimum" item fixed a named subset and
-  explicitly left the rest. Login and Register are the two highest-value
-  pages for a not-yet-signed-in visitor.
-  Scope: mobile-scoped (`@media (max-width: 768px)`) `min-height: 44px` on
-  `.btn`/`.btn-block` and `.form-control`, and on `.footer-link a` (an
-  inline anchor ignores `min-height`, so it also needs `display: flex`/
-  `block` plus alignment, the same treatment `.categories-sidebar
-  .category-item a` got in the earlier item); no desktop layout change.
-  The post-detail author/category/`.comment-username` links (21-23px) are
-  the same defect if it is a small addition, but Login/Register/footer is
-  the core of this item.
-  Acceptance: `client/src/__tests__/mobileTouchTargets.test.js` gains
-  raw-CSS-source assertions (its existing pattern) that `.btn`,
-  `.form-control` and `.footer-link a` each declare `min-height >= 44px`
-  within the mobile media block, and that `.footer-link a` declares a
-  `display` that lets it take effect; a render-based check on `Login`/
-  `Register` in the style of the archived `PostDetail` vote-button test
-  (inject the real CSS as a `<style>` tag, assert computed `min-height >=
-  44px` on the submit button); existing `mobileTouchTargets.test.js`
-  assertions unchanged.
+- [x] **Login, Register and the footer ship interactive controls well
+  below the 44px minimum the rest of the app now enforces.** Done: see PR
+  for this item. Added a mobile-scoped (`@media (max-width: 768px)`)
+  `min-height: 44px` to `.btn` and `.form-control` in `client/src/index.css`
+  (covering the Login/Register submit buttons and every form input built
+  on those two classes), and to `.footer-link a` in `client/src/App.css`
+  (which, being a bare inline anchor, also needed `display: flex` +
+  `align-items: center` for `min-height` to take effect — the same
+  treatment `.categories-sidebar .category-item a` already got). No
+  desktop layout change.
+  Acceptance covered by new assertions in
+  `client/src/__tests__/mobileTouchTargets.test.js` (raw-CSS-source checks
+  that `.btn`, `.form-control` and `.footer-link a` each declare
+  `min-height >= 44px` within a mobile media block, and that `.footer-link
+  a` declares a `display` that lets it apply) and a new
+  `client/src/pages/__tests__/LoginRegisterTouchTargets.test.js`
+  (render-based: injects the actual mobile-block declarations for `.btn`/
+  `.form-control` pulled from source, in the style of the archived
+  `PostDetail` vote-button test, and asserts computed `min-height >= 44px`
+  on the Login/Register submit buttons and every input). Deviation from
+  that archived pattern's literal "inject the real CSS as-is": jsdom does
+  not evaluate `@media` conditions when computing style (verified directly
+  — a scoped rule never wins over an unscoped one for the same selector,
+  regardless of `window.innerWidth`), so the real stylesheet's `@media`
+  wrapper had to be stripped for the render check to exercise the actual
+  declared values; the source-based assertions in `mobileTouchTargets.test.js`
+  still guard that the rule is genuinely mobile-scoped. Full client suite
+  green (46 suites, 233 tests); `npm run lint` shows only pre-existing
+  warnings/errors in files this PR does not touch.
+  Not in scope for this item (left as-is, matching the item's own carve-out):
+  the post-detail author/category/`.comment-username` links.
 
 - [ ] **An unknown or deleted category id renders a raw "Error fetching
   category data" alert instead of a clean not-found page.** Found
