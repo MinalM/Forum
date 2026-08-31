@@ -444,9 +444,21 @@ Two standing constraints for every item below:
   Not in scope for this item (left as-is, matching the item's own carve-out):
   the post-detail author/category/`.comment-username` links.
 
-- [ ] **An unknown or deleted category id renders a raw "Error fetching
-  category data" alert instead of a clean not-found page.** Found
-  reviewing the live site:
+- [x] **An unknown or deleted category id renders a raw "Error fetching
+  category data" alert instead of a clean not-found page.** Done: #85.
+  `CategoryPosts.js`'s fetch `catch` now checks `err.response?.status`: a
+  404 sets a `notFound` flag instead of firing the alert, which renders an
+  inline not-found state (`<h1>Category Not Found</h1>`, explanatory copy,
+  a link back to `/categories`) and drives `useDocumentTitle` to "Category
+  Not Found" rather than leaving it at the bare site name; any other
+  failure (500, network error) is unchanged — same danger alert, same
+  "Category not found" text. Client-only, `CategoryPosts.js` alone.
+  Acceptance covered by new tests in
+  `client/src/pages/__tests__/CategoryPosts.test.js`'s `CategoryPosts 404
+  handling` block (404 renders the heading with no alert and a non-default
+  title; a non-404 failure still surfaces the alert); full client suite
+  green (46 suites, 235 tests); no new lint issues.
+  Original finding, reviewing the live site:
   `https://cerulean-marshmallow-003d16.netlify.app/categories/000000000000000000000000`
   (a well-formed but non-existent ObjectId — the shape a stale bookmark or
   a since-deleted category produces) shows a red error toast reading

@@ -76,6 +76,34 @@ describe('CategoryPosts error handling', () => {
   });
 });
 
+describe('CategoryPosts 404 handling', () => {
+  beforeEach(() => {
+    axios.get.mockReset();
+  });
+
+  it('renders a not-found state without a danger alert when the category does not exist', async () => {
+    const notFoundError = new Error('Request failed with status code 404');
+    notFoundError.response = { status: 404 };
+    axios.get.mockRejectedValue(notFoundError);
+
+    renderAtCategory('000000000000000000000000');
+
+    await screen.findByRole('heading', { name: /category not found/i });
+    expect(screen.queryByText('Category not found')).not.toBeInTheDocument();
+    expect(screen.getByTestId('alert-count')).toHaveTextContent('0');
+    expect(document.title).not.toBe('AI/ML Career Forum');
+  });
+
+  it('still surfaces the danger alert for a genuine non-404 failure', async () => {
+    axios.get.mockRejectedValue(new Error('Network Error'));
+
+    renderAtCategory('000000000000000000000000');
+
+    expect(await screen.findByText('Category not found')).toBeInTheDocument();
+    expect(screen.getByTestId('alert-count')).toHaveTextContent('1');
+  });
+});
+
 describe('CategoryPosts Solved/Unsolved filter', () => {
   const CATEGORY_ID = '000000000000000000000001';
 
