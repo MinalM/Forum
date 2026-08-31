@@ -488,41 +488,31 @@ Two standing constraints for every item below:
   site name; a second test with a 500/network failure still surfaces the
   danger alert; existing `CategoryPosts.test.js` assertions unaffected.
 
-- [ ] **The category-page "Filter" `<select>` and its `.btn-sm` siblings
+- [x] **The category-page "Filter" `<select>` and its `.btn-sm` siblings
   are interactive controls well below the 44px minimum the rest of the
-  app now enforces.** Found reviewing the live site at a 375px viewport
-  with Playwright (`getBoundingClientRect`/`getComputedStyle`, re-checked
-  after a settle). On
-  `https://cerulean-marshmallow-003d16.netlify.app/categories/67cbb5ca71e8be810c50104c`
-  the Solved/Unsolved filter `<select id="post-filter">`
-  (`client/src/pages/CategoryPosts.js:108`) computes to **78×19px** with
-  `min-height: 0`, `padding: 0`, `font-size: 13.3px` — it carries no class
-  and no rule anywhere raises it. The "All Categories" back link
-  (`CategoryPosts.js:159`, `.btn.btn-secondary.btn-sm`) computes to
-  **139×33px**, and the page's other `.btn-sm` links (create-post / login
-  prompt, pagination) are the same height. Control case: a bare injected
-  `<select>` with no app CSS also measured ~19px, so part of the height is
-  the browser default — but the project standard (and the existing
-  `client/src/__tests__/mobileTouchTargets.test.js` pattern) is that
-  interactive controls get an explicit `min-height: 44px` plus padding,
-  and this `<select>` gets neither. This is the same WCAG 2.5.5 /
-  project-standard gap already guarded for the navbar, pagination, Home
-  sidebar and feed-tab controls and filed for Login/Register/footer
-  above; `mobileTouchTargets.test.js` does not currently cover any
-  `CategoryPosts` control.
-  Scope: `CategoryPosts.js` / `App.css`, client-only. Give `#post-filter`
-  (or a class on it) and the page's `.btn-sm` controls a mobile-scoped
-  (`@media (max-width: 768px)`) `min-height: 44px` with padding; a
-  `<select>` respects `min-height` directly so no `display` change is
-  needed there, unlike the inline-anchor footer links. No desktop layout
+  app now enforces.** Done: see PR for this item.
+  Investigation found the `.btn-sm` half of this item was already fixed as
+  a side effect of the immediately-preceding item (#84): every `.btn-sm`
+  control on this page (`create-post`/`login` prompt, pagination, the
+  "All Categories" back link) also carries the base `.btn` class, and #84
+  added a mobile-scoped `min-height: 44px` to `.btn` itself in
+  `index.css`, so those links already compute to >= 44px today — confirmed
+  with a render-based test rather than assumed. The `<select
+  id="post-filter">` had no such rule (it carries no `.btn` class), so it
+  remained the one real gap: added `#post-filter { min-height: 44px;
+  padding: 0 0.75rem; }` to the existing mobile touch-target block in
+  `client/src/App.css`, next to `.footer-link a`. No desktop layout
   change.
-  Acceptance: `mobileTouchTargets.test.js` gains raw-CSS-source assertions
-  (its existing pattern) that the category filter select and the
-  `.btn-sm` rule each declare `min-height >= 44px` within the mobile media
-  block; a render-based check on `CategoryPosts` (inject the real CSS as a
-  `<style>` tag, assert computed `min-height >= 44px` on the filter
-  `<select>`); existing `CategoryPosts.test.js` and
-  `mobileTouchTargets.test.js` assertions unchanged.
+  Acceptance: `mobileTouchTargets.test.js` gained a raw-CSS-source
+  assertion that `#post-filter` declares `min-height >= 44px` within the
+  mobile media block; new
+  `client/src/pages/__tests__/CategoryPostsTouchTargets.test.js` renders
+  `CategoryPosts` with the real mobile CSS declarations injected (the
+  `LoginRegisterTouchTargets.test.js` pattern, since jsdom doesn't
+  evaluate `@media` conditions) and asserts computed `min-height >= 44px`
+  on the filter select and on the empty-state/back-link `.btn-sm`
+  controls; existing `CategoryPosts.test.js` and `mobileTouchTargets.test.js`
+  assertions unchanged. Full client suite green: 47 suites, 238 tests.
 
 - [ ] **`/posts/<id>` for a deleted or never-existent post id shows a raw
   "Error fetching post data" alert over a bare "Post not found", with no
