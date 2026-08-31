@@ -565,29 +565,31 @@ Two standing constraints for every item below:
   test with a 500/network failure still surfaces the danger alert; existing
   `PostDetail.test.js` assertions unaffected.
 
-- [ ] **No page has a `<main>` landmark or a skip link — every keyboard and
+- [x] **No page has a `<main>` landmark or a skip link — every keyboard and
   screen-reader user re-traverses the navbar and search box before reaching
-  content on every page.** Found reviewing the live site with Playwright:
-  `document.querySelector('main, [role="main"]')` is `null` on every route
-  checked (`/`, `/categories`, a category page, `/posts/:id`, `/search`,
-  `/login`, `/register`, the 404 page), and there is no skip link
-  (`a[href^="#"]` / `.skip-link` — none present; the first Tab stop on every
-  page is the "AI/ML Career Forum" brand link, then the two nav links, then
-  the navbar search input and button, before any page content). The only
-  landmarks exposed are `NAV`, `FORM[role="search"]`, and `FOOTER`. This is
-  a WCAG 2.4.1 (Bypass Blocks) failure and a 1.3.1 (Info and Relationships)
-  gap: assistive-tech users have no "jump to main content" target and no way
-  to skip the repeated header block, on a multi-page app where that block is
-  byte-identical on every load.
-  Scope: client-only, layout level. Wrap the routed content in a single
-  `<main id="main-content">` (in `client/src/App.js` around `<Routes>`), and
-  add a visually-hidden-until-focused skip link as the first focusable
-  element in `App.js` pointing at it. No visual change at rest.
-  Acceptance: a test rendering the app asserts exactly one `<main>` /
-  `role="main"` element wraps the routed content and that it is present on
-  at least two different routes (not page-specific); a second test asserts a
-  skip link is the first focusable element and its `href` targets the main
-  region's id; existing `App`/layout test assertions unaffected.
+  content on every page.** Done: see PR for this item.
+  `client/src/App.js` now wraps `<Routes>` in `<main id="main-content"
+  tabIndex={-1}>` and renders a `.skip-link` anchor (`href="#main-content"`)
+  as the very first element in the tree, before `AnnouncementBanner` and
+  `Navbar` — so it is the first Tab stop on every page. `tabIndex={-1}` lets
+  the browser's default fragment-navigation focus the region when the link
+  is activated, without pulling `<main>` itself into the normal tab order.
+  Styled in `client/src/App.css` with the standard clip-off-screen-until-
+  focus technique (`top: -60px` at rest, `top: 0` on `:focus`) using the
+  existing `--primary-color` token, and a 44px `min-height` so the focused
+  state itself meets the touch-target minimum. No visual change at rest;
+  every page already had its own inner `.main-content` div for
+  padding/spacing, unaffected by the new landmark wrapping it.
+  Acceptance: new `client/src/__tests__/App.test.js` — `main landmark`
+  covers exactly one `role="main"` element wrapping the routed content on
+  both `/login` and `/register`; `skip link` covers the link being the
+  first of `screen.getAllByRole('link')` and its `href` targeting the
+  rendered `<main>`'s `id`. Verified the tests fail against the pre-fix
+  `App.js` (`role="main"` never found) before implementing, then pass
+  after. Full client suite green (48 suites, 243 tests, up from 47/240);
+  `npm run lint` shows only pre-existing warnings/errors in files this PR
+  does not touch.
+  Not run: the server suite — this PR touches no server files.
 
 - [ ] **`/categories`, a category page, and `/search` jump straight from
   `<h1>` to `<h3>` — the card and result lists have no `<h2>` and
