@@ -12,7 +12,8 @@ const CategoryPosts = () => {
   const { setAlert } = useAlert();
   const { isAuthenticated } = useAuth();
   const [category, setCategory] = useState(null);
-  useDocumentTitle(category?.name);
+  const [notFound, setNotFound] = useState(false);
+  useDocumentTitle(notFound ? 'Category Not Found' : category?.name);
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -25,6 +26,7 @@ const CategoryPosts = () => {
         // Fetch category details
         const categoryRes = await axios.get(`/api/categories/${categoryId}`);
         setCategory(categoryRes.data.data);
+        setNotFound(false);
 
         // Fetch posts in this category, newest-first, optionally filtered by solved status
         const params = { page, limit: 10 };
@@ -51,7 +53,11 @@ const CategoryPosts = () => {
       } catch (err) {
         setCategory(null);
         setPosts([]);
-        setAlert('Error fetching category data', 'danger');
+        if (err.response?.status === 404) {
+          setNotFound(true);
+        } else {
+          setAlert('Error fetching category data', 'danger');
+        }
         setLoading(false);
       }
     };
@@ -80,6 +86,25 @@ const CategoryPosts = () => {
   }
 
   if (!category) {
+    if (notFound) {
+      return (
+        <div className="main-content">
+          <div className="not-found">
+            <div className="not-found-content">
+              <h1>Category Not Found</h1>
+              <p>
+                This category may have been removed, or the link you followed
+                may be out of date.
+              </p>
+              <Link to="/categories" className="btn">
+                <i className="fas fa-arrow-left"></i> Browse Categories
+              </Link>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="main-content">
         <div className="alert alert-danger">Category not found</div>
