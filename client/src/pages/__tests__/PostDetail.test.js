@@ -5,7 +5,7 @@ import { render, screen, fireEvent, within, waitFor } from '@testing-library/rea
 import { MemoryRouter, Routes, Route } from 'react-router';
 import axios from 'axios';
 import PostDetail from '../PostDetail';
-import { AlertProvider } from '../../context/AlertContext';
+import { AlertProvider, useAlert } from '../../context/AlertContext';
 import { AuthProvider } from '../../context/AuthContext';
 
 const appCss = fs.readFileSync(path.join(__dirname, '../../App.css'), 'utf8');
@@ -867,5 +867,52 @@ describe('PostDetail save toggle', () => {
     const computed = getComputedStyle(button);
     expect(parseFloat(computed.minHeight)).toBeGreaterThanOrEqual(44);
     expect(parseFloat(computed.minWidth)).toBeGreaterThanOrEqual(44);
+  });
+});
+
+const AlertCountProbe = () => {
+  const { alerts } = useAlert();
+  return <div data-testid="alert-count">{alerts.length}</div>;
+};
+
+const renderPostDetailWithAlertProbe = () =>
+  render(
+    <AuthProvider>
+      <AlertProvider>
+        <MemoryRouter initialEntries={[`/posts/${POST_ID}`]}>
+          <Routes>
+            <Route path="/posts/:id" element={<PostDetail />} />
+          </Routes>
+        </MemoryRouter>
+        <AlertCountProbe />
+      </AlertProvider>
+    </AuthProvider>
+  );
+
+describe('PostDetail 404 handling', () => {
+  beforeEach(() => {
+    axios.get.mockReset();
+  });
+
+  it('renders a not-found state without a danger alert when the post does not exist', async () => {
+    const notFoundError = new Error('Request failed with status code 404');
+    notFoundError.response = { status: 404 };
+    axios.get.mockRejectedValue(notFoundError);
+
+    renderPostDetailWithAlertProbe();
+
+    await screen.findByRole('heading', { name: /post not found/i });
+    expect(screen.queryByText('Post not found')).not.toBeInTheDocument();
+    expect(screen.getByTestId('alert-count')).toHaveTextContent('0');
+    expect(document.title).not.toBe('AI/ML Career Forum');
+  });
+
+  it('still surfaces the danger alert for a genuine non-404 failure', async () => {
+    axios.get.mockRejectedValue(new Error('Network Error'));
+
+    renderPostDetailWithAlertProbe();
+
+    expect(await screen.findByText('Post not found')).toBeInTheDocument();
+    expect(screen.getByTestId('alert-count')).toHaveTextContent('1');
   });
 });
