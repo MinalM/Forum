@@ -1480,6 +1480,12 @@
     min-width: 44px;
   }
 
+  .footer-link a {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+  }
+
   /* Compact feed/thread cards on mobile - the desktop 1.5rem card-body
      padding eats too much of a 375-390px viewport otherwise. */
   .card-body {
