@@ -1486,6 +1486,11 @@
     min-height: 44px;
   }
 
+  #post-filter {
+    min-height: 44px;
+    padding: 0 0.75rem;
+  }
+
   /* Compact feed/thread cards on mobile - the desktop 1.5rem card-body
      padding eats too much of a 375-390px viewport otherwise. */
   .card-body {

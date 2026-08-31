@@ -155,3 +155,11 @@ describe('"You can answer these" rail links (Home) are at least 44px tall', () =
     expect(minPx(rule, 'min-height')).toBeGreaterThanOrEqual(MIN_TARGET);
   });
 });
+
+describe('category page filter select is at least 44px tall', () => {
+  it('declares a min-height of 44px on #post-filter within the mobile media block', () => {
+    const appMobile = extractMobileMediaDeclarations(appCss);
+    const rule = extractRule(appMobile, '#post-filter');
+    expect(minPx(rule, 'min-height')).toBeGreaterThanOrEqual(MIN_TARGET);
+  });
+});
