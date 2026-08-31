@@ -16,7 +16,8 @@ const PostDetail = () => {
   const navigate = useNavigate();
 
   const [post, setPost] = useState(null);
-  useDocumentTitle(post?.title);
+  const [notFound, setNotFound] = useState(false);
+  useDocumentTitle(notFound ? 'Post Not Found' : post?.title);
   const [comments, setComments] = useState([]);
   const [commentText, setCommentText] = useState('');
   const [pageLoading, setPageLoading] = useState(true);
@@ -38,6 +39,7 @@ const PostDetail = () => {
         // Fetch post details
         const postRes = await axios.get(`/api/posts/${id}`);
         setPost(postRes.data.data);
+        setNotFound(false);
 
         // Fetch comments for this post
         const commentsRes = await axios.get(`/api/posts/${id}/comments`);
@@ -45,7 +47,12 @@ const PostDetail = () => {
 
         setPageLoading(false);
       } catch (err) {
-        setAlert('Error fetching post data', 'danger');
+        setPost(null);
+        if (err.response?.status === 404) {
+          setNotFound(true);
+        } else {
+          setAlert('Error fetching post data', 'danger');
+        }
         setPageLoading(false);
       }
     };
@@ -333,6 +340,25 @@ const PostDetail = () => {
   }
 
   if (!post) {
+    if (notFound) {
+      return (
+        <div className="main-content">
+          <div className="not-found">
+            <div className="not-found-content">
+              <h1>Post Not Found</h1>
+              <p>
+                This post may have been removed, or the link you followed
+                may be out of date.
+              </p>
+              <Link to="/" className="btn">
+                <i className="fas fa-arrow-left"></i> Back to Home
+              </Link>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="main-content">
         <div className="alert alert-danger">Post not found</div>
