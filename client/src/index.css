@@ -377,4 +377,14 @@ a:hover {
   .container {
     padding: 0 0.5rem;
   }
+
+  /* Mobile touch targets: WCAG 2.5.5 wants pointer targets >= 44x44 CSS
+     px. Scoped to mobile so desktop's button/input sizing is unchanged. */
+  .btn {
+    min-height: 44px;
+  }
+
+  .form-control {
+    min-height: 44px;
+  }
 }

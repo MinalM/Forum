@@ -7,6 +7,7 @@ const path = require('path');
 // packageJson.test.js asserts against package.json's raw contents.
 
 const appCss = fs.readFileSync(path.join(__dirname, '../App.css'), 'utf8');
+const indexCss = fs.readFileSync(path.join(__dirname, '../index.css'), 'utf8');
 const navbarCss = fs.readFileSync(
   path.join(__dirname, '../components/layout/Navbar.css'),
   'utf8'
@@ -77,6 +78,7 @@ function minPx(declarations, property) {
 
 describe('mobile touch targets (WCAG 2.5.5, <=768px viewport)', () => {
   const appMobile = extractMobileMediaDeclarations(appCss);
+  const indexMobile = extractMobileMediaDeclarations(indexCss);
   const navbarMobile = extractMobileMediaDeclarations(navbarCss);
 
   // Navbar.css rules only reach the browser if something actually imports
@@ -114,6 +116,22 @@ describe('mobile touch targets (WCAG 2.5.5, <=768px viewport)', () => {
     const rule = extractRule(navbarMobile, '.navbar-search-btn');
     expect(minPx(rule, 'min-height')).toBeGreaterThanOrEqual(MIN_TARGET);
     expect(minPx(rule, 'min-width')).toBeGreaterThanOrEqual(MIN_TARGET);
+  });
+
+  it('.btn (Login/Register submit buttons) is at least 44px tall', () => {
+    const rule = extractRule(indexMobile, '.btn');
+    expect(minPx(rule, 'min-height')).toBeGreaterThanOrEqual(MIN_TARGET);
+  });
+
+  it('.form-control (Login/Register inputs) is at least 44px tall', () => {
+    const rule = extractRule(indexMobile, '.form-control');
+    expect(minPx(rule, 'min-height')).toBeGreaterThanOrEqual(MIN_TARGET);
+  });
+
+  it('.footer-link a is at least 44px tall and uses a display that lets min-height apply', () => {
+    const rule = extractRule(appMobile, '.footer-link a');
+    expect(minPx(rule, 'min-height')).toBeGreaterThanOrEqual(MIN_TARGET);
+    expect(rule).toMatch(/display:\s*(flex|block)/);
   });
 });
 
