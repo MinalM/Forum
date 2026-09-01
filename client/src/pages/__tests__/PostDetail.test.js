@@ -219,6 +219,30 @@ describe('PostDetail vote button touch targets (WCAG 2.5.5)', () => {
 
 });
 
+describe('PostDetail vote button accessible names (WCAG 4.1.2)', () => {
+  beforeEach(() => {
+    axios.get.mockReset();
+    axios.get.mockImplementation((url) => {
+      if (url.endsWith('/comments')) {
+        return Promise.resolve({ data: { success: true, data: [] } });
+      }
+      return Promise.resolve({ data: { success: true, data: basePost } });
+    });
+  });
+
+  it('gives the post upvote and downvote buttons a non-empty accessible name', async () => {
+    renderPostDetail();
+
+    await screen.findByText('Orphaned post');
+    expect(
+      screen.getByRole('button', { name: 'Upvote question' })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Downvote question' })
+    ).toBeInTheDocument();
+  });
+});
+
 describe('PostDetail accepted answers', () => {
   const ASKER = { _id: '000000000000000000000010', name: 'Asker', role: 'user' };
   const OTHER_USER = { _id: '000000000000000000000011', name: 'Commenter', role: 'user' };

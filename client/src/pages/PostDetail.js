@@ -475,6 +475,7 @@ const PostDetail = () => {
               className={`vote-btn upvote ${hasUpvoted ? 'active' : ''}`}
               onClick={handleUpvote}
               disabled={!isAuthenticated}
+              aria-label="Upvote question"
             >
               <i className="fas fa-arrow-up"></i>
             </button>
@@ -483,6 +484,7 @@ const PostDetail = () => {
               className={`vote-btn downvote ${hasDownvoted ? 'active' : ''}`}
               onClick={handleDownvote}
               disabled={!isAuthenticated}
+              aria-label="Downvote question"
             >
               <i className="fas fa-arrow-down"></i>
             </button>
