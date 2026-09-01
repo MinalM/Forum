@@ -343,6 +343,29 @@ describe('Comments API', () => {
       const updatedPost = await Post.findById(post._id);
       expect(updatedPost.isSolved).toBe(true);
     });
+
+    it('should persist isSolved even when the post has legacy over-cap tags', async () => {
+      // Bypass Mongoose validation the way scripts/seed-mongo.js's raw
+      // driver writes do, to reproduce tags that predate the #33 caps.
+      const overCapTag = 'x'.repeat(58);
+      await Post.collection.updateOne(
+        { _id: post._id },
+        { $set: { tags: [overCapTag, 'ml'] } }
+      );
+
+      const res = await request(server)
+        .put(`/api/comments/${comment._id}/answer`)
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.isAnswer).toBe(true);
+
+      const updatedComment = await Comment.findById(comment._id);
+      expect(updatedComment.isAnswer).toBe(true);
+
+      const updatedPost = await Post.findById(post._id);
+      expect(updatedPost.isSolved).toBe(true);
+    });
   });
 
   describe('Comment Replies', () => {
