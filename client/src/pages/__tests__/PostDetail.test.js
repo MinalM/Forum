@@ -318,7 +318,10 @@ describe('PostDetail accepted answers', () => {
     });
     renderPostDetail();
 
-    await screen.findByText('Needs an answer');
+    await screen.findByRole('button', { name: /accept this answer/i });
+    // One unaccepted answer already exists, so neither status badge applies.
+    expect(screen.queryByText('Needs an answer')).not.toBeInTheDocument();
+    expect(screen.queryByText('Solved')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /accept this answer/i }));
 
@@ -342,7 +345,12 @@ describe('PostDetail accepted answers', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /^unaccept$/i }));
 
-    await screen.findByText('Needs an answer');
+    await waitFor(() =>
+      expect(screen.queryByText('Solved')).not.toBeInTheDocument()
+    );
+    // The un-accepted answer is still on the thread, so neither status
+    // badge applies (it does not revert to "Needs an answer").
+    expect(screen.queryByText('Needs an answer')).not.toBeInTheDocument();
     expect(screen.queryByText(/accepted by/i)).not.toBeInTheDocument();
   });
 
@@ -378,7 +386,7 @@ describe('PostDetail accepted answers', () => {
     });
     renderPostDetail();
 
-    await screen.findByText('Needs an answer');
+    await screen.findByRole('button', { name: /accept this answer/i });
 
     fireEvent.click(screen.getByRole('button', { name: /accept this answer/i }));
 
@@ -391,6 +399,55 @@ describe('PostDetail accepted answers', () => {
     expect(axios.put).not.toHaveBeenCalledWith(
       expect.stringContaining('/solve')
     );
+  });
+});
+
+describe('PostDetail status badge', () => {
+  const renderWithPostAndComments = (postOverrides, comments) => {
+    axios.get.mockReset();
+    axios.get.mockImplementation((url) => {
+      if (url.endsWith('/comments')) {
+        return Promise.resolve({ data: { success: true, data: comments } });
+      }
+      return Promise.resolve({
+        data: { success: true, data: { ...basePost, ...postOverrides } }
+      });
+    });
+    return renderPostDetail();
+  };
+
+  it('shows "Solved" for a solved post', async () => {
+    renderWithPostAndComments({ isSolved: true }, []);
+
+    expect(
+      await screen.findByText('Solved', { selector: 'span.badge-success' })
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Needs an answer')).not.toBeInTheDocument();
+  });
+
+  it('shows "Needs an answer" for an unsolved post with no answers', async () => {
+    renderWithPostAndComments({ isSolved: false }, []);
+
+    expect(await screen.findByText('Needs an answer')).toBeInTheDocument();
+    expect(screen.queryByText('Solved')).not.toBeInTheDocument();
+  });
+
+  it('shows no status badge for an unsolved post that already has answers', async () => {
+    renderWithPostAndComments({ isSolved: false }, [
+      { _id: 'c1', createdAt: new Date().toISOString() }
+    ]);
+
+    await screen.findByText('Orphaned post');
+    expect(screen.queryByText('Needs an answer')).not.toBeInTheDocument();
+    expect(screen.queryByText('Solved')).not.toBeInTheDocument();
+  });
+
+  it('shows no status badge for a locked, unsolved post with no answers', async () => {
+    renderWithPostAndComments({ isSolved: false, isLocked: true }, []);
+
+    await screen.findByText('Orphaned post');
+    expect(screen.queryByText('Needs an answer')).not.toBeInTheDocument();
+    expect(screen.queryByText('Solved')).not.toBeInTheDocument();
   });
 });
 

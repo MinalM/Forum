@@ -4,6 +4,7 @@ import PropTypes from 'prop-types';
 import axios from 'axios';
 import { formatDistanceToNow } from 'date-fns';
 import { markdownToPlainText } from '../../utils/markdown';
+import { getPostStatus } from '../../utils/postStatus';
 import { useAuth } from '../../context/AuthContext';
 import { useAlert } from '../../context/AlertContext';
 import { useFeedComposer } from '../../context/FeedComposerContext';
@@ -48,6 +49,7 @@ const PostItem = ({ post: initialPost }) => {
     downvotes,
     tags,
     isSolved,
+    isLocked,
     aiMlLevel
   } = post;
 
@@ -71,7 +73,8 @@ const PostItem = ({ post: initialPost }) => {
   const voteCount = upvotes.length - downvotes.length;
   const hasUpvoted = Boolean(user && upvotes.includes(user._id));
   const hasDownvoted = Boolean(user && downvotes.includes(user._id));
-  const needsAnswer = !isSolved && commentCount === 0;
+  const postStatus = getPostStatus({ isSolved, commentCount, isLocked });
+  const needsAnswer = postStatus === 'needs-answer';
   const isQuestion = commentCount === 0;
 
   useEffect(() => {
@@ -243,10 +246,10 @@ const PostItem = ({ post: initialPost }) => {
                 <Link to={`/posts/${_id}`}>{title}</Link>
               </h3>
               <div className="post-status-badges">
-                {isSolved && (
+                {postStatus === 'solved' && (
                   <span className="badge badge-success">Solved</span>
                 )}
-                {needsAnswer && (
+                {postStatus === 'needs-answer' && (
                   <span className="badge badge-warning">Needs an answer</span>
                 )}
               </div>

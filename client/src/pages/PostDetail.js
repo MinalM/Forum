@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { useAlert } from '../context/AlertContext';
 import { hasPermission, canModifyResource } from '../utils/permissions';
 import { renderMarkdown } from '../utils/markdown';
+import { getPostStatus } from '../utils/postStatus';
 import ReportModal from '../components/reports/ReportModal';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
@@ -411,6 +412,12 @@ const PostDetail = () => {
     return acc;
   }, {});
 
+  const postStatus = getPostStatus({
+    isSolved: post.isSolved,
+    commentCount: comments.length,
+    isLocked: post.isLocked
+  });
+
   return (
     <div className="main-content">
       <div className="post-detail">
@@ -425,9 +432,10 @@ const PostDetail = () => {
             )}
           </h1>
           <div className="post-status-badges">
-            {post.isSolved ? (
+            {postStatus === 'solved' && (
               <span className="badge badge-success">Solved</span>
-            ) : (
+            )}
+            {postStatus === 'needs-answer' && (
               <span className="badge badge-warning">Needs an answer</span>
             )}
           </div>
