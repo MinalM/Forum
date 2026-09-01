@@ -39,11 +39,17 @@ describe('scripts/cleanup-post-tag-pollution', () => {
   const pollutionSet = buildPollutionSet(CATEGORIES);
 
   describe('cleanTags', () => {
-    it.each(LIVE_POLLUTED_EXAMPLES)('strips every polluted tag from a real live example: %j', (tags) => {
-      const result = cleanTags(tags, pollutionSet);
+    // Each row must be wrapped in its own array — `it.each` otherwise
+    // spreads a bare array-of-strings row across positional arguments
+    // instead of passing it as one `tags` array.
+    it.each(LIVE_POLLUTED_EXAMPLES.map((tags) => [tags]))(
+      'strips every polluted tag from a real live example: %j',
+      (tags) => {
+        const result = cleanTags(tags, pollutionSet);
 
-      expect(result).toEqual([]);
-    });
+        expect(result).toEqual([]);
+      }
+    );
 
     it('contains no multi-word category-description phrase, "and ..." fragment, or discussion/help junk across all examples', () => {
       const results = LIVE_POLLUTED_EXAMPLES.map((tags) => cleanTags(tags, pollutionSet)).flat();
