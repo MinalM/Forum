@@ -591,9 +591,27 @@ Two standing constraints for every item below:
   does not touch.
   Not run: the server suite — this PR touches no server files.
 
-- [ ] **`/categories`, a category page, and `/search` jump straight from
+- [x] **`/categories`, a category page, and `/search` jump straight from
   `<h1>` to `<h3>` — the card and result lists have no `<h2>` and
-  `PostItem`/the category card use `<h3>` titles.** Found reviewing the live
+  `PostItem`/the category card use `<h3>` titles.** Done: #89.
+  Added a visually-hidden `<h2>` (the same `.visually-hidden` clip-technique
+  utility class the Home no-`h1` fix introduced) between each page's `h1`
+  and its first card `h3`: "Categories" before `Categories.js`'s
+  `.categories-grid`, "Discussions" before `CategoryPosts.js`'s
+  `.post-list`, and "Results" before `SearchResults.js`'s `.post-list` —
+  chosen over promoting the existing "Showing results for …" `<p>` to keep
+  this a pure heading-order fix with no visual change on any of the three
+  pages, consistent with how the Home item bridged its own `h1`-to-`h3` gap.
+  Acceptance covered by new
+  `client/src/pages/__tests__/{Categories,CategoryPosts,SearchResults}HeadingLevel.test.js`
+  (one per page, in the style of `HomeHeadingLevel.test.js`): each renders
+  the page with a non-empty list fixture and asserts the heading sequence
+  never increases by more than one level and that an `h2` sits between the
+  `h1` and the first card `h3`. Full client suite green (51 suites, 246
+  tests, up from 48/243); existing `Categories`/`CategoryPosts`/
+  `SearchResults` assertions unaffected. Did not touch the server — no
+  server files changed.
+  Original finding, reviewing the live
   site with Playwright: on
   `https://cerulean-marshmallow-003d16.netlify.app/categories` the heading
   sequence is `h1` ("Forum Categories") then six `h3`s (category-card names

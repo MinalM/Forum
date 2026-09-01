@@ -87,6 +87,7 @@ const SearchResults = () => {
         </div>
       </div>
 
+      <h2 className="visually-hidden">Results</h2>
       <div className="post-list">
         {posts.length > 0 ? (
           <FeedComposerProvider>
