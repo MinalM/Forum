@@ -348,6 +348,17 @@
 .post-tags {
   display: flex;
   flex-wrap: wrap;
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Defensive cap against a future polluted/over-long tag: .badge's own
+   white-space: nowrap (index.css) otherwise forces a long chip's intrinsic
+   width past the card edge even though this row itself wraps. */
+.post-tags .badge {
+  max-width: 100%;
+  overflow-wrap: break-word;
+  white-space: normal;
 }
 
 .post-actions {

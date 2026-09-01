@@ -128,6 +128,26 @@ describe('PostItem excerpt', () => {
   });
 });
 
+describe('PostItem tags', () => {
+  it('renders every chip for a normal, short tag list', () => {
+    renderPostItem({ ...basePost, tags: ['pytorch', 'nlp', 'beginner'] });
+
+    expect(screen.getByText('pytorch')).toBeInTheDocument();
+    expect(screen.getByText('nlp')).toBeInTheDocument();
+    expect(screen.getByText('beginner')).toBeInTheDocument();
+  });
+
+  it('caps the number of rendered chips so a badly-seeded row cannot flood the card', () => {
+    const manyTags = Array.from({ length: 25 }, (_, i) => `tag${i}`);
+    renderPostItem({ ...basePost, tags: manyTags });
+
+    const chips = screen.getAllByText(/^tag\d+$/);
+    expect(chips.length).toBeLessThan(manyTags.length);
+    expect(chips.length).toBeGreaterThan(0);
+    expect(screen.queryByText('tag24')).not.toBeInTheDocument();
+  });
+});
+
 describe('PostItem post/solved/needs-answer states', () => {
   it('shows a "Needs an answer" badge and the amber card modifier for a commentless open question', () => {
     renderPostItem({ ...basePost, commentCount: 0, isSolved: false });
