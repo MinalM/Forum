@@ -80,7 +80,11 @@
   position: absolute;
   top: 100%;
   left: 0;
-  z-index: 10;
+  /* Above the app's other fixed/overlay chrome (mobile bottom tab bar,
+     mobile nav, skip link, modals - all layered at 1000), so a dropdown
+     opened low on the page (e.g. PostDetail's "More actions" menu) isn't
+     rendered underneath the fixed mobile tab bar. */
+  z-index: 1001;
   min-width: 200px;
   background: #fff;
   border-radius: 8px;

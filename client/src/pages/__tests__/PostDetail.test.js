@@ -9,6 +9,10 @@ import { AlertProvider, useAlert } from '../../context/AlertContext';
 import { AuthProvider } from '../../context/AuthContext';
 
 const appCss = fs.readFileSync(path.join(__dirname, '../../App.css'), 'utf8');
+const navbarCss = fs.readFileSync(
+  path.join(__dirname, '../../components/layout/Navbar.css'),
+  'utf8'
+);
 
 jest.mock('axios', () => ({
   defaults: {},
@@ -995,5 +999,189 @@ describe('PostDetail 404 handling', () => {
 
     expect(await screen.findByText('Post not found')).toBeInTheDocument();
     expect(screen.getByTestId('alert-count')).toHaveTextContent('1');
+  });
+});
+
+describe('PostDetail action row: reader actions inline, author/moderator actions behind one menu', () => {
+  const AUTHOR = { _id: '000000000000000000000050', name: 'Author', role: 'user' };
+  const MODERATOR = { _id: '000000000000000000000051', name: 'Mod', role: 'moderator' };
+  const READER = { _id: '000000000000000000000052', name: 'Reader', role: 'user' };
+
+  const postByAuthor = {
+    ...basePost,
+    user: { _id: AUTHOR._id, name: AUTHOR.name }
+  };
+
+  const setupAsUser = (currentUser, post = postByAuthor) => {
+    axios.get.mockReset();
+    localStorage.clear();
+    if (currentUser) {
+      localStorage.setItem('token', 'fake-token');
+    }
+    axios.get.mockImplementation((url) => {
+      if (url === '/api/users/me') {
+        return Promise.resolve({ data: { data: currentUser } });
+      }
+      if (url.endsWith('/comments')) {
+        return Promise.resolve({ data: { success: true, data: [] } });
+      }
+      return Promise.resolve({ data: { success: true, data: post } });
+    });
+  };
+
+  afterEach(() => {
+    localStorage.clear();
+  });
+
+  it('shows only vote/Notify/Save inline for the author, with Edit/Delete behind the "More actions" toggle', async () => {
+    setupAsUser(AUTHOR);
+    renderPostDetail();
+
+    await screen.findByText('Orphaned post');
+
+    // Inline reader/author-lite actions.
+    expect(screen.getByRole('button', { name: 'Upvote question' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Downvote question' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /notify me of answers/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^save$/i })).toBeInTheDocument();
+
+    // Edit/Delete are not inline.
+    expect(screen.queryByRole('link', { name: /edit/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /delete/i })).not.toBeInTheDocument();
+
+    const toggle = screen.getByRole('button', { name: /more actions/i });
+    expect(toggle).toBeInTheDocument();
+
+    fireEvent.click(toggle);
+
+    expect(screen.getByRole('link', { name: /edit/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /delete/i })).toBeInTheDocument();
+    // The author is not staff, so no Lock/Pin controls exist even in the menu.
+    expect(screen.queryByRole('button', { name: /^lock$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^pin$/i })).not.toBeInTheDocument();
+  });
+
+  it('shows Lock/Pin/Report behind the toggle for a moderator who is not the author, with no Edit/Delete', async () => {
+    setupAsUser(MODERATOR);
+    renderPostDetail();
+
+    await screen.findByText('Orphaned post');
+
+    expect(screen.queryByRole('link', { name: /edit/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^lock$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^pin$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^report$/i })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /more actions/i }));
+
+    expect(screen.getByRole('button', { name: /^lock$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^pin$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^report$/i })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /edit/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^delete$/i })).not.toBeInTheDocument();
+  });
+
+  it('renders no "More actions" toggle for an unauthenticated visitor (nothing to put behind it)', async () => {
+    setupAsUser(null);
+    renderPostDetail();
+
+    await screen.findByText('Orphaned post');
+    expect(screen.queryByRole('button', { name: /more actions/i })).not.toBeInTheDocument();
+  });
+
+  it('shows only Report behind the toggle for a plain reader viewing someone else\'s post', async () => {
+    setupAsUser(READER);
+    renderPostDetail();
+
+    await screen.findByText('Orphaned post');
+    // A signed-in non-author reader can Report but has no edit/mod
+    // permissions, so the menu exists but holds only Report.
+    fireEvent.click(screen.getByRole('button', { name: /more actions/i }));
+
+    expect(screen.getByRole('button', { name: /^report$/i })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /edit/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^delete$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^lock$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^pin$/i })).not.toBeInTheDocument();
+  });
+
+  it('the "More actions" toggle and its menu items meet the 44x44 touch target minimum', async () => {
+    setupAsUser(AUTHOR);
+
+    const style = document.createElement('style');
+    style.textContent = `${appCss}\n${navbarCss}`;
+    document.head.appendChild(style);
+
+    renderPostDetail();
+
+    await screen.findByText('Orphaned post');
+    const toggle = screen.getByRole('button', { name: /more actions/i });
+    let computed = getComputedStyle(toggle);
+    expect(parseFloat(computed.minHeight)).toBeGreaterThanOrEqual(44);
+    expect(parseFloat(computed.minWidth)).toBeGreaterThanOrEqual(44);
+
+    fireEvent.click(toggle);
+    const editLink = screen.getByRole('link', { name: /edit/i });
+    computed = getComputedStyle(editLink);
+    expect(parseFloat(computed.minHeight)).toBeGreaterThanOrEqual(44);
+  });
+});
+
+describe('PostDetail answer-sort control is grouped separately from the composer', () => {
+  const ASKER = { _id: '000000000000000000000060', name: 'Asker', role: 'user' };
+
+  const answerComment = {
+    _id: '000000000000000000000061',
+    content: 'An answer',
+    user: { _id: '000000000000000000000062', name: 'Answerer' },
+    createdAt: new Date().toISOString(),
+    isAnswer: false
+  };
+
+  beforeEach(() => {
+    axios.get.mockReset();
+    localStorage.clear();
+    localStorage.setItem('token', 'fake-token');
+    axios.get.mockImplementation((url) => {
+      if (url === '/api/users/me') {
+        return Promise.resolve({ data: { data: ASKER } });
+      }
+      if (url.endsWith('/comments')) {
+        return Promise.resolve({ data: { success: true, data: [answerComment] } });
+      }
+      return Promise.resolve({
+        data: { success: true, data: { ...basePost, user: { _id: ASKER._id, name: ASKER.name } } }
+      });
+    });
+  });
+
+  afterEach(() => {
+    localStorage.clear();
+  });
+
+  it('renders an "Answers" landmark heading immediately before the sort control, outside the comment form', async () => {
+    renderPostDetail();
+
+    await screen.findByText('An answer');
+
+    const submitButton = screen.getByRole('button', { name: /post comment/i });
+    const heading = screen.getByRole('heading', { name: /^answers$/i });
+    const sortGroup = screen.getByRole('group', { name: /sort answers/i });
+
+    // The heading landmark, then the sort control, both after the
+    // composer's submit button - a distinct grouping rather than the two
+    // sitting flush against each other.
+    expect(
+      submitButton.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    expect(
+      heading.compareDocumentPosition(sortGroup) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+  });
+
+  it('.answers-list-header is visually separated from the composer above it', () => {
+    const rule = appCss.match(/\.answers-list-header\s*\{([^}]*)\}/);
+    expect(rule).not.toBeNull();
+    expect(rule[1]).toMatch(/margin-top:\s*(?!0(?:px|rem|em)?\s*;)\S/);
   });
 });

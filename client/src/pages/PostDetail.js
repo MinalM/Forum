@@ -27,6 +27,7 @@ const PostDetail = () => {
   const [commentSort, setCommentSort] = useState('helpful');
   const [subscribed, setSubscribed] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [showActionsMenu, setShowActionsMenu] = useState(false);
   const [reportModal, setReportModal] = useState({
     isOpen: false,
     type: 'post',
@@ -371,6 +372,10 @@ const PostDetail = () => {
   const isAdmin = user && user.role === 'admin';
   const canEdit = isAuthor || isAdmin;
   const canMarkAnswer = isAuthor || hasPermission(user, 'markAnswer');
+  const canLockThread = hasPermission(user, 'lockThread');
+  const canPinPost = hasPermission(user, 'pinPost');
+  const canReport = isAuthenticated && !isAuthor;
+  const hasMoreActions = canEdit || canLockThread || canPinPost || canReport;
   const formattedDate = formatDistanceToNow(new Date(post.createdAt), {
     addSuffix: true
   });
@@ -422,22 +427,24 @@ const PostDetail = () => {
     <div className="main-content">
       <div className="post-detail">
         <div className="post-header">
-          <h1 className="post-title">
-            {post.title}
-            {post.isPinned && (
-              <span className="badge badge-info ml-2">Pinned</span>
-            )}
-            {post.isLocked && (
-              <span className="badge badge-warning ml-2">Locked</span>
-            )}
-          </h1>
-          <div className="post-status-badges">
-            {postStatus === 'solved' && (
-              <span className="badge badge-success">Solved</span>
-            )}
-            {postStatus === 'needs-answer' && (
-              <span className="badge badge-warning">Needs an answer</span>
-            )}
+          <div className="post-card-header-row">
+            <h1 className="post-title">
+              {post.title}
+              {post.isPinned && (
+                <span className="badge badge-info ml-2">Pinned</span>
+              )}
+              {post.isLocked && (
+                <span className="badge badge-warning ml-2">Locked</span>
+              )}
+            </h1>
+            <div className="post-status-badges">
+              {postStatus === 'solved' && (
+                <span className="badge badge-success">Solved</span>
+              )}
+              {postStatus === 'needs-answer' && (
+                <span className="badge badge-warning">Needs an answer</span>
+              )}
+            </div>
           </div>
           <div className="post-meta">
             <div className="post-meta-item">
@@ -461,21 +468,20 @@ const PostDetail = () => {
               <i className="fas fa-eye"></i> {post.views} views
             </div>
           </div>
+          <div className="post-tags">
+            {post.tags &&
+              post.tags.map((tag, index) => (
+                <span key={index} className="badge badge-primary">
+                  {tag}
+                </span>
+              ))}
+          </div>
         </div>
 
         <div
           className="post-content"
           dangerouslySetInnerHTML={{ __html: renderMarkdown(post.content) }}
         />
-
-        <div className="post-tags">
-          {post.tags &&
-            post.tags.map((tag, index) => (
-              <span key={index} className="badge badge-primary">
-                {tag}
-              </span>
-            ))}
-        </div>
 
         <div className="post-actions">
           <div className="vote-buttons">
@@ -519,46 +525,90 @@ const PostDetail = () => {
             </button>
           )}
 
-          {canEdit && (
-            <>
-              <Link to={`/edit-post/${post._id}`} className="btn btn-sm">
-                <i className="fas fa-edit"></i> Edit
-              </Link>
-              <button className="btn btn-sm btn-danger" onClick={handleDelete}>
-                <i className="fas fa-trash"></i> Delete
+          {hasMoreActions && (
+            <div className="dropdown post-actions-dropdown">
+              <button
+                type="button"
+                className="post-actions-toggle"
+                aria-haspopup="true"
+                aria-expanded={showActionsMenu}
+                aria-label="More actions"
+                onClick={() => setShowActionsMenu((open) => !open)}
+              >
+                <i className="fas fa-ellipsis-h"></i>
               </button>
-            </>
-          )}
+              {showActionsMenu && (
+                <div
+                  className="dropdown-menu dropdown-menu-end post-actions-menu"
+                  role="menu"
+                  aria-label="More actions"
+                >
+                  {canEdit && (
+                    <Link
+                      to={`/edit-post/${post._id}`}
+                      className="dropdown-item"
+                      onClick={() => setShowActionsMenu(false)}
+                    >
+                      <i className="fas fa-edit"></i> Edit
+                    </Link>
+                  )}
 
-          {/* Moderation tools */}
-          {hasPermission(user, 'lockThread') && (
-            <button 
-              className={`btn btn-sm ${post.isLocked ? 'btn-warning' : 'btn-outline-warning'}`}
-              onClick={handleLockThread}
-            >
-              <i className={`fas fa-${post.isLocked ? 'lock' : 'unlock'}`}></i>{' '}
-              {post.isLocked ? 'Unlock' : 'Lock'}
-            </button>
-          )}
+                  {canEdit && (
+                    <button
+                      type="button"
+                      className="dropdown-item"
+                      onClick={() => {
+                        setShowActionsMenu(false);
+                        handleDelete();
+                      }}
+                    >
+                      <i className="fas fa-trash"></i> Delete
+                    </button>
+                  )}
 
-          {hasPermission(user, 'pinPost') && (
-            <button 
-              className={`btn btn-sm ${post.isPinned ? 'btn-info' : 'btn-outline-info'}`}
-              onClick={handlePinThread}
-            >
-              <i className="fas fa-thumbtack"></i>{' '}
-              {post.isPinned ? 'Unpin' : 'Pin'}
-            </button>
-          )}
+                  {canLockThread && (
+                    <button
+                      type="button"
+                      className="dropdown-item"
+                      onClick={() => {
+                        setShowActionsMenu(false);
+                        handleLockThread();
+                      }}
+                    >
+                      <i className={`fas fa-${post.isLocked ? 'lock' : 'unlock'}`}></i>{' '}
+                      {post.isLocked ? 'Unlock' : 'Lock'}
+                    </button>
+                  )}
 
-          {/* Report button */}
-          {isAuthenticated && !isAuthor && (
-            <button
-              className="btn btn-sm btn-outline-danger"
-              onClick={() => openReportModal('post', post._id, post.title)}
-            >
-              <i className="fas fa-flag"></i> Report
-            </button>
+                  {canPinPost && (
+                    <button
+                      type="button"
+                      className="dropdown-item"
+                      onClick={() => {
+                        setShowActionsMenu(false);
+                        handlePinThread();
+                      }}
+                    >
+                      <i className="fas fa-thumbtack"></i>{' '}
+                      {post.isPinned ? 'Unpin' : 'Pin'}
+                    </button>
+                  )}
+
+                  {canReport && (
+                    <button
+                      type="button"
+                      className="dropdown-item"
+                      onClick={() => {
+                        setShowActionsMenu(false);
+                        openReportModal('post', post._id, post.title);
+                      }}
+                    >
+                      <i className="fas fa-flag"></i> Report
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
           )}
         </div>
       </div>
@@ -599,21 +649,24 @@ const PostDetail = () => {
         )}
 
         {topLevelComments.length > 0 && (
-          <div className="comment-sort-toggle" role="group" aria-label="Sort answers">
-            <button
-              type="button"
-              className={`sort-toggle-btn${commentSort === 'helpful' ? ' active' : ''}`}
-              onClick={() => setCommentSort('helpful')}
-            >
-              Most helpful
-            </button>
-            <button
-              type="button"
-              className={`sort-toggle-btn${commentSort === 'newest' ? ' active' : ''}`}
-              onClick={() => setCommentSort('newest')}
-            >
-              Newest
-            </button>
+          <div className="answers-list-header">
+            <h3 className="answers-list-heading">Answers</h3>
+            <div className="comment-sort-toggle" role="group" aria-label="Sort answers">
+              <button
+                type="button"
+                className={`sort-toggle-btn${commentSort === 'helpful' ? ' active' : ''}`}
+                onClick={() => setCommentSort('helpful')}
+              >
+                Most helpful
+              </button>
+              <button
+                type="button"
+                className={`sort-toggle-btn${commentSort === 'newest' ? ' active' : ''}`}
+                onClick={() => setCommentSort('newest')}
+              >
+                Newest
+              </button>
+            </div>
           </div>
         )}
 

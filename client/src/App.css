@@ -367,6 +367,47 @@
 
 .post-actions {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* The "More actions" (⋯) toggle collapses the author/moderator controls
+   (Edit, Delete, Lock, Pin, Report) that used to sit inline as up to five
+   extra buttons in four different alert colours - one quiet toggle instead,
+   reusing the disclosure/.dropdown-menu/.dropdown-item pattern the navbar's
+   user and staff menus already established (Navbar.css, always loaded since
+   Navbar renders on every page). */
+.post-actions-dropdown {
+  position: relative;
+  /* Pins the toggle to the trailing edge of the row (its own flex line,
+     even when the row wraps) so dropdown-menu-end's right:0 anchor is
+     always relative to the row's actual right edge - otherwise a toggle
+     that wraps onto its own line at the row's *left* edge produces a menu
+     that opens off the left side of a narrow viewport. */
+  margin-left: auto;
+}
+
+.post-actions-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  background: transparent;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  color: #666;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.post-actions-toggle:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.post-actions-menu {
+  min-width: 180px;
 }
 
 .vote-buttons {
@@ -443,6 +484,7 @@
 
 .post-card-header-row {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: flex-start;
   gap: 0.5rem;
@@ -619,6 +661,24 @@
 
 .comment-vote-row {
   margin-bottom: 1rem;
+}
+
+/* Groups the answer-sort control under its own "Answers" landmark heading,
+   separated from the comment composer above it (they used to sit flush
+   against each other, 0px apart, reading as one control). */
+.answers-list-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid #eee;
+}
+
+.answers-list-heading {
+  margin: 0;
 }
 
 .comment-sort-toggle {
