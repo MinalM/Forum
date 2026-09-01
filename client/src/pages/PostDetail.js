@@ -27,6 +27,7 @@ const PostDetail = () => {
   const [commentSort, setCommentSort] = useState('helpful');
   const [subscribed, setSubscribed] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [showMoreActions, setShowMoreActions] = useState(false);
   const [reportModal, setReportModal] = useState({
     isOpen: false,
     type: 'post',
@@ -238,6 +239,8 @@ const PostDetail = () => {
     });
   };
 
+  const closeMoreActions = () => setShowMoreActions(false);
+
   const closeReportModal = () => {
     setReportModal({
       isOpen: false,
@@ -371,6 +374,10 @@ const PostDetail = () => {
   const isAdmin = user && user.role === 'admin';
   const canEdit = isAuthor || isAdmin;
   const canMarkAnswer = isAuthor || hasPermission(user, 'markAnswer');
+  const canLock = hasPermission(user, 'lockThread');
+  const canPin = hasPermission(user, 'pinPost');
+  const canReport = isAuthenticated && !isAuthor;
+  const hasOverflowActions = canEdit || canLock || canPin || canReport;
   const formattedDate = formatDistanceToNow(new Date(post.createdAt), {
     addSuffix: true
   });
@@ -422,22 +429,18 @@ const PostDetail = () => {
     <div className="main-content">
       <div className="post-detail">
         <div className="post-header">
-          <h1 className="post-title">
-            {post.title}
-            {post.isPinned && (
-              <span className="badge badge-info ml-2">Pinned</span>
-            )}
-            {post.isLocked && (
-              <span className="badge badge-warning ml-2">Locked</span>
-            )}
-          </h1>
-          <div className="post-status-badges">
-            {postStatus === 'solved' && (
-              <span className="badge badge-success">Solved</span>
-            )}
-            {postStatus === 'needs-answer' && (
-              <span className="badge badge-warning">Needs an answer</span>
-            )}
+          <div className="post-title-row">
+            <h1 className="post-title">{post.title}</h1>
+            <div className="post-status-badges">
+              {post.isPinned && <span className="badge badge-info">Pinned</span>}
+              {post.isLocked && <span className="badge badge-warning">Locked</span>}
+              {postStatus === 'solved' && (
+                <span className="badge badge-success">Solved</span>
+              )}
+              {postStatus === 'needs-answer' && (
+                <span className="badge badge-warning">Needs an answer</span>
+              )}
+            </div>
           </div>
           <div className="post-meta">
             <div className="post-meta-item">
@@ -478,87 +481,136 @@ const PostDetail = () => {
         </div>
 
         <div className="post-actions">
-          <div className="vote-buttons">
-            <button
-              className={`vote-btn upvote ${hasUpvoted ? 'active' : ''}`}
-              onClick={handleUpvote}
-              disabled={!isAuthenticated}
-              aria-label="Upvote question"
-            >
-              <i className="fas fa-arrow-up"></i>
-            </button>
-            <span className="vote-count">{voteCount}</span>
-            <button
-              className={`vote-btn downvote ${hasDownvoted ? 'active' : ''}`}
-              onClick={handleDownvote}
-              disabled={!isAuthenticated}
-              aria-label="Downvote question"
-            >
-              <i className="fas fa-arrow-down"></i>
-            </button>
+          <div className="post-actions-primary">
+            <div className="vote-buttons">
+              <button
+                className={`vote-btn upvote ${hasUpvoted ? 'active' : ''}`}
+                onClick={handleUpvote}
+                disabled={!isAuthenticated}
+                aria-label="Upvote question"
+              >
+                <i className="fas fa-arrow-up"></i>
+              </button>
+              <span className="vote-count">{voteCount}</span>
+              <button
+                className={`vote-btn downvote ${hasDownvoted ? 'active' : ''}`}
+                onClick={handleDownvote}
+                disabled={!isAuthenticated}
+                aria-label="Downvote question"
+              >
+                <i className="fas fa-arrow-down"></i>
+              </button>
+            </div>
+
+            {isAuthenticated && (
+              <button
+                type="button"
+                className={`subscribe-toggle-btn${subscribed ? ' active' : ''}`}
+                onClick={handleToggleSubscribe}
+              >
+                <i className={`fas fa-bell${subscribed ? '' : '-slash'}`}></i>{' '}
+                {subscribed ? 'Notified' : 'Notify me of answers'}
+              </button>
+            )}
+
+            {isAuthenticated && (
+              <button
+                type="button"
+                className={`save-toggle-detail-btn${saved ? ' active' : ''}`}
+                onClick={handleToggleSave}
+              >
+                <i className="fas fa-bookmark"></i> {saved ? 'Saved' : 'Save'}
+              </button>
+            )}
           </div>
 
-          {isAuthenticated && (
-            <button
-              type="button"
-              className={`subscribe-toggle-btn${subscribed ? ' active' : ''}`}
-              onClick={handleToggleSubscribe}
-            >
-              <i className={`fas fa-bell${subscribed ? '' : '-slash'}`}></i>{' '}
-              {subscribed ? 'Notified' : 'Notify me of answers'}
-            </button>
-          )}
-
-          {isAuthenticated && (
-            <button
-              type="button"
-              className={`save-toggle-detail-btn${saved ? ' active' : ''}`}
-              onClick={handleToggleSave}
-            >
-              <i className="fas fa-bookmark"></i> {saved ? 'Saved' : 'Save'}
-            </button>
-          )}
-
-          {canEdit && (
-            <>
-              <Link to={`/edit-post/${post._id}`} className="btn btn-sm">
-                <i className="fas fa-edit"></i> Edit
-              </Link>
-              <button className="btn btn-sm btn-danger" onClick={handleDelete}>
-                <i className="fas fa-trash"></i> Delete
+          {/* Author/moderator controls collapse behind one quiet toggle -
+              a reader only ever needs vote/Save/Notify, and these are used
+              at most once per post. */}
+          {hasOverflowActions && (
+            <div className={`post-actions-overflow${showMoreActions ? ' show' : ''}`}>
+              <button
+                type="button"
+                id="postActionsMoreToggle"
+                className="post-actions-overflow-toggle"
+                aria-haspopup="true"
+                aria-expanded={showMoreActions}
+                aria-label="More actions"
+                onClick={() => setShowMoreActions(!showMoreActions)}
+              >
+                <i className="fas fa-ellipsis-h"></i>
               </button>
-            </>
-          )}
+              {showMoreActions && (
+                <div
+                  className="post-actions-overflow-menu"
+                  role="menu"
+                  aria-labelledby="postActionsMoreToggle"
+                >
+                  {canEdit && (
+                    <>
+                      <Link
+                        to={`/edit-post/${post._id}`}
+                        className="post-actions-overflow-item"
+                        onClick={closeMoreActions}
+                      >
+                        <i className="fas fa-edit"></i> Edit
+                      </Link>
+                      <button
+                        type="button"
+                        className="post-actions-overflow-item"
+                        onClick={() => {
+                          closeMoreActions();
+                          handleDelete();
+                        }}
+                      >
+                        <i className="fas fa-trash"></i> Delete
+                      </button>
+                    </>
+                  )}
 
-          {/* Moderation tools */}
-          {hasPermission(user, 'lockThread') && (
-            <button 
-              className={`btn btn-sm ${post.isLocked ? 'btn-warning' : 'btn-outline-warning'}`}
-              onClick={handleLockThread}
-            >
-              <i className={`fas fa-${post.isLocked ? 'lock' : 'unlock'}`}></i>{' '}
-              {post.isLocked ? 'Unlock' : 'Lock'}
-            </button>
-          )}
+                  {canLock && (
+                    <button
+                      type="button"
+                      className="post-actions-overflow-item"
+                      onClick={() => {
+                        closeMoreActions();
+                        handleLockThread();
+                      }}
+                    >
+                      <i className={`fas fa-${post.isLocked ? 'lock' : 'unlock'}`}></i>{' '}
+                      {post.isLocked ? 'Unlock' : 'Lock'}
+                    </button>
+                  )}
 
-          {hasPermission(user, 'pinPost') && (
-            <button 
-              className={`btn btn-sm ${post.isPinned ? 'btn-info' : 'btn-outline-info'}`}
-              onClick={handlePinThread}
-            >
-              <i className="fas fa-thumbtack"></i>{' '}
-              {post.isPinned ? 'Unpin' : 'Pin'}
-            </button>
-          )}
+                  {canPin && (
+                    <button
+                      type="button"
+                      className="post-actions-overflow-item"
+                      onClick={() => {
+                        closeMoreActions();
+                        handlePinThread();
+                      }}
+                    >
+                      <i className="fas fa-thumbtack"></i>{' '}
+                      {post.isPinned ? 'Unpin' : 'Pin'}
+                    </button>
+                  )}
 
-          {/* Report button */}
-          {isAuthenticated && !isAuthor && (
-            <button
-              className="btn btn-sm btn-outline-danger"
-              onClick={() => openReportModal('post', post._id, post.title)}
-            >
-              <i className="fas fa-flag"></i> Report
-            </button>
+                  {canReport && (
+                    <button
+                      type="button"
+                      className="post-actions-overflow-item"
+                      onClick={() => {
+                        closeMoreActions();
+                        openReportModal('post', post._id, post.title);
+                      }}
+                    >
+                      <i className="fas fa-flag"></i> Report
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
           )}
         </div>
       </div>
@@ -599,21 +651,23 @@ const PostDetail = () => {
         )}
 
         {topLevelComments.length > 0 && (
-          <div className="comment-sort-toggle" role="group" aria-label="Sort answers">
-            <button
-              type="button"
-              className={`sort-toggle-btn${commentSort === 'helpful' ? ' active' : ''}`}
-              onClick={() => setCommentSort('helpful')}
-            >
-              Most helpful
-            </button>
-            <button
-              type="button"
-              className={`sort-toggle-btn${commentSort === 'newest' ? ' active' : ''}`}
-              onClick={() => setCommentSort('newest')}
-            >
-              Newest
-            </button>
+          <div className="answers-toolbar">
+            <div className="comment-sort-toggle" role="group" aria-label="Sort answers">
+              <button
+                type="button"
+                className={`sort-toggle-btn${commentSort === 'helpful' ? ' active' : ''}`}
+                onClick={() => setCommentSort('helpful')}
+              >
+                Most helpful
+              </button>
+              <button
+                type="button"
+                className={`sort-toggle-btn${commentSort === 'newest' ? ' active' : ''}`}
+                onClick={() => setCommentSort('newest')}
+              >
+                Newest
+              </button>
+            </div>
           </div>
         )}
 
