@@ -123,8 +123,19 @@ screenshots — that is the sandbox, not the product.
   this PR added it. All new interactive controls meet the 44×44 touch
   target minimum unconditionally.
 
-- [ ] **The post-detail header and action row are dense, noisy, and
-  overflow on mobile.** Measured logged in as admin on
+- [x] **The post-detail header and action row are dense, noisy, and
+  overflow on mobile.** Done in #97: reader actions (vote, Save, Notify)
+  stay inline; author/moderator actions (Edit, Delete, Lock, Pin, Report)
+  collapse behind one quiet "More actions" (⋯) menu reusing the navbar's
+  existing dropdown pattern; the header is tightened to title + one meta
+  line + tags (reusing `PostItem`'s `.post-card-header-row`); `.post-actions`
+  and `.post-card-header-row` wrap at narrow widths; the answer-sort control
+  got its own "Answers" landmark, separated from the composer's submit
+  button. Fixed two overflow bugs found while verifying the new menu
+  locally: `.dropdown-menu`'s z-index tied with the fixed mobile bottom tab
+  bar (both at 1000), and the menu could open off the left edge of a narrow
+  viewport when its toggle wrapped onto its own line.
+  Measured logged in as admin on
   `/posts/6925386a…`: above the post body the page stacks five
   full-width bands — status badge, title, meta (author · category · date
   · views), a row of tag chips, then a **nine-button action row** (`↑/↓`
