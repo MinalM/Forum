@@ -640,10 +640,56 @@ Two standing constraints for every item below:
   sits between the `h1` and the first card `h3`; existing
   `Categories`/`CategoryPosts`/`SearchResults` assertions unaffected.
 
-- [ ] **Every live post shows category-name/description fragments and the
+- [x] **Every live post shows category-name/description fragments and the
   literal words "discussion" and "help" as tag chips — and
   `scripts/cleanup-post-tags.js` (the #33 remediation) cannot remove them.**
-  Found reviewing the live site: `GET
+  Done: see PR for this item.
+  Added `server/utils/tagPollution.js`: rather than a length/word-count
+  heuristic (which #33 already showed is too broad in both directions —
+  short fragments like "algorithms" survive it, genuine multi-word tags
+  like "machine learning engineer" would be at risk from a stricter one),
+  it builds a pollution set directly from the *live* Category collection —
+  each category's full name, full description, every comma-split fragment
+  of the description, and the name+first-fragment combination the seeding
+  bug concatenated into one string — and drops any tag matching it
+  (whitespace/case-insensitively, since the live examples show the
+  name+fragment tag with inconsistent internal spacing), plus any bare
+  "and …" connector fragment as a safety net for wording the current
+  category text no longer matches, plus the two fixed junk tokens
+  "discussion"/"help". New `scripts/cleanup-post-tag-pollution.js` follows
+  `cleanup-post-tags.js`'s dry-run-by-default / `--apply` pattern, composing
+  this with the existing `normalizeTags`/`MAX_TAG_LENGTH`/`MAX_TAGS` so one
+  run does the full cleanup. `cleanup-post-tags.js` itself is untouched.
+  Client-side defensive cap: `.post-tags .badge` in `client/src/App.css` now
+  overrides `.badge`'s global `white-space: nowrap` (the actual overflow
+  source — flex-wrap on `.post-tags` only lets *chips* wrap to a new line,
+  it doesn't let a single nowrap chip's own text wrap) with `white-space:
+  normal` + `overflow-wrap: break-word` + `max-width: 100%`, and
+  `PostItem.js` caps rendered chips at `MAX_VISIBLE_TAGS = 10` (matching the
+  server's `MAX_TAGS`) so a raw-driver-inserted row that bypasses Mongoose
+  validation (see #79) still can't flood a card.
+  Acceptance: `server/__tests__/utils/tagPollution.test.js` and
+  `server/__tests__/tooling/cleanupPostTagPollution.test.js` cover the real
+  live tag arrays quoted below, category-text fragment matching, the "and …"
+  fallback, preservation of genuine tags (including ones the seed scripts
+  actually use, like "machine learning engineer"), and the pre-existing
+  length/count caps still applying; `client/src/__tests__/postTagsOverflow.test.js`
+  (raw-CSS-source assertion, no browser available in this environment) and
+  new `PostItem.test.js` cases (chip count cap, normal tags unaffected)
+  cover the client side. Full client suite green (52 suites, 251 tests, up
+  from 51/246); `npm run lint` shows only the same pre-existing
+  warnings/errors on files this PR does not touch.
+  Caveat: could not run the server suite in this environment — this
+  sandbox fails every server suite before even reaching
+  `mongodb-memory-server`'s already-documented download block (#68's
+  caveat): `jest.setup.js` requires `connect-mongo`, which isn't installed
+  (confirmed pre-existing and unrelated to this change by running an
+  untouched suite, `Comment.test.js`, and seeing the identical failure).
+  Verified the new utility and script logic instead via `node -e` against
+  every case in both new test files (all passing) before writing them as
+  Jest suites, matching the pattern of prior PRs' `node -e` verification
+  under the same constraint.
+  Original finding, reviewing the live site: `GET
   https://aiml-forum.onrender.com/api/posts?limit=100` returns 31 posts and
   **every one** carries polluted `tags`, rendered as purple chips in
   `.post-tags` on the home feed, `/search`, category pages and `/posts/:id`

@@ -8,6 +8,12 @@ import { useAuth } from '../../context/AuthContext';
 import { useAlert } from '../../context/AlertContext';
 import { useFeedComposer } from '../../context/FeedComposerContext';
 
+// Defensive cap on how many tag chips a card renders — pairs with the
+// server-side MAX_TAGS validator (server/utils/normalizeTags.js) so a
+// future badly-seeded row with more tags than that still can't flood a
+// single card with chips.
+const MAX_VISIBLE_TAGS = 10;
+
 const AI_ML_LEVEL_LABELS = {
   beginner: 'Beginner',
   intermediate: 'Intermediate',
@@ -268,7 +274,7 @@ const PostItem = ({ post: initialPost }) => {
             <div className="post-footer">
               <div className="post-tags">
                 {tags &&
-                  tags.map((tag, index) => (
+                  tags.slice(0, MAX_VISIBLE_TAGS).map((tag, index) => (
                     <span key={index} className="badge badge-primary">
                       {tag}
                     </span>
