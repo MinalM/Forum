@@ -44,11 +44,22 @@ From a review of the signed-in experience (logged in as an admin account)
 on the live site at desktop and 375px with Playwright — navigation, the
 post-detail layout, and the accept-answer flow. Bug first, then design.
 
-Re-checked 2026-09-01 against the shipped source. The live site could not be
-re-opened: this sandbox's egress policy 403s
-`cerulean-marshmallow-003d16.netlify.app`, so anything below needing a browser
-measurement carries the numbers from the original live review, and the one item
-added that day is marked as source-review only.
+Re-verified 2026-09-01 against a **local** run of the stack, logged in as
+`admin@example.com`, at 1280px and 375px. The deployed site stays unreachable
+from the agent sandbox (its egress policy 403s the Netlify host), so everything
+below was re-measured locally instead; where a local number differs from the
+original live one, the local number is noted inline.
+
+Running the stack locally is possible but not obvious — the Docker daemon is
+not started in the sandbox, Docker Hub's blob CDN is 403 so `mongo:6.0` must be
+pulled from `mirror.gcr.io/library/mongo:6.0` and retagged, and
+`mongodb-memory-server` cannot fetch its binary. Once up, `npm run seed` creates
+`admin@example.com` / `password123`. Worth capturing as a project run-skill.
+
+One caveat for anyone reviewing screenshots from that rig: the Font Awesome CDN
+is blocked too, so every `<i class="fas fa-*">` icon renders blank locally.
+Icon-only controls therefore look like unlabelled coloured squares in local
+screenshots — that is the sandbox, not the product.
 
 - [ ] **Accepting an answer leaves the post on "Needs an answer" and
   returns 400, on any post whose stored `tags` exceed the #33 caps.**
@@ -77,6 +88,17 @@ added that day is marked as source-review only.
   accept-answer the sole owner of `isSolved`, so on these posts there is
   now no working path to "Solved" at all. Related to the open
   tag-pollution items but a distinct code path.
+  Confirmed 2026-09-01 on the local stack, which reproduces it without any
+  production data: take any seeded post, set an over-cap tag straight through
+  the driver (`db.collection('posts').updateOne({_id}, {$set: {tags: ['<a
+  58-character tag>', 'ml']}})`, bypassing model validation the way
+  `scripts/seed-mongo.js` does), then click "Accept this answer" as admin. The
+  badge stays amber, the UI alerts "Error updating answer status", the network
+  tab shows `400 PUT /api/comments/:id/answer`, and afterwards the API reports
+  `post.isSolved: false` while that comment reads `isAnswer: true` — the split
+  write, exactly as diagnosed. The same click on a clean-tag seeded post flips
+  the badge to "Solved" with no error. This means the fix can be developed and
+  tested locally; it does not need the production database.
   Acceptance: an integration test with a fixture post whose stored `tags`
   exceed the #33 caps reproduces `PUT /api/comments/:id/answer` returning
   non-2xx with `post.isSolved` staying `false` while `comment.isAnswer`
@@ -89,10 +111,14 @@ added that day is marked as source-review only.
 
 - [ ] **The thread page and the feed disagree about "Needs an answer", and
   the thread's version is wrong on any post that already has answers.**
-  Found by source review (the live site is unreachable from the agent
-  sandbox — its egress policy 403s
-  `cerulean-marshmallow-003d16.netlify.app`, so this was not re-measured in a
-  browser). The two surfaces compute the badge from different things:
+  Confirmed on the local stack 2026-09-01, logged in as admin. The seeded post
+  "Online Courses for NLP Specialization" has one answer and `isSolved: false`.
+  On the home feed its card renders badges `["Advanced","nlp","courses",
+  "transformers","llm"]` — no status badge at all, and no
+  `post-card--needs-answer` class. Open that same post and the thread renders
+  `Needs an answer` in the status row, directly above the answer that already
+  exists. Same post, same instant, two contradictory answers to "does this
+  need an answer?". The two surfaces compute the badge from different things:
   `client/src/components/posts/PostItem.js:74` uses
   `!isSolved && commentCount === 0`, so a feed card only claims a post needs
   an answer when nobody has replied; `client/src/pages/PostDetail.js:428-432`
@@ -171,23 +197,34 @@ added that day is marked as source-review only.
   cleanly — "Lock", "Pin", "Report" run past the right edge of the
   viewport (the `.post-header` block alone is 236px tall on mobile,
   pushing the body far down). The eight destructive/mod controls have the
-  same weight as the two a reader needs; the `Post Comment` button in the
-  same area is 34px where the surrounding controls are 44px.
+  same weight as the two a reader needs.
+  Re-measured locally 2026-09-01: the 375px overflow is confirmed and large —
+  the thread page reports `scrollWidth` 578 against `clientWidth` 375, a 203px
+  overflow, with the offending node identified as one of the `.btn.btn-sm`
+  moderation buttons (Lock); `/` and `/dashboard` at the same width are clean,
+  so this is specific to the post-detail action row. Two corrections to the
+  original note: `Post Comment` now measures 44px, not 34px, so that part is
+  already fixed — drop it from the work; but the answer-sort control
+  ("Most helpful" / "Newest") sits **0px** below the `Post Comment` button,
+  flush against it, so the control that sorts the answer list reads as part of
+  the comment composer rather than as a header for the answers below it.
+  Separate and label that group as part of this item.
   Scope: `PostDetail.js` / `App.css`, client-only. Split the action row
   into reader actions (vote, Save, Notify) shown inline and
   author/moderator actions (Edit, Delete, Lock, Pin, Report) collapsed
   into a single overflow "⋯" menu; give those buttons one consistent
   quiet style rather than four alert colours; tighten the header to
   title + one meta line + tags; guarantee the header and action area fit
-  within 375px with no horizontal overflow; bring `Post Comment` to the
-  44px baseline.
+  within 375px with no horizontal overflow; give the answer-sort control
+  its own grouping, separated from the composer's submit button.
   Acceptance: a test renders `PostDetail` as the author (and as an
   admin) and asserts the inline action set is just vote/Save/Notify with
   the mod/author actions behind one toggle; a raw-CSS/jsdom check that at
   375px `.post-header` and `.post-actions` produce no element wider than
   the viewport (extend `postMetaOverflow.test.js`'s pattern); all
-  post-detail controls including `Post Comment` assert
-  `min-height >= 44px`; existing `PostDetail` tests updated.
+  post-detail controls assert `min-height >= 44px`; a test asserts the
+  answer-sort control is not adjacent to the composer's submit button
+  (a grouping/landmark or spacing assertion); existing `PostDetail` tests updated.
 
 - [ ] **"Accept this answer" renders as a loud full-size button on every
   comment.** On a seven-comment thread an author/moderator sees seven
