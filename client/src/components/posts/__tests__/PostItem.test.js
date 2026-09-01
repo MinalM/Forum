@@ -178,6 +178,14 @@ describe('PostItem post/solved/needs-answer states', () => {
     expect(screen.getByTestId('post-card').className).not.toMatch(/post-card--needs-answer/);
   });
 
+  it('shows no status badge for a locked, unsolved post with no answers', () => {
+    renderPostItem({ ...basePost, commentCount: 0, isSolved: false, isLocked: true });
+
+    expect(screen.queryByText('Needs an answer')).not.toBeInTheDocument();
+    expect(screen.queryByText('Solved')).not.toBeInTheDocument();
+    expect(screen.getByTestId('post-card').className).not.toMatch(/post-card--needs-answer/);
+  });
+
   it('renders the aiMlLevel badge the app has never displayed before', () => {
     renderPostItem({ ...basePost, aiMlLevel: 'intermediate' });
 
