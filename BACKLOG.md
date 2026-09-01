@@ -111,36 +111,17 @@ screenshots — that is the sandbox, not the product.
   are updated to the corrected behaviour; existing accept-answer tests still
   pass.
 
-- [ ] **The signed-in navbar is overcrowded and has no visual
-  hierarchy.** Measured live logged in as admin: at 1280px the navbar is
-  **160px tall** — it wraps to three rows because the brand ("AI/ML
-  Career Forum" itself wraps to three lines), the search box and **ten**
-  top-level items (Home, Categories, notification bell, Dashboard, Create
-  Post — which wraps to two lines — Saved, Admin ▾, Moderator ▾, Profile,
-  Logout) do not fit one row, while the centre of the bar is empty.
-  Nothing is prioritised: "Create Post", the primary contributor action,
-  is a plain text link identical to the other nine; "Admin" and
-  "Moderator" are two separate top-level dropdowns for one staff surface;
-  and the dropdown items (User Management, Admin Dashboard, Reports
-  Dashboard) sit in the layout/accessibility tree rather than behind a
-  disclosure. On mobile the bar is 128px (brand row + full-width search
-  row) and the same ten links fill the hamburger, duplicating most of
-  the bottom `MobileTabBar` (Feed / Answer / Ask / Saved / You).
-  Scope: `client/src/components/layout/Navbar.js` / `Navbar.css`,
-  client-only, no route changes. Reduce the top level to: brand · search
-  · Home · Categories · a visually distinct **Create** button ·
-  notification bell · one user menu (avatar/name → Dashboard, Saved,
-  Profile, Log out) · for staff, one "Admin" menu merging the current
-  Admin + Moderator destinations. The bar fits one row at ≥1024px; the
-  brand does not wrap; dropdown contents are unmounted until opened.
-  Acceptance: a test renders `Navbar` with an admin user and asserts
-  exactly one top-level "Create" affordance styled as a button (not
-  `.nav-link`), a single user menu containing Dashboard/Saved/Profile/
-  Logout, a single staff menu containing the admin + moderator
-  destinations, and that menu items are absent from the tree when the
-  menu is closed; an assertion (jsdom bounding-box or raw-CSS) that the
-  top-level item count is ≤ 7; existing `Navbar` tests updated;
-  `mobileTouchTargets.test.js` still green.
+- [x] **The signed-in navbar is overcrowded and has no visual
+  hierarchy.** Done in #95: cut the top-level nav from ten items to at
+  most six (brand · search · Home · Categories · a visually distinct
+  "Create" button · notification bell · one user menu covering
+  Dashboard/Saved/Profile/Logout · for staff, one "Admin" menu merging the
+  old separate Admin + Moderator destinations). Dropdown contents are now
+  conditionally rendered in JSX (genuinely unmounted until opened) instead
+  of always sitting in the DOM with no CSS to hide them — there was no
+  `.dropdown-menu`/`.dropdown-item` styling anywhere in the client before
+  this PR added it. All new interactive controls meet the 44×44 touch
+  target minimum unconditionally.
 
 - [ ] **The post-detail header and action row are dense, noisy, and
   overflow on mobile.** Measured logged in as admin on

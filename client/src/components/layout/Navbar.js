@@ -10,8 +10,8 @@ const Navbar = () => {
   const { isAuthenticated, user, logout } = useAuth();
   const navigate = useNavigate();
   const [showMobileMenu, setShowMobileMenu] = useState(false);
-  const [showAdminDropdown, setShowAdminDropdown] = useState(false);
-  const [showModDropdown, setShowModDropdown] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showStaffMenu, setShowStaffMenu] = useState(false);
   const [notificationCount, setNotificationCount] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -42,21 +42,23 @@ const Navbar = () => {
     setShowMobileMenu(!showMobileMenu);
   };
 
-  const toggleAdminDropdown = (e) => {
-    e.preventDefault();
-    setShowAdminDropdown(!showAdminDropdown);
-    // Close the other dropdown if open
-    if (showModDropdown) setShowModDropdown(false);
+  const toggleUserMenu = () => {
+    setShowUserMenu(!showUserMenu);
+    if (showStaffMenu) setShowStaffMenu(false);
   };
 
-  const toggleModDropdown = (e) => {
-    e.preventDefault();
-    setShowModDropdown(!showModDropdown);
-    // Close the other dropdown if open
-    if (showAdminDropdown) setShowAdminDropdown(false);
+  const toggleStaffMenu = () => {
+    setShowStaffMenu(!showStaffMenu);
+    if (showUserMenu) setShowUserMenu(false);
+  };
+
+  const closeMenus = () => {
+    setShowUserMenu(false);
+    setShowStaffMenu(false);
   };
 
   const handleLogout = () => {
+    closeMenus();
     logout();
   };
 
@@ -68,86 +70,85 @@ const Navbar = () => {
     setShowMobileMenu(false);
   };
 
+  const isAdmin = user && hasPermission(user, 'accessAdminDashboard');
+  const isModerator = user && hasPermission(user, 'accessModeratorDashboard');
+  const isStaff = isAdmin || isModerator;
+
   const authLinks = (
     <>
+      <li className="nav-item">
+        <Link className="nav-create-btn" to="/create-post">
+          <i className="fas fa-plus"></i> Create
+        </Link>
+      </li>
       <NotificationBell />
-      <li className="nav-item">
-        <Link className="nav-link" to="/dashboard">Dashboard</Link>
+      <li className={`nav-item dropdown ${showUserMenu ? 'show' : ''}`}>
+        <button
+          type="button"
+          className="nav-link dropdown-toggle nav-user-toggle"
+          id="userMenuToggle"
+          aria-haspopup="true"
+          aria-expanded={showUserMenu}
+          onClick={toggleUserMenu}
+        >
+          <i className="fas fa-user-circle"></i>
+          <span className="nav-user-name">{user?.name || 'Account'}</span>
+        </button>
+        {showUserMenu && (
+          <div className="dropdown-menu dropdown-menu-end" role="menu" aria-labelledby="userMenuToggle">
+            <Link className="dropdown-item" to="/dashboard" onClick={closeMenus}>
+              <i className="fas fa-tachometer-alt"></i> Dashboard
+            </Link>
+            <Link className="dropdown-item" to="/saved-posts" onClick={closeMenus}>
+              <i className="fas fa-bookmark"></i> Saved
+            </Link>
+            <Link className="dropdown-item" to={`/profile/${user?._id}`} onClick={closeMenus}>
+              <i className="fas fa-user"></i> Profile
+            </Link>
+            <a href="#!" className="dropdown-item" onClick={handleLogout}>
+              <i className="fas fa-sign-out-alt"></i> Logout
+            </a>
+          </div>
+        )}
       </li>
-      <li className="nav-item">
-        <Link className="nav-link" to="/create-post">
-          Create Post
-        </Link>
-      </li>
-      <li className="nav-item">
-        <Link className="nav-link" to="/saved-posts">
-          <i className="fas fa-bookmark"></i> Saved
-        </Link>
-      </li>
-      {/* Admin dropdown menu */}
-      {user && hasPermission(user, 'accessAdminDashboard') && (
-        <li className={`nav-item dropdown ${showAdminDropdown ? 'show' : ''}`}>
-          <a
-            className="nav-link dropdown-toggle"
-            href="#"
-            id="adminDropdown"
-            onClick={toggleAdminDropdown}
+
+      {/* Staff menu: merges the Admin and Moderator destinations behind one disclosure */}
+      {isStaff && (
+        <li className={`nav-item dropdown ${showStaffMenu ? 'show' : ''}`}>
+          <button
+            type="button"
+            className="nav-link dropdown-toggle nav-staff-toggle"
+            id="staffMenuToggle"
+            aria-haspopup="true"
+            aria-expanded={showStaffMenu}
+            onClick={toggleStaffMenu}
           >
             <i className="fas fa-user-shield"></i> Admin
-          </a>
-          <div className={`dropdown-menu ${showAdminDropdown ? 'show' : ''}`} aria-labelledby="adminDropdown">
-            <Link
-              className="dropdown-item"
-              to="/admin/users"
-              onClick={() => setShowAdminDropdown(false)}
-            >
-              <i className="fas fa-users-cog"></i> User Management
-            </Link>
-            <Link
-              className="dropdown-item"
-              to="/admin"
-              onClick={() => setShowAdminDropdown(false)}
-            >
-              <i className="fas fa-tachometer-alt"></i> Admin Dashboard
-            </Link>
-          </div>
-        </li>
-      )}
-
-      {/* Moderator dropdown menu */}
-      {user && hasPermission(user, 'accessModeratorDashboard') && !hasPermission(user, 'admin') && (
-        <li className={`nav-item dropdown ${showModDropdown ? 'show' : ''}`}>
-          <a
-            className="nav-link dropdown-toggle"
-            href="#"
-            id="modDropdown"
-            onClick={toggleModDropdown}
-          >
-            <i className="fas fa-user-cog"></i> Moderator
             {notificationCount > 0 && (
               <span className="notification-badge">{notificationCount}</span>
             )}
-          </a>
-          <div className={`dropdown-menu ${showModDropdown ? 'show' : ''}`} aria-labelledby="modDropdown">
-            <Link
-              className="dropdown-item"
-              to="/moderator"
-              onClick={() => setShowModDropdown(false)}
-            >
-              <i className="fas fa-flag"></i> Reports Dashboard
-            </Link>
-          </div>
+          </button>
+          {showStaffMenu && (
+            <div className="dropdown-menu dropdown-menu-end" role="menu" aria-labelledby="staffMenuToggle">
+              {isAdmin && (
+                <Link className="dropdown-item" to="/admin/users" onClick={closeMenus}>
+                  <i className="fas fa-users-cog"></i> User Management
+                </Link>
+              )}
+              {isAdmin && (
+                <Link className="dropdown-item" to="/admin" onClick={closeMenus}>
+                  <i className="fas fa-tachometer-alt"></i> Admin Dashboard
+                </Link>
+              )}
+              {isModerator && (
+                <Link className="dropdown-item" to="/moderator" onClick={closeMenus}>
+                  <i className="fas fa-flag"></i> Reports Dashboard
+                </Link>
+              )}
+            </div>
+          )}
         </li>
       )}
-
-      <li className="nav-item">
-        <Link className="nav-link" to={`/profile/${user?._id}`}>Profile</Link>
-      </li>
-      <li className="nav-item">
-        <a href="#!" className="nav-link" onClick={handleLogout}>
-          <i className="fas fa-sign-out-alt"></i> Logout
-        </a>
-      </li>
     </>
   );
 
