@@ -745,27 +745,18 @@ Two standing constraints for every item below:
   within the card box at 375px; existing `cleanup-post-tags` /
   `normalizeTags` / `PostItem` assertions unaffected.
 
-- [ ] **The post's own up/down vote buttons on `/posts/:id` have no
+- [x] **The post's own up/down vote buttons on `/posts/:id` have no
   accessible name — a screen reader announces them as bare "button".**
-  Found reviewing the live site with Playwright: on
-  `https://cerulean-marshmallow-003d16.netlify.app/posts/6925386a88cb7b8de046eddf`
-  the two `.vote-btn.upvote` / `.vote-btn.downvote` controls for the post
-  itself (inside `.vote-buttons` in `client/src/pages/PostDetail.js`) expose
-  `aria-label: null`, `aria-labelledby: null`, `title: null` and empty text
-  content — the visible label is a Font Awesome `<i>` glyph — so their
-  computed accessible name is empty. The per-answer vote buttons in the same
-  list are correct: each carries `aria-label="Upvote answer"` /
-  `"Downvote answer"` (added with #67). Only the question's vote control was
-  missed. This is a WCAG 4.1.2 (Name, Role, Value) gap on the primary
-  action of every thread page, and unlike the archived "vote buttons have no
-  CSS" item (which only added `.vote-btn` sizing) nothing has given these
-  two an accessible name.
-  Scope: `client/src/pages/PostDetail.js`, client-only — give the post's two
-  vote buttons an `aria-label` (`"Upvote question"` / `"Downvote question"`
-  or equivalent), matching the pattern already used for answers.
-  Acceptance: a `PostDetail` test asserts both of the post's vote buttons
-  have a non-empty accessible name; the existing per-answer vote-button
-  `aria-label` assertions from #67 are unaffected.
+  Done: see PR for this item. Added `aria-label="Upvote question"` /
+  `aria-label="Downvote question"` to the post's two `.vote-btn` controls
+  in `client/src/pages/PostDetail.js`, matching the pattern already used
+  for the per-answer vote buttons (`"Upvote answer"` / `"Downvote answer"`,
+  #67).
+  Acceptance: a new `PostDetail` test (`PostDetail vote button accessible
+  names (WCAG 4.1.2)`) asserts both of the post's vote buttons resolve via
+  `getByRole('button', { name: ... })`, i.e. have a non-empty accessible
+  name; full client suite green (52 suites, 252 tests) and the existing
+  per-answer vote-button `aria-label` assertions from #67 are unaffected.
 
 - [x] **"For you" ranking and the "You can answer these" rail.** Done: #71.
   Added `server/utils/feedRanking.js`: a documented weighted score
