@@ -135,6 +135,27 @@ describe('mobile touch targets (WCAG 2.5.5, <=768px viewport)', () => {
   });
 });
 
+describe('navbar hierarchy controls are at least 44px tall (unconditional, not mobile-scoped)', () => {
+  it('the "Create" button meets the touch target minimum', () => {
+    const rule = extractRule(navbarCss, '.nav-create-btn');
+    expect(minPx(rule, 'min-height')).toBeGreaterThanOrEqual(MIN_TARGET);
+  });
+
+  it('the user menu and staff menu toggles meet the touch target minimum', () => {
+    // Declared as a compound selector (".nav-user-toggle,\n.nav-staff-toggle
+    // { ... }"), so extractRule's single-selector matcher can't find it -
+    // match the comma-joined block directly instead.
+    const match = navbarCss.match(/\.nav-user-toggle,\s*\.nav-staff-toggle\s*\{([^}]*)\}/);
+    expect(match).not.toBeNull();
+    expect(minPx(match[1], 'min-height')).toBeGreaterThanOrEqual(MIN_TARGET);
+  });
+
+  it('dropdown menu items meet the touch target minimum', () => {
+    const rule = extractRule(navbarCss, '.dropdown-item');
+    expect(minPx(rule, 'min-height')).toBeGreaterThanOrEqual(MIN_TARGET);
+  });
+});
+
 describe('category sidebar links (Home) are at least 44px tall', () => {
   it('declares a min-height of 44px on the category-item link', () => {
     const rule = extractRule(appCss, '.categories-sidebar .category-item a');
