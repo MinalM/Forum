@@ -277,11 +277,12 @@ exports.markAsAnswer = asyncHandler(async (req, res, next) => {
       { post: comment.post, _id: { $ne: comment._id }, isAnswer: true },
       { isAnswer: false }
     );
-    post.isSolved = true;
-  } else {
-    post.isSolved = false;
   }
-  await post.save();
+
+  // Targeted update (not post.save()) so this never full-document-validates
+  // unrelated fields - e.g. legacy tags that predate the #33 tag caps -
+  // which would otherwise 400 here after the comment flag already persisted.
+  await Post.findByIdAndUpdate(comment.post, { isSolved: comment.isAnswer });
 
   res.status(200).json({
     success: true,
