@@ -61,8 +61,13 @@ is blocked too, so every `<i class="fas fa-*">` icon renders blank locally.
 Icon-only controls therefore look like unlabelled coloured squares in local
 screenshots — that is the sandbox, not the product.
 
-- [ ] **The thread page and the feed disagree about "Needs an answer", and
+- [x] **The thread page and the feed disagree about "Needs an answer", and
   the thread's version is wrong on any post that already has answers.**
+  Done in #94: added `client/src/utils/postStatus.js` as the single source
+  of truth (`solved` / `needs-answer` / `null`, `null` covering both "has
+  answers but unsolved" and "locked and unsolved"), and switched both
+  `PostItem` and `PostDetail` to derive their badge from it instead of two
+  independent expressions.
   Confirmed on the local stack 2026-09-01, logged in as admin. The seeded post
   "Online Courses for NLP Specialization" has one answer and `isSolved: false`.
   On the home feed its card renders badges `["Advanced","nlp","courses",
@@ -222,6 +227,23 @@ screenshots — that is the sandbox, not the product.
   asserts the `<img>` `src` is `/images/default-avatar1.png` (or that
   `onError` swaps to it); the Playwright run makes no failed request for
   the default avatar.
+
+- [ ] **`SavedPosts.js` has a third, independent copy of the status-badge
+  logic.** Discovered while fixing the feed/thread "Needs an answer"
+  mismatch above (#94): `client/src/pages/SavedPosts.js:70-74` renders its
+  own `saved.post.isSolved ? "Solved" : saved.post.commentCount === 0 ?
+  "Needs an answer" : null` inline, instead of using the new
+  `client/src/utils/postStatus.js` helper `PostItem` and `PostDetail` now
+  share. It also never looks at `isLocked`, so a locked-but-unsolved saved
+  post with no comments would still show "Needs an answer" there while
+  showing nothing on the feed and thread.
+  Scope: client-only. Switch `SavedPosts.js` to `getPostStatus` (fetch or
+  default `isLocked` on the saved-post payload if the endpoint doesn't
+  already include it).
+  Acceptance: a `SavedPosts` test covering the same four cases (solved;
+  unsolved with no answers; unsolved with answers; locked and unsolved)
+  used for the other two surfaces; existing `SavedPosts` badge tests
+  updated if their fixtures change.
 
 ### Growth: adoption and engagement
 
