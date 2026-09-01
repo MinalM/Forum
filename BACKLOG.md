@@ -61,54 +61,6 @@ is blocked too, so every `<i class="fas fa-*">` icon renders blank locally.
 Icon-only controls therefore look like unlabelled coloured squares in local
 screenshots — that is the sandbox, not the product.
 
-- [ ] **Accepting an answer leaves the post on "Needs an answer" and
-  returns 400, on any post whose stored `tags` exceed the #33 caps.**
-  Reproduced live, logged in as admin. Clicking a comment's "Accept this
-  answer" on
-  `https://cerulean-marshmallow-003d16.netlify.app/posts/6925386a88cb7b8de046eddf`:
-  the amber "Needs an answer" badge does not change — immediately or
-  after a reload — and `GET /api/posts/6925386a88cb7b8de046eddf`
-  afterwards still reads `isSolved: false` even though the target comment
-  now has `isAnswer: true` (a split write), with a `400` in the browser
-  console. The same steps on
-  `https://cerulean-marshmallow-003d16.netlify.app/posts/67cbb5cb71e8be810c501056`
-  (tags `portfolio`, `projects`, `job hunting` — all short) work: badge
-  flips to "Solved", `isSolved: true`, no error. Root cause:
-  `markAsAnswer` (`server/controllers/comments.js:247`) runs
-  `await comment.save()` first (succeeds), then
-  `post.isSolved = true; await post.save()` — and `post.save()`
-  full-document-validates `tags`, which throws `ValidationError` on any
-  post whose legacy tags violate the `MAX_TAGS = 10` /
-  `MAX_TAG_LENGTH = 30` validators added in #33
-  (`server/models/Post.js:29-40`); `6925386a…` carries a 48-char tag.
-  `asyncHandler` turns the throw into a 400 after the comment flag has
-  already persisted. Same `post.save()`-hits-tag-validator failure the
-  archived `GET /api/posts/:id` 400 item fixed with `$inc`, but
-  `markAsAnswer` still uses `.save()`; and archived #73 made
-  accept-answer the sole owner of `isSolved`, so on these posts there is
-  now no working path to "Solved" at all. Related to the open
-  tag-pollution items but a distinct code path.
-  Confirmed 2026-09-01 on the local stack, which reproduces it without any
-  production data: take any seeded post, set an over-cap tag straight through
-  the driver (`db.collection('posts').updateOne({_id}, {$set: {tags: ['<a
-  58-character tag>', 'ml']}})`, bypassing model validation the way
-  `scripts/seed-mongo.js` does), then click "Accept this answer" as admin. The
-  badge stays amber, the UI alerts "Error updating answer status", the network
-  tab shows `400 PUT /api/comments/:id/answer`, and afterwards the API reports
-  `post.isSolved: false` while that comment reads `isAnswer: true` — the split
-  write, exactly as diagnosed. The same click on a clean-tag seeded post flips
-  the badge to "Solved" with no error. This means the fix can be developed and
-  tested locally; it does not need the production database.
-  Acceptance: an integration test with a fixture post whose stored `tags`
-  exceed the #33 caps reproduces `PUT /api/comments/:id/answer` returning
-  non-2xx with `post.isSolved` staying `false` while `comment.isAnswer`
-  flips, then asserts the fix persists `isSolved` regardless of legacy
-  tag data (targeted `updateOne` / `$set`, or `validateModifiedOnly`, so
-  unrelated fields are not revalidated) and that the comment flag and
-  post flag never persist independently; a client regression test
-  asserts accept → "Solved" badge + `.comment--accepted` and un-accept
-  reverts both; existing `markAsAnswer` tests still pass.
-
 - [ ] **The thread page and the feed disagree about "Needs an answer", and
   the thread's version is wrong on any post that already has answers.**
   Confirmed on the local stack 2026-09-01, logged in as admin. The seeded post

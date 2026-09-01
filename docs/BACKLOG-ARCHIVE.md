@@ -1738,3 +1738,44 @@ Post model and its schema defaults.
   tab bar's Saved link points at the new view instead of the "coming
   soon" alert, with `MobileTabBarTouchTargets.test.js`/
   `MobileTabBar.test.js` updated accordingly.
+
+## Cycle 5 — logged-in experience review findings (Sep 2026)
+
+- [x] **Accepting an answer leaves the post on "Needs an answer" and
+  returns 400, on any post whose stored `tags` exceed the #33 caps.**
+  Done: #93. `markAsAnswer` (`server/controllers/comments.js`) saved the
+  comment's `isAnswer` flip first (succeeds), then set
+  `post.isSolved` and called `post.save()` — which full-document-validates
+  `tags`, throwing on any post carrying a legacy tag longer than
+  `MAX_TAG_LENGTH`/over `MAX_TAGS` (#33). `asyncHandler` turned that into a
+  400 after the comment flag had already persisted, so the comment and post
+  went out of sync and the UI never left "Needs an answer". Same
+  `post.save()`-hits-tag-validator failure the archived `GET /api/posts/:id`
+  400 item fixed with `$inc`, just in a different code path. Fixed by
+  replacing `post.isSolved = ...; await post.save()` with a targeted
+  `Post.findByIdAndUpdate(comment.post, { isSolved: comment.isAnswer })`,
+  which Mongoose does not validate by default.
+  Acceptance: `server/__tests__/integration/comments.test.js` adds a case
+  that writes an over-cap tag straight through the driver
+  (`Post.collection.updateOne`, bypassing schema validation the way
+  `scripts/seed-mongo.js` does), confirmed failing with the same 400 before
+  the fix, then asserts `PUT /api/comments/:id/answer` returns 200 and
+  `comment.isAnswer`/`post.isSolved` both flip and stay in lockstep;
+  existing `markAsAnswer` tests unchanged and still pass. Client-side: no
+  code change was needed (the client already trusts the API response, so
+  this was a pure server bug) — the existing `PostDetail.test.js` coverage
+  of the accept/un-accept "Solved" badge flow (added when #73 made
+  accept-answer the sole owner of `isSolved`) still passes unmodified. A
+  direct `.comment--accepted`-class assertion was attempted but dropped:
+  every DOM-traversal approach available (`container.querySelector`,
+  `.closest()`) trips this repo's `testing-library/no-node-access`/
+  `no-container` ESLint rules, and there is no existing precedent here for
+  asserting raw CSS classes in RTL tests.
+  Caveat: `mongodb-memory-server`'s binary download is blocked by this
+  sandbox's egress policy (`fastdl.mongodb.org` → 403), same as prior
+  cycles — worked around this time by starting the Docker daemon manually
+  and running a local `mongo:6.0` container (via
+  `mirror.gcr.io/library/mongo:6.0`, retagged, per `CLAUDE.md`), so the
+  full suites ran for real rather than being skipped: server 28 suites/295
+  tests, client 52 suites/252 tests, both green; `cd client && npm run
+  lint` unaffected (same pre-existing baseline).
