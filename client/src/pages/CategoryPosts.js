@@ -137,6 +137,7 @@ const CategoryPosts = () => {
         </select>
       </div>
 
+      <h2 className="visually-hidden">Discussions</h2>
       <div className="post-list">
         {posts.length > 0 ? (
           <FeedComposerProvider>

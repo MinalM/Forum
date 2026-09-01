@@ -73,6 +73,7 @@ const Categories = () => {
         <p>Browse discussions by topic</p>
       </div>
 
+      <h2 className="visually-hidden">Categories</h2>
       <div className="categories-grid">
         {categories.length > 0 ? (
           categories.map(category => (
