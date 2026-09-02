@@ -145,4 +145,17 @@ describe('User Model Test', () => {
 
     expect(user.onboardingCompleted).toBe(true);
   });
+
+  // The bare filename 'default-avatar.jpg' resolves relative to the
+  // current client route instead of to a real asset, producing a broken
+  // image for every user until they set a real avatar.
+  it('should default avatar to a resolvable asset path, not a bare filename', async () => {
+    const user = await User.create({
+      name: 'Test User',
+      email: 'avatar-default@example.com',
+      password: 'password123'
+    });
+
+    expect(user.avatar).toBe('/images/default-avatar1.png');
+  });
 });

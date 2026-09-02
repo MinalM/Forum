@@ -7,6 +7,7 @@ import { useAlert } from '../context/AlertContext';
 import { hasPermission, canModifyResource } from '../utils/permissions';
 import { renderMarkdown } from '../utils/markdown';
 import { getPostStatus } from '../utils/postStatus';
+import { getAvatarUrl } from '../utils/avatar';
 import ReportModal from '../components/reports/ReportModal';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
@@ -681,9 +682,10 @@ const PostDetail = () => {
                 <div className="comment-header">
                   <div className="comment-user">
                     <img
-                      src={comment.user?.avatar || '/images/default-avatar1.png'}
+                      src={getAvatarUrl(comment.user?.avatar)}
                       alt={comment.user?.name || 'User'}
                       className="comment-avatar"
+                      onError={(e) => (e.target.src = '/images/default-avatar1.png')}
                     />
                     <div>
                       <Link to={`/profile/${comment.user?._id}`} className="comment-username">
@@ -837,9 +839,10 @@ const PostDetail = () => {
                         <div className="comment-header">
                           <div className="comment-user">
                             <img
-                              src={reply.user?.avatar || '/images/default-avatar1.png'}
+                              src={getAvatarUrl(reply.user?.avatar)}
                               alt={reply.user?.name || 'User'}
                               className="comment-avatar"
+                              onError={(e) => (e.target.src = '/images/default-avatar1.png')}
                             />
                             <div>
                               <Link to={`/profile/${reply.user?._id}`} className="comment-username">

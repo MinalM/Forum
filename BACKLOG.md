@@ -185,8 +185,23 @@ screenshots — that is the sandbox, not the product.
   far side of the row (`margin-left: auto`) so accept and remove no
   longer sit adjacent at equal weight.
 
-- [ ] **Comment and post-author avatars are broken images for every user
-  on the default avatar.** `User.avatar` defaults to the bare string
+- [x] **Comment and post-author avatars are broken images for every user
+  on the default avatar.** Done in #99: added `client/src/utils/avatar.js`
+  (`getAvatarUrl`) as the single place that normalises an avatar value —
+  falsy or the legacy bare `'default-avatar.jpg'` resolve to the real
+  `/images/default-avatar1.png` asset, an absolute URL passes through
+  unchanged, any other bare filename resolves to `/images/<file>` — used
+  by `Profile.js` and `PostDetail.js`'s comment/reply avatars instead of
+  the `||` fallback that never fired against a truthy bare filename, with
+  an `onError` handler kept as a second line of defense. `User.avatar`'s
+  schema default and the Google OAuth no-photo fallback
+  (`server/config/passport.js`) now default new accounts to the real
+  asset path instead of the bare filename; existing accounts with the old
+  value are covered by the client helper with no migration needed.
+  `PostItem` and the navbar don't render an avatar and needed no change;
+  `PostDetail`'s header text-links the author's name without an avatar
+  image since #96, so that surface needed no change either.
+  `User.avatar` defaults to the bare string
   `'default-avatar.jpg'` (`server/models/User.js:67`) and the API
   returns it verbatim. `PostDetail.js:594` / `:731` render
   `<img src={comment.user?.avatar || '/images/default-avatar1.png'}>` —
