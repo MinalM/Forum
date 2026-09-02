@@ -369,6 +369,74 @@ describe('PostDetail accepted answers', () => {
     expect(parseFloat(computed.minWidth)).toBeGreaterThanOrEqual(44);
   });
 
+  it('renders the accept control as the quiet icon variant by default, not a loud full-text button', async () => {
+    setupAsUser(ASKER);
+    renderPostDetail();
+
+    const button = await screen.findByRole('button', { name: /accept this answer/i });
+    expect(button).toHaveClass('accept-answer-toggle');
+    expect(button).not.toHaveClass('accept-answer-toggle--accepted');
+    expect(button.textContent.trim()).toBe('');
+  });
+
+  it('keeps the accented style and the "Answer" badge once accepted', async () => {
+    setupAsUser(
+      ASKER,
+      [{ ...answerComment, isAnswer: true }],
+      { ...postWithAsker, isSolved: true }
+    );
+    renderPostDetail();
+
+    await screen.findByText('Solved', { selector: 'span.badge-success' });
+    expect(screen.getByText('Answer')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^unaccept$/i })).toHaveClass(
+      'accept-answer-toggle--accepted'
+    );
+  });
+
+  it('further mutes the accept control on comments other than the accepted one', async () => {
+    const otherComment = {
+      ...answerComment,
+      _id: '000000000000000000000021',
+      isAnswer: false
+    };
+    setupAsUser(
+      ASKER,
+      [{ ...answerComment, isAnswer: true }, otherComment],
+      { ...postWithAsker, isSolved: true }
+    );
+    renderPostDetail();
+
+    await screen.findByRole('button', { name: /^unaccept$/i });
+    const acceptButtons = screen.getAllByRole('button', {
+      name: /accept this answer/i
+    });
+    expect(acceptButtons).toHaveLength(1);
+    expect(acceptButtons[0]).toHaveClass('accept-answer-toggle--muted');
+  });
+
+  it('keeps Delete and Report in their own group, separate from the accept control', async () => {
+    setupAsUser(MODERATOR);
+    renderPostDetail();
+
+    await screen.findByRole('button', { name: /accept this answer/i });
+    const moderationGroup = screen.getByRole('group', {
+      name: /comment moderation actions/i
+    });
+
+    expect(
+      within(moderationGroup).getByRole('button', { name: /delete comment/i })
+    ).toBeInTheDocument();
+    expect(
+      within(moderationGroup).getByRole('button', { name: /report comment/i })
+    ).toBeInTheDocument();
+    expect(
+      within(moderationGroup).queryByRole('button', {
+        name: /accept this answer/i
+      })
+    ).not.toBeInTheDocument();
+  });
+
   it('does not offer a standalone "Mark as Solved" control to the asker — accepting an answer is the only way to solve a post', async () => {
     setupAsUser(ASKER);
     renderPostDetail();

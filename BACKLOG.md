@@ -175,26 +175,15 @@ screenshots — that is the sandbox, not the product.
   answer-sort control is not adjacent to the composer's submit button
   (a grouping/landmark or spacing assertion); existing `PostDetail` tests updated.
 
-- [ ] **"Accept this answer" renders as a loud full-size button on every
-  comment.** On a seven-comment thread an author/moderator sees seven
-  identical 172px green "✓ Accept this answer" buttons marching down the
-  page (measured; visible in the review screenshot), each paired with red
-  Delete and Report icon buttons — so the accept control, used at most
-  once per thread, is the most prominent repeated element in the
-  discussion.
-  Scope: `PostDetail.js` / `App.css`, client-only. Make the per-comment
-  accept affordance quiet by default (an outline check icon, or
-  text-link weight) and prominent only on hover/focus or only on the
-  current top-voted answer; keep it obviously actionable for the asker;
-  separate it from the Delete/Report icon cluster so "accept" and
-  "remove" don't sit adjacent at equal weight; once an answer is
-  accepted, de-emphasise the control on the other comments further.
-  Acceptance: a component test asserts the default rendered state of the
-  accept control on a non-accepted comment is the quiet variant
-  (class/markup assertion), that it stays keyboard-reachable and
-  labelled, and that Delete/Report are a separate group; the accepted
-  state still shows the green border + "Answer" badge; existing
-  accept-answer tests updated.
+- [x] **"Accept this answer" renders as a loud full-size button on every
+  comment.** Done in #98: the per-comment accept/unaccept control is now
+  an icon-only outline toggle (`.accept-answer-toggle`), quiet gray by
+  default and filling in success-green only on hover/focus or once its
+  own comment is accepted; comments other than the accepted one get an
+  extra `--muted` class once the post is solved. Delete/Report moved into
+  their own labelled `.comment-moderation-actions` group, pushed to the
+  far side of the row (`margin-left: auto`) so accept and remove no
+  longer sit adjacent at equal weight.
 
 - [ ] **Comment and post-author avatars are broken images for every user
   on the default avatar.** `User.avatar` defaults to the bare string
