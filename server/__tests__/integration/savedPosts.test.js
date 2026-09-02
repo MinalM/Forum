@@ -216,5 +216,17 @@ describe('Saved posts', () => {
       const res = await request(server).get('/api/saved-posts');
       expect(res.status).toBe(401);
     });
+
+    it("includes isLocked so the client can derive the post's status badge", async () => {
+      await post.updateOne({ isLocked: true });
+      await SavedPost.create({ user: author._id, post: post._id });
+
+      const res = await request(server)
+        .get('/api/saved-posts')
+        .set('Authorization', `Bearer ${authorToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.data[0].post.isLocked).toBe(true);
+    });
   });
 });

@@ -36,6 +36,7 @@ const savedPost = {
     title: 'Transformers 101',
     commentCount: 0,
     isSolved: false,
+    isLocked: false,
     upvotes: ['u1'],
     downvotes: []
   }
@@ -71,6 +72,38 @@ describe('SavedPosts', () => {
     renderSavedPosts();
 
     expect(await screen.findByText('Solved')).toBeInTheDocument();
+  });
+
+  it('shows no status badge for an unsolved saved post that already has answers', async () => {
+    axios.get.mockResolvedValue({
+      data: {
+        success: true,
+        count: 1,
+        data: [{ ...savedPost, post: { ...savedPost.post, commentCount: 2, isSolved: false } }]
+      }
+    });
+
+    renderSavedPosts();
+
+    await screen.findByRole('link', { name: /Transformers 101/ });
+    expect(screen.queryByText('Needs an answer')).not.toBeInTheDocument();
+    expect(screen.queryByText('Solved')).not.toBeInTheDocument();
+  });
+
+  it('shows no status badge for a locked, unsolved saved post with no answers', async () => {
+    axios.get.mockResolvedValue({
+      data: {
+        success: true,
+        count: 1,
+        data: [{ ...savedPost, post: { ...savedPost.post, commentCount: 0, isSolved: false, isLocked: true } }]
+      }
+    });
+
+    renderSavedPosts();
+
+    await screen.findByRole('link', { name: /Transformers 101/ });
+    expect(screen.queryByText('Needs an answer')).not.toBeInTheDocument();
+    expect(screen.queryByText('Solved')).not.toBeInTheDocument();
   });
 
   it('shows an empty state when nothing is saved', async () => {

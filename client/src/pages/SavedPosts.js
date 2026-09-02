@@ -3,6 +3,7 @@ import { Link } from 'react-router';
 import axios from 'axios';
 import { useAlert } from '../context/AlertContext';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
+import { getPostStatus } from '../utils/postStatus';
 
 const SavedPosts = () => {
   useDocumentTitle('Saved posts');
@@ -60,40 +61,49 @@ const SavedPosts = () => {
         <div className="saved-posts-list">
           {savedPosts
             .filter((saved) => saved.post)
-            .map((saved) => (
-              <div key={saved._id} className="card saved-post-item">
-                <div className="card-body saved-post-item-body">
-                  <div className="saved-post-item-main">
-                    <h3 className="post-title">
-                      <Link to={`/posts/${saved.post._id}`}>{saved.post.title}</Link>
-                    </h3>
-                    <div className="post-status-badges">
-                      {saved.post.isSolved ? (
-                        <span className="badge badge-success">Solved</span>
-                      ) : saved.post.commentCount === 0 ? (
-                        <span className="badge badge-warning">Needs an answer</span>
-                      ) : null}
-                    </div>
-                    <div className="post-meta">
-                      <div className="post-meta-item">
-                        <i className="fas fa-arrow-up"></i> {voteCount(saved.post)}
+            .map((saved) => {
+              const postStatus = getPostStatus({
+                isSolved: saved.post.isSolved,
+                commentCount: saved.post.commentCount,
+                isLocked: saved.post.isLocked
+              });
+
+              return (
+                <div key={saved._id} className="card saved-post-item">
+                  <div className="card-body saved-post-item-body">
+                    <div className="saved-post-item-main">
+                      <h3 className="post-title">
+                        <Link to={`/posts/${saved.post._id}`}>{saved.post.title}</Link>
+                      </h3>
+                      <div className="post-status-badges">
+                        {postStatus === 'solved' && (
+                          <span className="badge badge-success">Solved</span>
+                        )}
+                        {postStatus === 'needs-answer' && (
+                          <span className="badge badge-warning">Needs an answer</span>
+                        )}
                       </div>
-                      <div className="post-meta-item">
-                        <i className="fas fa-comment"></i> {saved.post.commentCount || 0}
+                      <div className="post-meta">
+                        <div className="post-meta-item">
+                          <i className="fas fa-arrow-up"></i> {voteCount(saved.post)}
+                        </div>
+                        <div className="post-meta-item">
+                          <i className="fas fa-comment"></i> {saved.post.commentCount || 0}
+                        </div>
                       </div>
                     </div>
+                    <button
+                      type="button"
+                      className="save-toggle-detail-btn active"
+                      onClick={() => handleUnsave(saved.post._id)}
+                      aria-label={`Unsave ${saved.post.title}`}
+                    >
+                      <i className="fas fa-bookmark"></i> Unsave
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    className="save-toggle-detail-btn active"
-                    onClick={() => handleUnsave(saved.post._id)}
-                    aria-label={`Unsave ${saved.post.title}`}
-                  >
-                    <i className="fas fa-bookmark"></i> Unsave
-                  </button>
                 </div>
-              </div>
-            ))}
+              );
+            })}
         </div>
       ) : (
         <div className="empty-state">
