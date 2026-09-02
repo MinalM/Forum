@@ -114,6 +114,8 @@ app.get('/api/health', (req, res) => {
 });
 const otel_diagnostics_1 = __importDefault(require("./routes/otel-diagnostics"));
 app.use('/api', otel_diagnostics_1.default);
+const sitemap_1 = __importDefault(require("./routes/sitemap"));
+app.use(sitemap_1.default);
 app.use(errorMiddleware);
 const logger_1 = require("./utils/logger");
 const experimentation_1 = require("./services/experimentation");

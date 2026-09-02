@@ -285,25 +285,40 @@ enough traffic for it to work.
   `acceptedAnswer` / `upvoteCount` match the fixture; the client suite
   runs with no helmet-provider warnings.
 
-- [ ] **Prerendering for crawlers, `sitemap.xml`, and `robots.txt`.**
-  Even with per-route tags (item above), a crawler that does not execute
-  JavaScript still receives `client/index.html`'s empty
+- [x] **`sitemap.xml` and `robots.txt`.** Split off the original
+  "Prerendering for crawlers, `sitemap.xml`, and `robots.txt`" item below
+  into this slice plus the prerendering item that follows it — the two
+  are independent pieces of work (one a small dynamic route, the other a
+  build-time crawl integration) and acceptance-testable separately.
+  Done in #103: added `GET /sitemap.xml` and `GET /robots.txt` on the
+  Express app (`server/src/routes/sitemap.ts`, mounted at the app root
+  in `server/src/server.ts`, not under `/api`), generating a valid
+  sitemap from the live `Post`/`Category` collections (home, `/categories`,
+  every category, every post with a `<lastmod>` from `updatedAt`) plus a
+  `robots.txt` allowing crawling and naming the sitemap. Because the
+  client (Netlify) and API (Render) are separate domains in production —
+  `client/.env.production`'s `REACT_APP_API_URL` names the API host — and
+  crawlers fetch `robots.txt`/`sitemap.xml` from the page's own domain,
+  `client/netlify.toml` proxies `/sitemap.xml` and `/robots.txt` to the
+  Render API ahead of the SPA catch-all redirect, so both stay live at the
+  site root and dynamic (no stale build-time file).
+  Acceptance: `server/__tests__/integration/sitemap.test.js` covers valid
+  XML structure, one `<url>` per seeded post/category with a count that
+  grows when a post is added, a correct `<lastmod>`, and `robots.txt`
+  content; existing server suite unaffected.
+
+- [ ] **Prerendering for crawlers.** Even with per-route tags (item
+  above) and the sitemap/robots.txt item above, a crawler that does not
+  execute JavaScript still receives `client/index.html`'s empty
   `<div id="root">` — the client has no SSR or prerender step, so post
-  bodies are invisible to non-JS indexers, and there is no `sitemap.xml`
-  or `robots.txt` (`client/public/` holds only `images/` and
-  `manifest.json`). Add crawler prerendering (Netlify's built-in
-  prerender service, or a build-time pass such as `react-snap` /
-  `@prerenderer` over the static routes plus a sample of post URLs) and
-  serve a `sitemap.xml` covering every public post and category
-  (generated at build, or a small `GET /sitemap.xml` route that streams
-  from the collection) plus a `robots.txt` that allows crawling and
-  names the sitemap.
+  bodies are invisible to non-JS indexers. Add crawler prerendering
+  (Netlify's built-in prerender service, or a build-time pass such as
+  `react-snap` / `@prerenderer` over the static routes plus a sample of
+  post URLs).
   Acceptance: an e2e/integration check fetches a post URL with a non-JS
   user agent (or inspects the prerendered artifact) and asserts the post
-  title and body text are in the raw HTML; `sitemap.xml` is valid XML,
-  has one `<url>` per seeded post and category, and gains an entry when a
-  post is added; `robots.txt` is served with a `Sitemap:` line; the
-  existing Playwright suite against the live SPA still passes.
+  title and body text are in the raw HTML; the existing Playwright suite
+  against the live SPA still passes.
 
 - [ ] **Email delivery, password reset, and welcome email.** The server
   has no email capability — no mail dependency, no `sendEmail`, no
