@@ -136,6 +136,11 @@ app.get('/api/health', (req, res) => {
 import otelDiagnostics from './routes/otel-diagnostics';
 app.use('/api', otelDiagnostics);
 
+// Sitemap / robots.txt (crawlers hit these at the site root, proxied there
+// from the client's Netlify domain — see client/netlify.toml)
+import sitemapRouter from './routes/sitemap';
+app.use(sitemapRouter);
+
 // Error Handler
 app.use(errorMiddleware);
 
