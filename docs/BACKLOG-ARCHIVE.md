@@ -1779,3 +1779,251 @@ Post model and its schema defaults.
   full suites ran for real rather than being skipped: server 28 suites/295
   tests, client 52 suites/252 tests, both green; `cd client && npm run
   lint` unaffected (same pre-existing baseline).
+
+## Cycle 5 — logged-in review findings and SEO metadata (Sep 2026)
+
+Archived 2026-09-01. The signed-in-experience findings from the admin-account
+review (#93-#100) — the accept-answer split write, the navbar and post-detail
+density, the badge that disagreed between feed and thread, the broken default
+avatars — plus the first slice of the growth queue's SEO work.
+
+- [x] **The thread page and the feed disagree about "Needs an answer", and
+  the thread's version is wrong on any post that already has answers.**
+  Done in #94: added `client/src/utils/postStatus.js` as the single source
+  of truth (`solved` / `needs-answer` / `null`, `null` covering both "has
+  answers but unsolved" and "locked and unsolved"), and switched both
+  `PostItem` and `PostDetail` to derive their badge from it instead of two
+  independent expressions.
+  Confirmed on the local stack 2026-09-01, logged in as admin. The seeded post
+  "Online Courses for NLP Specialization" has one answer and `isSolved: false`.
+  On the home feed its card renders badges `["Advanced","nlp","courses",
+  "transformers","llm"]` — no status badge at all, and no
+  `post-card--needs-answer` class. Open that same post and the thread renders
+  `Needs an answer` in the status row, directly above the answer that already
+  exists. Same post, same instant, two contradictory answers to "does this
+  need an answer?". The two surfaces compute the badge from different things:
+  `client/src/components/posts/PostItem.js:74` uses
+  `!isSolved && commentCount === 0`, so a feed card only claims a post needs
+  an answer when nobody has replied; `client/src/pages/PostDetail.js:428-432`
+  renders `post.isSolved ? "Solved" : "Needs an answer"` with no reference to
+  the answer count at all. So an unsolved post with seven answers shows no
+  badge in the feed and a loud amber "Needs an answer" on its own thread —
+  directly under the seven answers contradicting it. It also mislabels posts
+  that are not questions (a Project Showcase entry, a resource list) and posts
+  that are `isLocked`, where answering is impossible by design.
+  This is distinct from the accept-answer 400 above, and outlives it: fixing
+  that bug makes accept flip the badge on posts with clean tags, but does not
+  make the badge mean the same thing on both surfaces. #79 fixed exactly this
+  mismatch on the feed side and did not touch `PostDetail`.
+  Scope: client-only, `PostDetail.js` plus whatever shared helper the two
+  surfaces end up using. Give the badge one definition used by both — derive
+  it once (a small exported helper, or a `needsAnswer` field the API already
+  has the data to compute) rather than duplicating the expression a third
+  time. Suggested semantics, but confirm against the product intent before
+  building: `Solved` when `isSolved`; `Needs an answer` only when unsolved
+  **and** there are no answers **and** the post is not locked; for an
+  unsolved post that does have answers, either a quieter "No accepted answer"
+  or no badge at all — do not leave two different amber states meaning
+  different things.
+  Note for the implementer: `client/src/pages/__tests__/PostDetail.test.js`
+  currently asserts the buggy behaviour at lines 321, 345 and 381 (it expects
+  "Needs an answer" on threads that have comments), so those assertions must
+  be updated as part of the fix rather than worked around.
+  Acceptance: a shared helper (or single source) is used by both `PostItem`
+  and `PostDetail` — a test asserts the same post object produces the same
+  badge state through both components; component tests cover the four cases
+  (solved; unsolved with no answers; unsolved with answers; locked and
+  unsolved) on both surfaces; the three `PostDetail.test.js` assertions above
+  are updated to the corrected behaviour; existing accept-answer tests still
+  pass.
+
+- [x] **The signed-in navbar is overcrowded and has no visual
+  hierarchy.** Done in #95: cut the top-level nav from ten items to at
+  most six (brand · search · Home · Categories · a visually distinct
+  "Create" button · notification bell · one user menu covering
+  Dashboard/Saved/Profile/Logout · for staff, one "Admin" menu merging the
+  old separate Admin + Moderator destinations). Dropdown contents are now
+  conditionally rendered in JSX (genuinely unmounted until opened) instead
+  of always sitting in the DOM with no CSS to hide them — there was no
+  `.dropdown-menu`/`.dropdown-item` styling anywhere in the client before
+  this PR added it. All new interactive controls meet the 44×44 touch
+  target minimum unconditionally.
+
+- [x] **The post-detail header and action row are dense, noisy, and
+  overflow on mobile.** Done in #96: split the action row into reader
+  actions (vote, Save, Notify) shown inline and author/moderator actions
+  (Edit, Delete, Lock, Pin, Report) collapsed behind one quiet "More
+  actions" toggle, all sharing one consistent style instead of four alert
+  colours; moved the Pinned/Locked/Solved/Needs-an-answer badges out of the
+  `<h1>` (which would otherwise leak into its accessible name) onto a
+  `.post-title-row` alongside the title so they wrap onto the title's line
+  instead of a separate full-width band; gave the answer-sort control
+  ("Most helpful"/"Newest") its own bordered `.answers-toolbar`, separated
+  from the comment composer's submit button it previously sat flush
+  against.
+  Measured logged in as admin on
+  `/posts/6925386a…`: above the post body the page stacks five
+  full-width bands — status badge, title, meta (author · category · date
+  · views), a row of tag chips, then a **nine-button action row** (`↑/↓`
+  vote, "Notify me of answers", "Save", "Edit", "Delete", "Lock", "Pin",
+  "Report") in **four different colour variants** (`btn-danger`,
+  `btn-outline-warning`, `btn-outline-info`, `btn-outline-danger`,
+  plain). On desktop that row is one 44px line; at 375px it does not wrap
+  cleanly — "Lock", "Pin", "Report" run past the right edge of the
+  viewport (the `.post-header` block alone is 236px tall on mobile,
+  pushing the body far down). The eight destructive/mod controls have the
+  same weight as the two a reader needs.
+  Re-measured locally 2026-09-01: the 375px overflow is confirmed and large —
+  the thread page reports `scrollWidth` 578 against `clientWidth` 375, a 203px
+  overflow, with the offending node identified as one of the `.btn.btn-sm`
+  moderation buttons (Lock); `/` and `/dashboard` at the same width are clean,
+  so this is specific to the post-detail action row. Two corrections to the
+  original note: `Post Comment` now measures 44px, not 34px, so that part is
+  already fixed — drop it from the work; but the answer-sort control
+  ("Most helpful" / "Newest") sits **0px** below the `Post Comment` button,
+  flush against it, so the control that sorts the answer list reads as part of
+  the comment composer rather than as a header for the answers below it.
+  Separate and label that group as part of this item.
+  Scope: `PostDetail.js` / `App.css`, client-only. Split the action row
+  into reader actions (vote, Save, Notify) shown inline and
+  author/moderator actions (Edit, Delete, Lock, Pin, Report) collapsed
+  into a single overflow "⋯" menu; give those buttons one consistent
+  quiet style rather than four alert colours; tighten the header to
+  title + one meta line + tags; guarantee the header and action area fit
+  within 375px with no horizontal overflow; give the answer-sort control
+  its own grouping, separated from the composer's submit button.
+  Acceptance: a test renders `PostDetail` as the author (and as an
+  admin) and asserts the inline action set is just vote/Save/Notify with
+  the mod/author actions behind one toggle; a raw-CSS/jsdom check that at
+  375px `.post-header` and `.post-actions` produce no element wider than
+  the viewport (extend `postMetaOverflow.test.js`'s pattern); all
+  post-detail controls assert `min-height >= 44px`; a test asserts the
+  answer-sort control is not adjacent to the composer's submit button
+  (a grouping/landmark or spacing assertion); existing `PostDetail` tests updated.
+
+- [x] **"Accept this answer" renders as a loud full-size button on every
+  comment.** Done in #98: the per-comment accept/unaccept control is now
+  an icon-only outline toggle (`.accept-answer-toggle`), quiet gray by
+  default and filling in success-green only on hover/focus or once its
+  own comment is accepted; comments other than the accepted one get an
+  extra `--muted` class once the post is solved. Delete/Report moved into
+  their own labelled `.comment-moderation-actions` group, pushed to the
+  far side of the row (`margin-left: auto`) so accept and remove no
+  longer sit adjacent at equal weight.
+
+- [x] **Comment and post-author avatars are broken images for every user
+  on the default avatar.** Done in #99: added `client/src/utils/avatar.js`
+  (`getAvatarUrl`) as the single place that normalises an avatar value —
+  falsy or the legacy bare `'default-avatar.jpg'` resolve to the real
+  `/images/default-avatar1.png` asset, an absolute URL passes through
+  unchanged, any other bare filename resolves to `/images/<file>` — used
+  by `Profile.js` and `PostDetail.js`'s comment/reply avatars instead of
+  the `||` fallback that never fired against a truthy bare filename, with
+  an `onError` handler kept as a second line of defense. `User.avatar`'s
+  schema default and the Google OAuth no-photo fallback
+  (`server/config/passport.js`) now default new accounts to the real
+  asset path instead of the bare filename; existing accounts with the old
+  value are covered by the client helper with no migration needed.
+  `PostItem` and the navbar don't render an avatar and needed no change;
+  `PostDetail`'s header text-links the author's name without an avatar
+  image since #96, so that surface needed no change either.
+  `User.avatar` defaults to the bare string
+  `'default-avatar.jpg'` (`server/models/User.js:67`) and the API
+  returns it verbatim. `PostDetail.js:594` / `:731` render
+  `<img src={comment.user?.avatar || '/images/default-avatar1.png'}>` —
+  the stored value is truthy so the `||` fallback never fires, and
+  `"default-avatar.jpg"` resolves relative to the current route (e.g.
+  `/posts/default-avatar.jpg`) → 404 → a broken-image icon on the post
+  author and every comment/reply (visible in the review screenshot; the
+  real fallback `client/public/images/default-avatar1.png` exists and is
+  never used). Affects effectively every thread.
+  Scope: pick one fix and apply it consistently — normalise `avatar` to
+  a usable URL (default to `/images/default-avatar1.png`, or resolve a
+  bare filename to `/images/<file>` at the API or a client helper),
+  and/or add an `onError` fallback to the avatar `<img>`s. Cover
+  `PostItem`, `PostDetail` (comments and replies), `Profile`, and the
+  navbar user menu if it shows an avatar.
+  Acceptance: a model/server test asserts a newly created user's
+  `avatar` resolves to an existing asset path (not a bare filename); a
+  client test renders a comment whose `user.avatar` is the default and
+  asserts the `<img>` `src` is `/images/default-avatar1.png` (or that
+  `onError` swaps to it); the Playwright run makes no failed request for
+  the default avatar.
+
+- [x] **`SavedPosts.js` has a third, independent copy of the status-badge
+  logic.** Done in #100: switched `SavedPosts.js` to the shared
+  `getPostStatus` helper (`client/src/utils/postStatus.js`) instead of its
+  own inline `isSolved`/`commentCount` expression, and added `isLocked` to
+  the `GET /api/saved-posts` payload so the helper has what it needs.
+  Discovered while fixing the feed/thread "Needs an answer"
+  mismatch above (#94): `client/src/pages/SavedPosts.js:70-74` renders its
+  own `saved.post.isSolved ? "Solved" : saved.post.commentCount === 0 ?
+  "Needs an answer" : null` inline, instead of using the new
+  `client/src/utils/postStatus.js` helper `PostItem` and `PostDetail` now
+  share. It also never looks at `isLocked`, so a locked-but-unsolved saved
+  post with no comments would still show "Needs an answer" there while
+  showing nothing on the feed and thread.
+  Scope: client-only. Switch `SavedPosts.js` to `getPostStatus` (fetch or
+  default `isLocked` on the saved-post payload if the endpoint doesn't
+  already include it).
+  Acceptance: a `SavedPosts` test covering the same four cases (solved;
+  unsolved with no answers; unsolved with answers; locked and unsolved)
+  used for the other two surfaces; existing `SavedPosts` badge tests
+  updated if their fixtures change.
+
+- [x] **Per-page metadata: description, canonical, Open Graph / Twitter
+  tags.** Done in #101 (split from a combined "per-page metadata + QAPage
+  structured data" item — the JSON-LD half is the next item below).
+  `client/index.html` used to ship one static block of `<meta>`:
+  `og:title`/`og:description`/`twitter:*` hard-coded to the generic site
+  name and blurb, `og:url` resolving to the site root, and no `og:image`
+  at all — so every shared link (a post, a category) unfurled identically
+  as "AI/ML Career Forum" and every deep link pointed at `/`. Verified
+  live: `/`, `/posts/:id` and `/categories/:id` returned byte-identical OG
+  tags. `document.title` was already per-route via `useDocumentTitle`; the
+  description and OG tags were not.
+  Added `react-helmet-async` (v3, the first version with a React 19 peer
+  range) and `client/src/components/common/Seo.js`, a shared component
+  rendering `description`/canonical `<link>`/`og:*`/`twitter:*` (plus an
+  opt-in `noindex` and an `image` for a large-image Twitter card), driven
+  by the post/category/query actually being viewed. Deliberately does not
+  touch `<title>` — `useDocumentTitle` keeps sole ownership of
+  `document.title` so the two mechanisms don't race. `App.js` renders one
+  default `<Seo />` for the site-wide fallback; `Home`, `PostDetail`,
+  `CategoryPosts`, `SearchResults`, and `NotFound` each override it
+  (`PostDetail` truncates the post body via the existing
+  `markdownToPlainText` for its description; `SearchResults` and the
+  category/post not-found states are `noindex`). `index.html`'s static
+  `description`/`og:*`/`twitter:*` tags were removed — react-helmet-async
+  only adds tags, it doesn't clean up ones it didn't render, so leaving
+  the static block in place would have left two conflicting `og:title`
+  tags in the DOM once React mounted.
+  Acceptance: a test per route type (home, post, category, search, 404)
+  in `Seo.test.js` and each page's own test file asserts the rendered
+  `<head>` carries a route-specific `description` and `og:title`/`og:url`
+  rather than the site default; the client suite runs with no
+  helmet-provider warnings (react-helmet-async v3's React-19 dispatcher
+  doesn't require a `HelmetProvider` ancestor, though `index.js` still
+  wraps the app in one).
+
+- [x] **`sitemap.xml` and `robots.txt`.** Split off the original
+  "Prerendering for crawlers, `sitemap.xml`, and `robots.txt`" item below
+  into this slice plus the prerendering item that follows it — the two
+  are independent pieces of work (one a small dynamic route, the other a
+  build-time crawl integration) and acceptance-testable separately.
+  Done in #103: added `GET /sitemap.xml` and `GET /robots.txt` on the
+  Express app (`server/src/routes/sitemap.ts`, mounted at the app root
+  in `server/src/server.ts`, not under `/api`), generating a valid
+  sitemap from the live `Post`/`Category` collections (home, `/categories`,
+  every category, every post with a `<lastmod>` from `updatedAt`) plus a
+  `robots.txt` allowing crawling and naming the sitemap. Because the
+  client (Netlify) and API (Render) are separate domains in production —
+  `client/.env.production`'s `REACT_APP_API_URL` names the API host — and
+  crawlers fetch `robots.txt`/`sitemap.xml` from the page's own domain,
+  `client/netlify.toml` proxies `/sitemap.xml` and `/robots.txt` to the
+  Render API ahead of the SPA catch-all redirect, so both stay live at the
+  site root and dynamic (no stale build-time file).
+  Acceptance: `server/__tests__/integration/sitemap.test.js` covers valid
+  XML structure, one `<url>` per seeded post/category with a count that
+  grows when a post is added, a correct `<lastmod>`, and `robots.txt`
+  content; existing server suite unaffected.
