@@ -5,29 +5,20 @@
     <link rel="icon" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#000000" />
-    <meta
-      name="description"
-      content="AI/ML Career Transition Forum - A community for professionals transitioning to AI/ML careers"
-    />
     <link rel="apple-touch-icon" href="/logo192.png" />
     <link rel="manifest" href="/manifest.json" />
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
     />
-    <meta property="og:title" content="AI/ML Career Forum" />
-    <meta
-      property="og:description"
-      content="AI/ML Career Transition Forum - A community for professionals transitioning to AI/ML careers"
-    />
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content="%REACT_APP_SITE_URL%" />
-    <meta name="twitter:card" content="summary" />
-    <meta name="twitter:title" content="AI/ML Career Forum" />
-    <meta
-      name="twitter:description"
-      content="AI/ML Career Transition Forum - A community for professionals transitioning to AI/ML careers"
-    />
+    <!--
+      description/og:*/twitter:* used to be hard-coded here, identical on
+      every route. They're now rendered per-route by client/src/components/
+      common/Seo.js via react-helmet-async (see App.js for the site-wide
+      default, overridden per page) - a static duplicate here would just
+      sit alongside whatever Helmet injects. This <title> is the last-resort
+      fallback before useDocumentTitle's effect runs.
+    -->
     <title>AI/ML Career Forum</title>
   </head>
   <body>

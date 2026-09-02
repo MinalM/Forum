@@ -8,6 +8,7 @@ import Footer from './components/layout/Footer';
 import Alert from './components/layout/Alert';
 import AnnouncementBanner from './components/AnnouncementBanner';
 import MobileTabBar from './components/layout/MobileTabBar';
+import Seo from './components/common/Seo';
 
 // Page Components
 import Home from './pages/Home';
@@ -67,6 +68,7 @@ const App = () => {
 
   return (
     <>
+      <Seo />
       <a href="#main-content" className="skip-link">Skip to main content</a>
       <AnnouncementBanner />
       <Navbar />
