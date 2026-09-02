@@ -47,7 +47,7 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET && process.
             email: profile.emails[0].value,
             googleId: profile.id,
             authProvider: 'google',
-            avatar: profile.photos && profile.photos.length > 0 ? profile.photos[0].value : 'default-avatar.jpg',
+            avatar: profile.photos && profile.photos.length > 0 ? profile.photos[0].value : '/images/default-avatar1.png',
             onboardingCompleted: false
           });
 

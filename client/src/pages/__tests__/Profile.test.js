@@ -50,3 +50,49 @@ describe('Profile document title', () => {
     expect(document.title).toBe('Grace Hopper | AI/ML Career Forum');
   });
 });
+
+describe('Profile avatar', () => {
+  beforeEach(() => {
+    axios.get.mockReset();
+    localStorage.clear();
+  });
+
+  const renderProfileWithAvatar = (avatar) => {
+    axios.get.mockImplementation((url) => {
+      if (url === `/api/users/${PROFILE_USER_ID}/profile`) {
+        return Promise.resolve({
+          data: { data: { _id: PROFILE_USER_ID, name: 'Grace Hopper', role: 'user', avatar } }
+        });
+      }
+      if (url === `/api/users/${PROFILE_USER_ID}/posts`) {
+        return Promise.resolve({ data: { data: [] } });
+      }
+      return Promise.reject(new Error(`unexpected request: ${url}`));
+    });
+    return render(
+      <AuthProvider>
+        <AlertProvider>
+          <MemoryRouter initialEntries={[`/profile/${PROFILE_USER_ID}`]}>
+            <Routes>
+              <Route path="/profile/:id" element={<Profile />} />
+            </Routes>
+          </MemoryRouter>
+        </AlertProvider>
+      </AuthProvider>
+    );
+  };
+
+  it('resolves the legacy bare default filename to the real default asset', async () => {
+    renderProfileWithAvatar('default-avatar.jpg');
+
+    const avatar = await screen.findByAltText('Grace Hopper');
+    expect(avatar).toHaveAttribute('src', '/images/default-avatar1.png');
+  });
+
+  it('renders a real avatar URL untouched', async () => {
+    renderProfileWithAvatar('https://lh3.googleusercontent.com/a/photo.jpg');
+
+    const avatar = await screen.findByAltText('Grace Hopper');
+    expect(avatar).toHaveAttribute('src', 'https://lh3.googleusercontent.com/a/photo.jpg');
+  });
+});

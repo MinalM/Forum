@@ -7,6 +7,7 @@ import { hasPermission } from '../utils/permissions';
 import PostItem from '../components/posts/PostItem';
 import ReportModal from '../components/reports/ReportModal';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
+import { getAvatarUrl } from '../utils/avatar';
 
 const Profile = () => {
   const { id } = useParams();
@@ -87,7 +88,7 @@ const Profile = () => {
     <div className="main-content">
       <div className="profile-header">
         <img
-          src={user.avatar ? user.avatar : '/images/default-avatar1.png'}
+          src={getAvatarUrl(user.avatar)}
           alt={user.name}
           className="profile-avatar"
           onError={(e) => (e.target.src = '/images/default-avatar1.png')}

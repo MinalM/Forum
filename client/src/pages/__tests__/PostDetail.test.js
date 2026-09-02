@@ -183,6 +183,60 @@ describe('PostDetail comment markdown rendering', () => {
   });
 });
 
+describe('PostDetail comment/reply avatars', () => {
+  beforeEach(() => {
+    axios.get.mockReset();
+  });
+
+  const commentWithAvatar = (avatar) => ({
+    _id: '000000000000000000000003',
+    content: 'A comment',
+    user: { _id: '000000000000000000000004', name: 'Commenter', avatar },
+    createdAt: new Date().toISOString(),
+    isAnswer: false
+  });
+
+  const renderWithComment = (comment) => {
+    axios.get.mockImplementation((url) => {
+      if (url.endsWith('/comments')) {
+        return Promise.resolve({ data: { success: true, data: [comment] } });
+      }
+      return Promise.resolve({ data: { success: true, data: basePost } });
+    });
+    return renderPostDetail();
+  };
+
+  it('resolves the legacy bare default filename to the real default asset', async () => {
+    renderWithComment(commentWithAvatar('default-avatar.jpg'));
+
+    await screen.findByText('Orphaned post');
+    const avatar = screen.getByAltText('Commenter');
+    expect(avatar).toHaveAttribute('src', '/images/default-avatar1.png');
+  });
+
+  it('leaves a real avatar URL untouched', async () => {
+    renderWithComment(
+      commentWithAvatar('https://lh3.googleusercontent.com/a/photo.jpg')
+    );
+
+    await screen.findByText('Orphaned post');
+    const avatar = screen.getByAltText('Commenter');
+    expect(avatar).toHaveAttribute(
+      'src',
+      'https://lh3.googleusercontent.com/a/photo.jpg'
+    );
+  });
+
+  it('falls back to the default asset when the avatar URL itself fails to load', async () => {
+    renderWithComment(commentWithAvatar('https://example.com/broken.jpg'));
+
+    await screen.findByText('Orphaned post');
+    const avatar = screen.getByAltText('Commenter');
+    fireEvent.error(avatar);
+    expect(avatar).toHaveAttribute('src', '/images/default-avatar1.png');
+  });
+});
+
 describe('PostDetail vote button touch targets (WCAG 2.5.5)', () => {
   beforeEach(() => {
     axios.get.mockReset();
