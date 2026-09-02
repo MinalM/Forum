@@ -82,7 +82,7 @@ exports.getMySavedPosts = asyncHandler(async (req, res, next) => {
       // getter (this.upvotes.length - this.downvotes.length) computed
       // during toJSON({ virtuals: true }) serialization, so omitting them
       // from a partial select throws instead of just hiding voteCount.
-      select: 'title slug commentCount isSolved upvotes downvotes'
+      select: 'title slug commentCount isSolved isLocked upvotes downvotes'
     });
 
   res.status(200).json({
