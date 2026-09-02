@@ -6,6 +6,7 @@ import axios from 'axios';
 import Home from '../Home';
 import { AlertProvider } from '../../context/AlertContext';
 import AuthContext from '../../context/AuthContext';
+import { getHeadMeta } from '../../test-utils/headMeta';
 
 jest.mock('axios', () => ({
   defaults: {},
@@ -226,5 +227,30 @@ describe('Home "You can answer these" rail', () => {
     expect(axios.get).not.toHaveBeenCalledWith(
       expect.stringContaining('/api/posts/recommended')
     );
+  });
+});
+
+describe('Home <head> metadata', () => {
+  beforeEach(() => {
+    axios.get.mockReset();
+    axios.get.mockResolvedValue({ data: { data: [] } });
+  });
+
+  it('renders the site-default description and og:url for the home route', async () => {
+    renderHome({ isAuthenticated: false, user: null });
+
+    await screen.findByText('Join the Community');
+
+    await waitFor(() => {
+      expect(getHeadMeta('property', 'og:title')).toHaveAttribute(
+        'content',
+        'AI/ML Career Forum'
+      );
+    });
+    expect(getHeadMeta('name', 'description')).toHaveAttribute(
+      'content',
+      'AI/ML Career Transition Forum - A community for professionals transitioning to AI/ML careers'
+    );
+    expect(getHeadMeta('property', 'og:url').getAttribute('content')).toMatch(/\/$/);
   });
 });

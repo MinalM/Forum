@@ -1,12 +1,18 @@
 import React from 'react';
 import { Link } from 'react-router';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
+import Seo from '../components/common/Seo';
 
 const NotFound = () => {
   useDocumentTitle('Page Not Found');
 
   return (
     <div className="main-content">
+      <Seo
+        title="Page Not Found"
+        description="The page you are looking for might have been removed, had its name changed, or is temporarily unavailable."
+        noindex
+      />
       <div className="not-found">
         <div className="not-found-content">
           <h1>404</h1>

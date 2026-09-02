@@ -7,6 +7,7 @@ import axios from 'axios';
 import PostDetail from '../PostDetail';
 import { AlertProvider, useAlert } from '../../context/AlertContext';
 import { AuthProvider } from '../../context/AuthContext';
+import { getHeadMeta, getHeadLink } from '../../test-utils/headMeta';
 
 const appCss = fs.readFileSync(path.join(__dirname, '../../App.css'), 'utf8');
 
@@ -83,6 +84,44 @@ describe('PostDetail with a deleted author (post.user is null)', () => {
 
     await screen.findByText('Orphaned post');
     expect(document.title).toBe('Orphaned post | AI/ML Career Forum');
+  });
+});
+
+describe('PostDetail <head> metadata', () => {
+  beforeEach(() => {
+    axios.get.mockReset();
+    axios.get.mockImplementation((url) => {
+      if (url.endsWith('/comments')) {
+        return Promise.resolve({ data: { success: true, data: [] } });
+      }
+      return Promise.resolve({
+        data: {
+          success: true,
+          data: { ...basePost, content: 'A **detailed** explanation of the topic.' }
+        }
+      });
+    });
+  });
+
+  it('renders the post title/excerpt in og/twitter tags and a post-specific canonical url', async () => {
+    renderPostDetail();
+
+    await screen.findByText('Orphaned post');
+
+    await waitFor(() => {
+      expect(getHeadMeta('property', 'og:title')).toHaveAttribute(
+        'content',
+        'Orphaned post | AI/ML Career Forum'
+      );
+    });
+    expect(getHeadMeta('name', 'description')).toHaveAttribute(
+      'content',
+      'A detailed explanation of the topic.'
+    );
+    expect(getHeadMeta('property', 'og:type')).toHaveAttribute('content', 'article');
+    expect(getHeadLink('canonical').getAttribute('href')).toContain(
+      `/posts/${POST_ID}`
+    );
   });
 });
 

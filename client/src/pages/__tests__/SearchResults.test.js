@@ -1,10 +1,11 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router';
 import axios from 'axios';
 import SearchResults from '../SearchResults';
 import { AlertProvider } from '../../context/AlertContext';
 import { AuthProvider } from '../../context/AuthContext';
+import { getHeadMeta } from '../../test-utils/headMeta';
 
 jest.mock('axios', () => ({
   defaults: {},
@@ -102,5 +103,39 @@ describe('SearchResults', () => {
     renderAtSearch('transformers');
 
     expect(await screen.findByText(/No results found/i)).toBeInTheDocument();
+  });
+});
+
+describe('SearchResults <head> metadata', () => {
+  beforeEach(() => {
+    axios.get.mockReset();
+    axios.get.mockResolvedValue({
+      data: {
+        success: true,
+        count: 1,
+        pagination: { total: 1, limit: 10, page: 1, pages: 1 },
+        data: [post]
+      }
+    });
+  });
+
+  it('renders a query-specific description, og:url, and noindex robots tag', async () => {
+    renderAtSearch('transformers');
+
+    await screen.findByText('Transformers 101');
+
+    await waitFor(() => {
+      expect(getHeadMeta('property', 'og:title')).toHaveAttribute(
+        'content',
+        'Search: transformers | AI/ML Career Forum'
+      );
+    });
+    expect(getHeadMeta('name', 'description').getAttribute('content')).toContain(
+      'transformers'
+    );
+    expect(getHeadMeta('property', 'og:url').getAttribute('content')).toContain(
+      '/search?q=transformers'
+    );
+    expect(getHeadMeta('name', 'robots')).toHaveAttribute('content', 'noindex');
   });
 });
