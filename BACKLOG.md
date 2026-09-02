@@ -224,8 +224,12 @@ screenshots — that is the sandbox, not the product.
   `onError` swaps to it); the Playwright run makes no failed request for
   the default avatar.
 
-- [ ] **`SavedPosts.js` has a third, independent copy of the status-badge
-  logic.** Discovered while fixing the feed/thread "Needs an answer"
+- [x] **`SavedPosts.js` has a third, independent copy of the status-badge
+  logic.** Done in #100: switched `SavedPosts.js` to the shared
+  `getPostStatus` helper (`client/src/utils/postStatus.js`) instead of its
+  own inline `isSolved`/`commentCount` expression, and added `isLocked` to
+  the `GET /api/saved-posts` payload so the helper has what it needs.
+  Discovered while fixing the feed/thread "Needs an answer"
   mismatch above (#94): `client/src/pages/SavedPosts.js:70-74` renders its
   own `saved.post.isSolved ? "Solved" : saved.post.commentCount === 0 ?
   "Needs an answer" : null` inline, instead of using the new
