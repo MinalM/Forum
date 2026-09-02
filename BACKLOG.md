@@ -528,3 +528,31 @@ one PR rather than three.
   (currently 20.x or 22.x); full suite (unit + Playwright) re-verified
   green under the new version; `client/package.json` engines/version pins
   revisited if the bump also permits newer Vite/plugin-react majors.
+
+- [ ] **The `security` CI job is red on `main` right now — root `npm audit`
+  fails on a moderate `qs` advisory.** Discovered while driving #101's CI
+  to green: the `security` job's root `npm audit` step (which runs before
+  the client-specific `npm audit --omit=dev` step) fails on
+  [GHSA-x5fp-wj9c-mxmx](https://github.com/advisories/GHSA-x5fp-wj9c-mxmx)
+  (array-limit bypass via bracket-key comma parsing) and
+  [GHSA-4mjr-xmp4-gh2g](https://github.com/advisories/GHSA-4mjr-xmp4-gh2g)
+  (DoS via attacker-controlled `isBuffer`), both in `qs@6.15.3`. `qs` is
+  pulled in transitively at the root (server) level via
+  `express@5.2.1` → `body-parser@2.3.0`, and via
+  `supertest@7.1.4` → `superagent@10.2.3` — nothing client-side. Confirmed
+  reproducing on an unmodified checkout of `main` at `3ebd1e4` (the same
+  commit whose own CI run, ~3.5h earlier, was green on this exact
+  lockfile) — this is a newly-surfaced advisory, not something any
+  particular PR introduced. Priority: high — every open and future PR's
+  `security` check will be red until this is fixed, which blocks this
+  autonomous cycle's merge gate for unrelated work.
+  Scope: root `package.json`/`package-lock.json` only. Likely fix:
+  add a `qs` entry to the root `overrides` block (matching the existing
+  `brace-expansion` pattern) pinning to a patched version (>=6.16.0 once
+  published, or whatever version resolves both advisories), then
+  regenerate the lockfile and confirm `npm run build`/`npm test` and
+  `express`/`body-parser`/`supertest` still behave correctly.
+  Acceptance: root `npm audit` (and `npm run ci` end to end) is clean;
+  server test suite still passes; note in the PR whether `express`/
+  `body-parser`/`superagent` have since published their own fix
+  upstream (in which case the override may already be unnecessary).
