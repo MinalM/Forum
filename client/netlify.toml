@@ -7,6 +7,20 @@
   NODE_VERSION = "18"
   CI = "false"
 
+# Crawlers fetch robots.txt / sitemap.xml from the site's own domain, but
+# both are generated dynamically from the database on the API (Render)
+# rather than the static client build, so proxy them through instead of
+# serving a stale build-time file. Must come before the SPA catch-all below.
+[[redirects]]
+  from = "/sitemap.xml"
+  to = "https://aiml-forum.onrender.com/sitemap.xml"
+  status = 200
+
+[[redirects]]
+  from = "/robots.txt"
+  to = "https://aiml-forum.onrender.com/robots.txt"
+  status = 200
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
