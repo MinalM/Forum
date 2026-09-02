@@ -702,28 +702,47 @@ const PostDetail = () => {
                     )}
                     {canMarkAnswer && (
                       <button
-                        className="accept-answer-btn"
+                        type="button"
+                        className={`accept-answer-toggle${
+                          comment.isAnswer ? ' accept-answer-toggle--accepted' : ''
+                        }${
+                          !comment.isAnswer && post.isSolved
+                            ? ' accept-answer-toggle--muted'
+                            : ''
+                        }`}
                         onClick={() => handleMarkAnswer(comment._id)}
+                        aria-label={comment.isAnswer ? 'Unaccept' : 'Accept this answer'}
+                        title={comment.isAnswer ? 'Unaccept this answer' : 'Accept this answer'}
                       >
-                        <i className={`fas fa-check${comment.isAnswer ? '' : '-circle'}`}></i>{' '}
-                        {comment.isAnswer ? 'Unaccept' : 'Accept this answer'}
+                        <i className={`fas fa-check${comment.isAnswer ? '' : '-circle'}`}></i>
                       </button>
                     )}
-                    {(canModifyResource(user, comment) || hasPermission(user, 'deleteComment')) && (
-                      <button 
-                        className="btn btn-sm btn-danger"
-                        onClick={() => handleDeleteComment(comment._id)}
+                    {(canModifyResource(user, comment) || hasPermission(user, 'deleteComment') ||
+                      (isAuthenticated && user._id !== comment.user?._id)) && (
+                      <div
+                        className="comment-moderation-actions"
+                        role="group"
+                        aria-label="Comment moderation actions"
                       >
-                        <i className="fas fa-trash"></i>
-                      </button>
-                    )}
-                    {isAuthenticated && user._id !== comment.user?._id && (
-                      <button 
-                        className="btn btn-sm btn-outline-danger"
-                        onClick={() => openReportModal('comment', comment._id, `Comment by ${comment.user?.name}`)}
-                      >
-                        <i className="fas fa-flag"></i>
-                      </button>
+                        {(canModifyResource(user, comment) || hasPermission(user, 'deleteComment')) && (
+                          <button
+                            className="btn btn-sm btn-danger"
+                            onClick={() => handleDeleteComment(comment._id)}
+                            aria-label="Delete comment"
+                          >
+                            <i className="fas fa-trash"></i>
+                          </button>
+                        )}
+                        {isAuthenticated && user._id !== comment.user?._id && (
+                          <button
+                            className="btn btn-sm btn-outline-danger"
+                            onClick={() => openReportModal('comment', comment._id, `Comment by ${comment.user?.name}`)}
+                            aria-label="Report comment"
+                          >
+                            <i className="fas fa-flag"></i>
+                          </button>
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>

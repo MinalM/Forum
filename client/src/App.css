@@ -747,22 +747,50 @@
   color: #fff;
 }
 
-.accept-answer-btn {
+/* Quiet by default: an icon-only outline control, not a full-width green
+   button repeated once per comment. It only gets loud (the success-color
+   fill below) on hover/focus, or permanently once its answer is accepted. */
+.accept-answer-toggle {
   min-height: 44px;
   min-width: 44px;
-  padding: 0 1rem;
+  width: 44px;
+  height: 44px;
+  padding: 0;
   margin-right: 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: transparent;
-  border: 1px solid var(--success-color);
+  border: 1px solid #bbb;
   border-radius: 4px;
-  color: var(--success-color);
+  color: #777;
   cursor: pointer;
   font-size: 0.9rem;
-  font-weight: 500;
 }
 
-.accept-answer-btn:hover {
+.accept-answer-toggle:hover,
+.accept-answer-toggle:focus-visible {
+  border-color: var(--success-color);
+  color: var(--success-color);
   background: rgba(0, 200, 83, 0.08);
+}
+
+.accept-answer-toggle--accepted {
+  border-color: var(--success-color);
+  color: var(--success-color);
+}
+
+/* Once a post has an accepted answer, the accept control on every other
+   comment is even less likely to be used - fade it further. */
+.accept-answer-toggle--muted {
+  opacity: 0.5;
+}
+
+/* Keeps "accept" and "remove" from sitting adjacent at equal weight - its
+   own group, separated from the accept toggle by margin-left: auto. */
+.comment-moderation-actions {
+  display: flex;
+  margin-left: auto;
 }
 
 .comment-header {
