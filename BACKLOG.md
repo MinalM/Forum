@@ -259,31 +259,55 @@ content is worse than not indexing it. The last item
 (reputation/leaderboard) is deliberately parked until the forum has
 enough traffic for it to work.
 
-- [ ] **Per-page metadata, Open Graph / Twitter tags, and `QAPage`
-  structured data.** `client/index.html` ships one static block of
-  `<meta>`: `og:title`/`og:description`/`twitter:*` hard-coded to the
-  generic site name and blurb, `og:url` resolving to the site root, and
-  no `og:image` at all — so every shared link (a post, a category)
-  unfurls identically as "AI/ML Career Forum" and every deep link points
-  at `/`. Verified live: `/`, `/posts/:id` and `/categories/:id` return
-  byte-identical OG tags. `document.title` is already per-route via
-  `useDocumentTitle`; the description and OG tags are not. For a Q&A site
-  the search snippet and the social unfurl are the main acquisition
-  surface and both are blind. Add per-route `<head>` management (e.g.
-  `react-helmet-async`): `description`, `canonical`, `og:title` /
-  `og:description` / `og:url` / `og:type`, `twitter:card` + image, all
-  driven by the post or category actually being viewed. On post pages
-  emit `QAPage` + `Question` / `Answer` JSON-LD (the accepted answer as
-  `acceptedAnswer`, the rest as `suggestedAnswer`, vote counts as
-  `upvoteCount`) so Google can render a Q&A rich result — the JSON-LD
-  must describe only what is visibly on the page. Supersedes the static
-  block from the archived "No Open Graph metadata" item.
+- [x] **Per-page metadata: description, canonical, Open Graph / Twitter
+  tags.** Done in #101 (split from a combined "per-page metadata + QAPage
+  structured data" item — the JSON-LD half is the next item below).
+  `client/index.html` used to ship one static block of `<meta>`:
+  `og:title`/`og:description`/`twitter:*` hard-coded to the generic site
+  name and blurb, `og:url` resolving to the site root, and no `og:image`
+  at all — so every shared link (a post, a category) unfurled identically
+  as "AI/ML Career Forum" and every deep link pointed at `/`. Verified
+  live: `/`, `/posts/:id` and `/categories/:id` returned byte-identical OG
+  tags. `document.title` was already per-route via `useDocumentTitle`; the
+  description and OG tags were not.
+  Added `react-helmet-async` (v3, the first version with a React 19 peer
+  range) and `client/src/components/common/Seo.js`, a shared component
+  rendering `description`/canonical `<link>`/`og:*`/`twitter:*` (plus an
+  opt-in `noindex` and an `image` for a large-image Twitter card), driven
+  by the post/category/query actually being viewed. Deliberately does not
+  touch `<title>` — `useDocumentTitle` keeps sole ownership of
+  `document.title` so the two mechanisms don't race. `App.js` renders one
+  default `<Seo />` for the site-wide fallback; `Home`, `PostDetail`,
+  `CategoryPosts`, `SearchResults`, and `NotFound` each override it
+  (`PostDetail` truncates the post body via the existing
+  `markdownToPlainText` for its description; `SearchResults` and the
+  category/post not-found states are `noindex`). `index.html`'s static
+  `description`/`og:*`/`twitter:*` tags were removed — react-helmet-async
+  only adds tags, it doesn't clean up ones it didn't render, so leaving
+  the static block in place would have left two conflicting `og:title`
+  tags in the DOM once React mounted.
   Acceptance: a test per route type (home, post, category, search, 404)
-  asserts the rendered `<head>` carries a route-specific `description`
-  and `og:title`/`og:url` rather than the site default; a post-page test
-  asserts the emitted JSON-LD parses, is `@type: QAPage`, and its
-  `acceptedAnswer` / `upvoteCount` match the fixture; the client suite
-  runs with no helmet-provider warnings.
+  in `Seo.test.js` and each page's own test file asserts the rendered
+  `<head>` carries a route-specific `description` and `og:title`/`og:url`
+  rather than the site default; the client suite runs with no
+  helmet-provider warnings (react-helmet-async v3's React-19 dispatcher
+  doesn't require a `HelmetProvider` ancestor, though `index.js` still
+  wraps the app in one).
+
+- [ ] **`QAPage` + `Question`/`Answer` JSON-LD structured data on post
+  pages.** Second half of the per-page metadata item above (#101 did the
+  description/canonical/OG/Twitter half). On post pages emit `QAPage` +
+  `Question` / `Answer` JSON-LD (the accepted answer as `acceptedAnswer`,
+  the rest as `suggestedAnswer`, vote counts as `upvoteCount`) so Google
+  can render a Q&A rich result — the JSON-LD must describe only what is
+  visibly on the page. Build on `client/src/components/common/Seo.js`
+  (e.g. an optional `jsonLd` prop, or a sibling component) rather than a
+  second ad hoc `<script type="application/ld+json">` — `PostDetail`
+  already computes `postStatus`/comment data the JSON-LD needs.
+  Acceptance: a post-page test asserts the emitted JSON-LD parses, is
+  `@type: QAPage`, and its `acceptedAnswer` / `upvoteCount` match the
+  fixture; a post with no accepted answer omits `acceptedAnswer` rather
+  than emitting a null/empty one.
 
 - [x] **`sitemap.xml` and `robots.txt`.** Split off the original
   "Prerendering for crawlers, `sitemap.xml`, and `robots.txt`" item below
@@ -519,3 +543,31 @@ one PR rather than three.
   (currently 20.x or 22.x); full suite (unit + Playwright) re-verified
   green under the new version; `client/package.json` engines/version pins
   revisited if the bump also permits newer Vite/plugin-react majors.
+
+- [ ] **The `security` CI job is red on `main` right now — root `npm audit`
+  fails on a moderate `qs` advisory.** Discovered while driving #101's CI
+  to green: the `security` job's root `npm audit` step (which runs before
+  the client-specific `npm audit --omit=dev` step) fails on
+  [GHSA-x5fp-wj9c-mxmx](https://github.com/advisories/GHSA-x5fp-wj9c-mxmx)
+  (array-limit bypass via bracket-key comma parsing) and
+  [GHSA-4mjr-xmp4-gh2g](https://github.com/advisories/GHSA-4mjr-xmp4-gh2g)
+  (DoS via attacker-controlled `isBuffer`), both in `qs@6.15.3`. `qs` is
+  pulled in transitively at the root (server) level via
+  `express@5.2.1` → `body-parser@2.3.0`, and via
+  `supertest@7.1.4` → `superagent@10.2.3` — nothing client-side. Confirmed
+  reproducing on an unmodified checkout of `main` at `3ebd1e4` (the same
+  commit whose own CI run, ~3.5h earlier, was green on this exact
+  lockfile) — this is a newly-surfaced advisory, not something any
+  particular PR introduced. Priority: high — every open and future PR's
+  `security` check will be red until this is fixed, which blocks this
+  autonomous cycle's merge gate for unrelated work.
+  Scope: root `package.json`/`package-lock.json` only. Likely fix:
+  add a `qs` entry to the root `overrides` block (matching the existing
+  `brace-expansion` pattern) pinning to a patched version (>=6.16.0 once
+  published, or whatever version resolves both advisories), then
+  regenerate the lockfile and confirm `npm run build`/`npm test` and
+  `express`/`body-parser`/`supertest` still behave correctly.
+  Acceptance: root `npm audit` (and `npm run ci` end to end) is clean;
+  server test suite still passes; note in the PR whether `express`/
+  `body-parser`/`superagent` have since published their own fix
+  upstream (in which case the override may already be unnecessary).

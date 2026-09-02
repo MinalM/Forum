@@ -5,6 +5,7 @@ import { useAlert } from '../context/AlertContext';
 import PostItem from '../components/posts/PostItem';
 import { FeedComposerProvider } from '../context/FeedComposerContext';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
+import Seo, { SITE_NAME } from '../components/common/Seo';
 
 const SearchResults = () => {
   const [searchParams] = useSearchParams();
@@ -80,6 +81,16 @@ const SearchResults = () => {
 
   return (
     <div className="main-content">
+      <Seo
+        title={query ? `Search: ${query}` : 'Search'}
+        description={
+          query
+            ? `Search results for "${query}" on ${SITE_NAME}.`
+            : `Search questions and answers on ${SITE_NAME}.`
+        }
+        path={query ? `/search?q=${encodeURIComponent(query)}` : '/search'}
+        noindex
+      />
       <div className="category-header">
         <div className="category-info">
           <h1>Search Results</h1>

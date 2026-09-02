@@ -6,35 +6,35 @@ const html = fs.readFileSync(
   'utf8'
 );
 
-function metaContent(attr, value) {
-  const re = new RegExp(
-    `<meta[^>]*${attr}=["']${value}["'][^>]*content=["']([^"']*)["']`
-  );
+function hasMeta(attr, value) {
+  const re = new RegExp(`<meta[^>]*${attr}=["']${value}["']`);
   const reReversed = new RegExp(
-    `<meta[^>]*content=["']([^"']*)["'][^>]*${attr}=["']${value}["']`
+    `<meta[^>]*content=["'][^"']*["'][^>]*${attr}=["']${value}["']`
   );
-  const match = html.match(re) || html.match(reReversed);
-  return match ? match[1] : null;
+  return re.test(html) || reReversed.test(html);
 }
 
-describe('client/index.html Open Graph / social preview metadata', () => {
-  it('has a non-empty og:title', () => {
-    expect(metaContent('property', 'og:title')).toBeTruthy();
+// index.html used to hard-code one static og:*/twitter:*/description block,
+// identical on every route (the exact bug the "per-page metadata" backlog
+// item fixes). Those tags are now rendered per-route at runtime by
+// client/src/components/common/Seo.js (see Seo.test.js and the per-page
+// head tests in Home/PostDetail/CategoryPosts/SearchResults/NotFound) via
+// react-helmet-async. A static duplicate here would sit in the DOM
+// alongside whatever Helmet injects, so index.html must not declare them
+// itself - this test guards against that regressing back in.
+describe('client/index.html static <head>', () => {
+  it('does not hard-code a static description or Open Graph/Twitter block', () => {
+    expect(hasMeta('name', 'description')).toBe(false);
+    expect(hasMeta('property', 'og:title')).toBe(false);
+    expect(hasMeta('property', 'og:description')).toBe(false);
+    expect(hasMeta('property', 'og:type')).toBe(false);
+    expect(hasMeta('property', 'og:url')).toBe(false);
+    expect(hasMeta('name', 'twitter:card')).toBe(false);
+    expect(hasMeta('name', 'twitter:title')).toBe(false);
+    expect(hasMeta('name', 'twitter:description')).toBe(false);
   });
 
-  it('has a non-empty og:description', () => {
-    expect(metaContent('property', 'og:description')).toBeTruthy();
-  });
-
-  it('declares og:type as website', () => {
-    expect(metaContent('property', 'og:type')).toBe('website');
-  });
-
-  it('has a non-empty og:url', () => {
-    expect(metaContent('property', 'og:url')).toBeTruthy();
-  });
-
-  it('declares a twitter:card', () => {
-    expect(metaContent('name', 'twitter:card')).toBeTruthy();
+  it('still ships a fallback <title> for before hydration / no-JS', () => {
+    expect(html).toMatch(/<title>[^<]+<\/title>/);
   });
 });

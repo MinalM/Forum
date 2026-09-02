@@ -5,11 +5,12 @@ import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '../context/AuthContext';
 import { useAlert } from '../context/AlertContext';
 import { hasPermission, canModifyResource } from '../utils/permissions';
-import { renderMarkdown } from '../utils/markdown';
+import { renderMarkdown, markdownToPlainText } from '../utils/markdown';
 import { getPostStatus } from '../utils/postStatus';
 import { getAvatarUrl } from '../utils/avatar';
 import ReportModal from '../components/reports/ReportModal';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
+import Seo, { truncateDescription } from '../components/common/Seo';
 
 const PostDetail = () => {
   const { id } = useParams();
@@ -428,6 +429,12 @@ const PostDetail = () => {
 
   return (
     <div className="main-content">
+      <Seo
+        title={post.title}
+        description={truncateDescription(markdownToPlainText(post.content))}
+        path={`/posts/${post._id}`}
+        type="article"
+      />
       <div className="post-detail">
         <div className="post-header">
           <div className="post-title-row">

@@ -1,10 +1,11 @@
 import React from 'react';
-import { render, screen, act, fireEvent } from '@testing-library/react';
+import { render, screen, act, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router';
 import axios from 'axios';
 import CategoryPosts from '../CategoryPosts';
 import { AlertProvider, useAlert } from '../../context/AlertContext';
 import { AuthProvider } from '../../context/AuthContext';
+import { getHeadMeta, getHeadLink } from '../../test-utils/headMeta';
 
 jest.mock('axios', () => ({
   defaults: {},
@@ -196,5 +197,62 @@ describe('CategoryPosts document title', () => {
 
     await screen.findByText('Career Advice');
     expect(document.title).toBe('Career Advice | AI/ML Career Forum');
+  });
+});
+
+describe('CategoryPosts <head> metadata', () => {
+  const CATEGORY_ID = '000000000000000000000001';
+
+  beforeEach(() => {
+    axios.get.mockReset();
+    axios.get.mockImplementation((url) => {
+      if (url.endsWith('/posts')) {
+        return Promise.resolve({ data: { success: true, count: 0, data: [] } });
+      }
+      return Promise.resolve({
+        data: {
+          success: true,
+          data: {
+            _id: CATEGORY_ID,
+            name: 'Career Advice',
+            description: 'Everything about switching into an AI/ML role.'
+          }
+        }
+      });
+    });
+  });
+
+  it('renders the category name/description and a category-specific canonical url', async () => {
+    renderAtCategory(CATEGORY_ID);
+
+    await screen.findByText('Career Advice');
+
+    await waitFor(() => {
+      expect(getHeadMeta('property', 'og:title')).toHaveAttribute(
+        'content',
+        'Career Advice | AI/ML Career Forum'
+      );
+    });
+    expect(getHeadMeta('name', 'description')).toHaveAttribute(
+      'content',
+      'Everything about switching into an AI/ML role.'
+    );
+    expect(getHeadLink('canonical').getAttribute('href')).toContain(
+      `/categories/${CATEGORY_ID}`
+    );
+  });
+
+  it('marks a not-found category noindex', async () => {
+    const notFoundError = new Error('Request failed with status code 404');
+    notFoundError.response = { status: 404 };
+    axios.get.mockRejectedValue(notFoundError);
+
+    renderAtCategory('000000000000000000000000');
+
+    await screen.findByRole('heading', { name: /category not found/i });
+
+    await waitFor(() => {
+      expect(getHeadMeta('name', 'robots')).toHaveAttribute('content', 'noindex');
+    });
   });
 });

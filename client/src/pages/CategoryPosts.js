@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import PostItem from '../components/posts/PostItem';
 import { FeedComposerProvider } from '../context/FeedComposerContext';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
+import Seo, { truncateDescription } from '../components/common/Seo';
 
 const CategoryPosts = () => {
   const { categoryId } = useParams();
@@ -89,6 +90,7 @@ const CategoryPosts = () => {
     if (notFound) {
       return (
         <div className="main-content">
+          <Seo title="Category Not Found" noindex />
           <div className="not-found">
             <div className="not-found-content">
               <h1>Category Not Found</h1>
@@ -114,6 +116,11 @@ const CategoryPosts = () => {
 
   return (
     <div className="main-content">
+      <Seo
+        title={category.name}
+        description={truncateDescription(category.description)}
+        path={`/categories/${categoryId}`}
+      />
       <div className="category-header">
         <div className="category-info">
           <h1>{category.name}</h1>
