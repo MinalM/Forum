@@ -104,8 +104,8 @@ const Dashboard = () => {
             <i className="fas fa-file-alt"></i>
           </div>
           <div className="stat-content">
-            <h3>{stats.totalPosts}</h3>
-            <p>Posts</p>
+            <p className="stat-value">{stats.totalPosts}</p>
+            <p className="stat-label">Posts</p>
           </div>
         </div>
 
@@ -114,8 +114,8 @@ const Dashboard = () => {
             <i className="fas fa-comment"></i>
           </div>
           <div className="stat-content">
-            <h3>{stats.totalComments}</h3>
-            <p>Comments</p>
+            <p className="stat-value">{stats.totalComments}</p>
+            <p className="stat-label">Comments</p>
           </div>
         </div>
 
@@ -124,8 +124,8 @@ const Dashboard = () => {
             <i className="fas fa-check-circle"></i>
           </div>
           <div className="stat-content">
-            <h3>{stats.solvedPosts}</h3>
-            <p>Solved Posts</p>
+            <p className="stat-value">{stats.solvedPosts}</p>
+            <p className="stat-label">Solved Posts</p>
           </div>
         </div>
       </div>

@@ -107,38 +107,38 @@ const AdminDashboard = () => {
             <i className="fas fa-users"></i>
           </div>
           <div className="stat-content">
-            <h3>{stats.totalUsers}</h3>
-            <p>Total Users</p>
+            <p className="stat-value">{stats.totalUsers}</p>
+            <p className="stat-label">Total Users</p>
           </div>
         </div>
-        
+
         <div className="stat-card">
           <div className="stat-icon">
             <i className="fas fa-file-alt"></i>
           </div>
           <div className="stat-content">
-            <h3>{stats.totalPosts}</h3>
-            <p>Total Posts</p>
+            <p className="stat-value">{stats.totalPosts}</p>
+            <p className="stat-label">Total Posts</p>
           </div>
         </div>
-        
+
         <div className="stat-card">
           <div className="stat-icon">
             <i className="fas fa-comments"></i>
           </div>
           <div className="stat-content">
-            <h3>{stats.totalComments}</h3>
-            <p>Total Comments</p>
+            <p className="stat-value">{stats.totalComments}</p>
+            <p className="stat-label">Total Comments</p>
           </div>
         </div>
-        
+
         <div className="stat-card">
           <div className="stat-icon">
             <i className="fas fa-flag"></i>
           </div>
           <div className="stat-content">
-            <h3>{stats.pendingReports}</h3>
-            <p>Pending Reports</p>
+            <p className="stat-value">{stats.pendingReports}</p>
+            <p className="stat-label">Pending Reports</p>
           </div>
         </div>
       </div>
