@@ -183,7 +183,7 @@ content is worse than not indexing it. The last item
 (reputation/leaderboard) is deliberately parked until the forum has
 enough traffic for it to work.
 
-- [ ] **`QAPage` + `Question`/`Answer` JSON-LD structured data on post
+- [x] **`QAPage` + `Question`/`Answer` JSON-LD structured data on post
   pages.** Second half of the per-page metadata item above (#101 did the
   description/canonical/OG/Twitter half). On post pages emit `QAPage` +
   `Question` / `Answer` JSON-LD (the accepted answer as `acceptedAnswer`,
@@ -196,7 +196,15 @@ enough traffic for it to work.
   Acceptance: a post-page test asserts the emitted JSON-LD parses, is
   `@type: QAPage`, and its `acceptedAnswer` / `upvoteCount` match the
   fixture; a post with no accepted answer omits `acceptedAnswer` rather
-  than emitting a null/empty one.
+  than emitting a null/empty one. Done: PR #109.
+  Follow-up discovered: `<script type="application/ld+json">` (like any
+  inline `<script>`) is not one of the tags React 19 auto-hoists to
+  `document.head` — only `<title>`/`<meta>`/`<link>` are — so the JSON-LD
+  renders wherever `<Seo>` is mounted in the tree, not in `<head>`. This
+  is harmless for JSON-LD (crawlers don't require `<head>` placement,
+  unlike the og/twitter meta tags) and both new test suites account for
+  it, but is worth a note here in case a future per-page metadata item
+  assumes head-only placement.
 
 - [ ] **Prerendering for crawlers.** Even with per-route tags (item
   above) and the sitemap/robots.txt item above, a crawler that does not
