@@ -140,7 +140,7 @@ screenshots — that is the sandbox, not the product.
   "Go to Admin Dashboard" link is present; same for a moderator user and
   "Go to Moderator Dashboard"; a plain `user` role sees neither. Done: PR #107.
 
-- [ ] **`/admin` and `/admin/users` overflow horizontally on mobile, and the
+- [x] **`/admin` and `/admin/users` overflow horizontally on mobile, and the
   user table is unusable at any width.** Measured locally: `/admin/users`
   reports `scrollWidth` 410 against `clientWidth` 375 with the offending node
   identified as `TABLE.table.users-table`, and `/admin` reports 432 against 375
