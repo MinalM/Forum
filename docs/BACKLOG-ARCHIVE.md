@@ -2027,3 +2027,137 @@ avatars — plus the first slice of the growth queue's SEO work.
   XML structure, one `<url>` per seeded post/category with a count that
   grows when a post is added, a correct `<lastmod>`, and `robots.txt`
   content; existing server suite unaffected.
+
+## Cycle 6 — desktop targets, dashboard headings, admin surfaces, SEO (Sep 2026)
+
+Archived 2026-09-02.
+
+- [x] **Every control below the 44px minimum is only fixed at mobile widths —
+  at desktop the same controls are 13-42px, and the tests cannot see it.**
+  Measured on a local run at 1280px, logged in as admin, across eleven
+  authenticated pages. The worst offenders, by rendered height:
+  the navbar search **submit button at 13px** and its input at 29px (on every
+  page); the moderator dashboard's `Pending` / `Resolved` / `Dismissed` tab
+  buttons at **19px**; the category page's Solved/Unsolved `<select>` at
+  **19px**; `/admin/users`' `Edit Role` / `Timeout` / `Ban` buttons at **26px**;
+  the Dashboard's `Edit Profile` and `Create New Post` links at 29px; the
+  admin user-search input and its Search button at 34px; the Create Post
+  category and level `<select>`s at 37px; and a long tail of `.btn` links
+  (`View All Discussions`, `Join the Community`, `New Post`, `Manage Users`) at
+  42px. The same sweep at 375px reports **zero** controls under 44px on every
+  one of those pages.
+  That gap is the point: the 44px rules added by the archived touch-target
+  items were written inside `@media (max-width: 768px)` blocks, so the desktop
+  rendering was never covered, and `client/src/__tests__/mobileTouchTargets.test.js`
+  asserts against the mobile CSS only — it passes while a 13px button ships.
+  Pointer targets are not a mobile-only concern: WCAG 2.5.8 (AA, WCAG 2.2) sets
+  a 24px floor regardless of input device, which the 13px and 19px controls
+  fail outright, and touchscreen laptops hit exactly these controls.
+  Scope: client CSS plus the test. Lift the target floor out of the mobile
+  media queries so it applies at every width — the brand's own `.btn`,
+  `.btn-sm`, `.form-control`, `<select>` and the navbar search should carry it
+  by default rather than each page re-fixing it. Keep the visual density
+  reasonable at desktop: a 44px minimum on `min-height` does not require
+  changing font sizes or padding elsewhere.
+  Acceptance: a test asserts the minimum applies **without** a
+  `max-width` media query wrapper (extend `mobileTouchTargets.test.js`, or add
+  a desktop-width sibling, so the mobile-only regression cannot come back); a
+  jsdom or raw-CSS assertion covers the specific controls named above; a sweep
+  at 1280px finds no interactive control under 44px on the eleven
+  authenticated routes; the existing mobile assertions stay green.
+
+- [x] **The three dashboards have broken heading outlines, and the stat-card
+  numbers are themselves headings.** Measured locally at 1280px. The Dashboard
+  outline reads `H1 "Dashboard"` → `H3 "1"` → `H3 "3"` → `H3 "0"` →
+  `H2 "Your Recent Posts"`; `/admin` reads `H1 "Admin Dashboard"` →
+  `H3 "3"` → `H3 "5"` → `H3 "1"` → `H3 "0"` → `H2 "Recent Users"`; and
+  `/moderator` reads `H1 "Moderator Dashboard"` → `H3 "Reports"` →
+  `H2 "Reports (pending)"`. So all three skip H1→H3, `/moderator` additionally
+  emits an H3 before its H2, and on the two stat dashboards the headings a
+  screen-reader user navigates by are the bare numerals "1", "3", "0" — the
+  count, not what it counts.
+  This is the same defect class the archived items fixed on `/`, `/categories`,
+  a category page and `/search`; that work never reached the authenticated
+  dashboards, which were not part of those reviews.
+  Scope: `client/src/pages/Dashboard.js`, `AdminDashboard.js`,
+  `ModeratorDashboard.js`, client-only. The stat cards should not be headings
+  at all — the number is data and its label is the caption, so a `<p>`/`<dl>`
+  pairing is the right markup; if a heading is wanted per card it must carry
+  the **label** text and sit at the correct level. Fix `/moderator`'s H3-before-H2
+  ordering in the same pass.
+  Acceptance: a test per page walks the rendered heading list and asserts no
+  level is skipped and no heading's accessible name is a bare number, reusing
+  the pattern from the archived heading-level tests
+  (`HomeHeadingLevel.test.js` and its siblings); existing dashboard tests
+  updated. Done: PR #106.
+
+- [x] **`Dashboard`'s "Go to Admin Dashboard" / "Go to Moderator Dashboard"
+  links never render, for any role.** Found while fixing the dashboard
+  heading outlines above. `client/src/pages/Dashboard.js` gates those two
+  `dashboard-section`s on `hasPermission(user, 'admin')` and
+  `hasPermission(user, 'moderator')`, but `hasPermission`
+  (`client/src/utils/permissions.js`) only recognizes action-style permission
+  keys (`accessAdminDashboard`, `accessModeratorDashboard`, `manageUsers`,
+  etc.) — `'admin'` and `'moderator'` are not keys in its `permissions` map,
+  so `permissions[permission]` is `undefined` and the call always returns
+  `false`. An admin or moderator visiting `/dashboard` never sees the
+  shortcut into their own dashboard, regardless of role.
+  Scope: `client/src/pages/Dashboard.js`, client-only — swap the two calls
+  for the existing `accessAdminDashboard` / `accessModeratorDashboard` keys
+  (already used correctly by `AdminDashboard.js` / `ModeratorDashboard.js`
+  for route-guarding).
+  Acceptance: a test renders `Dashboard` as an admin user and asserts the
+  "Go to Admin Dashboard" link is present; same for a moderator user and
+  "Go to Moderator Dashboard"; a plain `user` role sees neither. Done: PR #107.
+
+- [x] **`/admin` and `/admin/users` overflow horizontally on mobile, and the
+  user table is unusable at any width.** Measured locally: `/admin/users`
+  reports `scrollWidth` 410 against `clientWidth` 375 with the offending node
+  identified as `TABLE.table.users-table`, and `/admin` reports 432 against 375
+  with `DIV.stat-card` — the admin surfaces were not part of the archived
+  mobile-overflow work, which covered the public pages and left these two.
+  `/moderator` is clean at 375px.
+  At desktop the same table is a separate design problem, visible in the review
+  screenshot: it renders inside roughly the left half of a 1280px viewport and
+  leaves the rest empty, while its own columns are so tight that "Admin User"
+  runs flush into "admin@example.com" with no cell padding and the Role badge
+  abuts the Status column. Each row then repeats three full-weight buttons —
+  `Edit Role`, `Timeout`, and a red `Ban` — so the most destructive action in
+  the product is the most visually prominent element, on every row.
+  Scope: `client/src/pages/AdminUsers.css` / `AdminUsers.js` and the admin
+  dashboard's stat-card grid, client-only, no route or API changes. Give the
+  table real cell padding and let it use the available width; wrap it in a
+  horizontally scrollable container so narrow viewports scroll the table rather
+  than the page (or switch to a stacked card layout under a breakpoint); make
+  the stat cards reflow instead of overflowing; and demote `Timeout`/`Ban` to a
+  quiet or overflow treatment so a destructive action is not the loudest thing
+  on each row. Row heights should satisfy the target floor from the item above.
+  Acceptance: a raw-CSS/jsdom assertion that neither `/admin` nor
+  `/admin/users` produces an element wider than a 375px viewport (the pattern
+  used by the archived overflow tests); a test asserts the table has non-zero
+  horizontal cell padding and that the destructive row actions are not rendered
+  with the same emphasis class as the primary one; existing `AdminUsers` tests
+  updated. Done: PR #108.
+
+- [x] **`QAPage` + `Question`/`Answer` JSON-LD structured data on post
+  pages.** Second half of the per-page metadata item above (#101 did the
+  description/canonical/OG/Twitter half). On post pages emit `QAPage` +
+  `Question` / `Answer` JSON-LD (the accepted answer as `acceptedAnswer`,
+  the rest as `suggestedAnswer`, vote counts as `upvoteCount`) so Google
+  can render a Q&A rich result — the JSON-LD must describe only what is
+  visibly on the page. Build on `client/src/components/common/Seo.js`
+  (e.g. an optional `jsonLd` prop, or a sibling component) rather than a
+  second ad hoc `<script type="application/ld+json">` — `PostDetail`
+  already computes `postStatus`/comment data the JSON-LD needs.
+  Acceptance: a post-page test asserts the emitted JSON-LD parses, is
+  `@type: QAPage`, and its `acceptedAnswer` / `upvoteCount` match the
+  fixture; a post with no accepted answer omits `acceptedAnswer` rather
+  than emitting a null/empty one. Done: PR #109.
+  Follow-up discovered: `<script type="application/ld+json">` (like any
+  inline `<script>`) is not one of the tags React 19 auto-hoists to
+  `document.head` — only `<title>`/`<meta>`/`<link>` are — so the JSON-LD
+  renders wherever `<Seo>` is mounted in the tree, not in `<head>`. This
+  is harmless for JSON-LD (crawlers don't require `<head>` placement,
+  unlike the og/twitter meta tags) and both new test suites account for
+  it, but is worth a note here in case a future per-page metadata item
+  assumes head-only placement.
