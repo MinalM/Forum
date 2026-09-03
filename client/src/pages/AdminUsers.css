@@ -1,13 +1,10 @@
-.admin-users-page {
-  padding: 20px;
-}
+/* Selectors below match the classNames AdminUsers.js actually renders
+   (.admin-tools, .users-table-container, .table.users-table) - this file
+   previously targeted .admin-users-page/.admin-controls/.user-list-container/
+   .user-table, none of which appear in the component, so almost none of it
+   ever reached the page. */
 
-.admin-users-page h1 {
-  margin-bottom: 20px;
-  color: #333;
-}
-
-.admin-controls {
+.admin-tools {
   display: flex;
   justify-content: space-between;
   margin-bottom: 20px;
@@ -28,41 +25,38 @@
   flex: 1;
 }
 
-.user-list-container {
+/* Scrolls its own overflow at narrow viewports instead of pushing the whole
+   page wider than the screen - the table's columns need more room than a
+   375px viewport has to stay legible. */
+.users-table-container {
   overflow-x: auto;
   margin-bottom: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  border-radius: 5px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  background: var(--surface-color, #fff);
 }
 
-.user-table {
+.users-table {
   width: 100%;
+  min-width: 640px;
   border-collapse: collapse;
 }
 
-.user-table th,
-.user-table td {
+.users-table th,
+.users-table td {
   padding: 12px 16px;
   text-align: left;
   border-bottom: 1px solid #e0e0e0;
+  vertical-align: middle;
 }
 
-.user-table th {
+.users-table th {
   background-color: #f5f5f5;
   font-weight: bold;
 }
 
-.user-table tr:hover {
+.users-table tr:hover {
   background-color: #f9f9f9;
-}
-
-.banned-user {
-  background-color: #fff0f0;
-}
-
-.action-buttons {
-  display: flex;
-  gap: 8px;
 }
 
 .role-badge {
@@ -106,6 +100,38 @@
   color: #d32f2f;
 }
 
+.action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Edit Role stays the filled/primary action on each row. Timeout and Ban
+   are demoted to an outline treatment so the row's most destructive
+   control isn't also its most visually prominent one. */
+.action-buttons .btn-outline-warning,
+.action-buttons .btn-outline-danger {
+  background: transparent;
+}
+
+.action-buttons .btn-outline-warning {
+  color: #b26a00;
+  border: 1px solid #b26a00;
+}
+
+.action-buttons .btn-outline-danger {
+  color: var(--error-color, #b00020);
+  border: 1px solid var(--error-color, #b00020);
+}
+
+.action-buttons .btn-outline-warning:hover {
+  background: #fff8e1;
+}
+
+.action-buttons .btn-outline-danger:hover {
+  background: #ffebee;
+}
+
 .pagination {
   display: flex;
   align-items: center;
@@ -114,12 +140,17 @@
 }
 
 @media (max-width: 768px) {
-  .action-buttons {
+  .admin-tools {
     flex-direction: column;
+    align-items: stretch;
   }
-  
-  .user-table th,
-  .user-table td {
-    padding: 8px;
+
+  .search-form {
+    max-width: none;
+  }
+
+  .users-table th,
+  .users-table td {
+    padding: 8px 12px;
   }
 }
