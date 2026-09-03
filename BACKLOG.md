@@ -96,7 +96,7 @@ screenshots — that is the sandbox, not the product.
   at 1280px finds no interactive control under 44px on the eleven
   authenticated routes; the existing mobile assertions stay green.
 
-- [ ] **The three dashboards have broken heading outlines, and the stat-card
+- [x] **The three dashboards have broken heading outlines, and the stat-card
   numbers are themselves headings.** Measured locally at 1280px. The Dashboard
   outline reads `H1 "Dashboard"` → `H3 "1"` → `H3 "3"` → `H3 "0"` →
   `H2 "Your Recent Posts"`; `/admin` reads `H1 "Admin Dashboard"` →
@@ -119,7 +119,26 @@ screenshots — that is the sandbox, not the product.
   level is skipped and no heading's accessible name is a bare number, reusing
   the pattern from the archived heading-level tests
   (`HomeHeadingLevel.test.js` and its siblings); existing dashboard tests
-  updated.
+  updated. Done: PR #106.
+
+- [ ] **`Dashboard`'s "Go to Admin Dashboard" / "Go to Moderator Dashboard"
+  links never render, for any role.** Found while fixing the dashboard
+  heading outlines above. `client/src/pages/Dashboard.js` gates those two
+  `dashboard-section`s on `hasPermission(user, 'admin')` and
+  `hasPermission(user, 'moderator')`, but `hasPermission`
+  (`client/src/utils/permissions.js`) only recognizes action-style permission
+  keys (`accessAdminDashboard`, `accessModeratorDashboard`, `manageUsers`,
+  etc.) — `'admin'` and `'moderator'` are not keys in its `permissions` map,
+  so `permissions[permission]` is `undefined` and the call always returns
+  `false`. An admin or moderator visiting `/dashboard` never sees the
+  shortcut into their own dashboard, regardless of role.
+  Scope: `client/src/pages/Dashboard.js`, client-only — swap the two calls
+  for the existing `accessAdminDashboard` / `accessModeratorDashboard` keys
+  (already used correctly by `AdminDashboard.js` / `ModeratorDashboard.js`
+  for route-guarding).
+  Acceptance: a test renders `Dashboard` as an admin user and asserts the
+  "Go to Admin Dashboard" link is present; same for a moderator user and
+  "Go to Moderator Dashboard"; a plain `user` role sees neither.
 
 - [ ] **`/admin` and `/admin/users` overflow horizontally on mobile, and the
   user table is unusable at any width.** Measured locally: `/admin/users`
