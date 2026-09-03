@@ -1,8 +1,13 @@
 import React from 'react';
 import { render, waitFor } from '@testing-library/react';
 import { HelmetProvider } from 'react-helmet-async';
-import Seo, { truncateDescription, toAbsoluteUrl, DEFAULT_DESCRIPTION } from '../Seo';
-import { getHeadMeta, getHeadLink } from '../../../test-utils/headMeta';
+import Seo, {
+  truncateDescription,
+  toAbsoluteUrl,
+  DEFAULT_DESCRIPTION,
+  buildQaPageJsonLd
+} from '../Seo';
+import { getHeadMeta, getHeadLink, getJsonLd } from '../../../test-utils/headMeta';
 
 const getMeta = getHeadMeta;
 
@@ -115,6 +120,106 @@ describe('Seo', () => {
       'content',
       'https://example.com/cover.png'
     );
+  });
+
+  it('renders a JSON-LD script tag when jsonLd is given', async () => {
+    const jsonLd = { '@context': 'https://schema.org', '@type': 'QAPage' };
+    renderSeo({ title: 'With structured data', jsonLd });
+
+    await waitFor(() => {
+      expect(getJsonLd()).toEqual(jsonLd);
+    });
+  });
+
+  it('omits the JSON-LD script tag when jsonLd is not given', async () => {
+    renderSeo({});
+
+    await waitFor(() => {
+      expect(getMeta('property', 'og:title')).toBeInTheDocument();
+    });
+    expect(getJsonLd()).toBeNull();
+  });
+});
+
+describe('buildQaPageJsonLd', () => {
+  const post = {
+    _id: 'post1',
+    title: 'How do I fine-tune a transformer?',
+    content: 'What is the **best** way to fine-tune a small transformer model?',
+    user: { name: 'Asker Anna' },
+    upvotes: ['u1', 'u2'],
+    downvotes: ['u3'],
+    createdAt: '2026-01-01T00:00:00.000Z'
+  };
+
+  const acceptedAnswer = {
+    _id: 'c1',
+    content: 'Use LoRA for parameter-efficient fine-tuning.',
+    user: { name: 'Helper Hana' },
+    isAnswer: true,
+    upvotes: ['u1', 'u2', 'u3'],
+    downvotes: [],
+    createdAt: '2026-01-02T00:00:00.000Z'
+  };
+
+  const otherAnswer = {
+    _id: 'c2',
+    content: 'Full fine-tuning also works if you have the compute.',
+    user: { name: 'Helper Hank' },
+    isAnswer: false,
+    upvotes: ['u1'],
+    downvotes: [],
+    createdAt: '2026-01-03T00:00:00.000Z'
+  };
+
+  it('parses as QAPage with the accepted answer and its upvoteCount', () => {
+    const jsonLd = buildQaPageJsonLd({ post, answers: [acceptedAnswer, otherAnswer] });
+    const reparsed = JSON.parse(JSON.stringify(jsonLd));
+
+    expect(reparsed['@type']).toBe('QAPage');
+    expect(reparsed.mainEntity['@type']).toBe('Question');
+    expect(reparsed.mainEntity.name).toBe(post.title);
+    expect(reparsed.mainEntity.upvoteCount).toBe(1);
+    expect(reparsed.mainEntity.answerCount).toBe(2);
+    expect(reparsed.mainEntity.acceptedAnswer).toEqual({
+      '@type': 'Answer',
+      text: acceptedAnswer.content,
+      upvoteCount: 3,
+      dateCreated: acceptedAnswer.createdAt,
+      url: toAbsoluteUrl(`/posts/${post._id}`),
+      author: { '@type': 'Person', name: 'Helper Hana' }
+    });
+    expect(reparsed.mainEntity.suggestedAnswer).toEqual([
+      {
+        '@type': 'Answer',
+        text: otherAnswer.content,
+        upvoteCount: 1,
+        dateCreated: otherAnswer.createdAt,
+        url: toAbsoluteUrl(`/posts/${post._id}`),
+        author: { '@type': 'Person', name: 'Helper Hank' }
+      }
+    ]);
+  });
+
+  it('omits acceptedAnswer entirely when no answer is accepted', () => {
+    const jsonLd = buildQaPageJsonLd({ post, answers: [otherAnswer] });
+
+    expect(jsonLd.mainEntity).not.toHaveProperty('acceptedAnswer');
+    expect(jsonLd.mainEntity.suggestedAnswer).toHaveLength(1);
+  });
+
+  it('omits suggestedAnswer entirely when there are no other answers', () => {
+    const jsonLd = buildQaPageJsonLd({ post, answers: [acceptedAnswer] });
+
+    expect(jsonLd.mainEntity.acceptedAnswer).toBeDefined();
+    expect(jsonLd.mainEntity).not.toHaveProperty('suggestedAnswer');
+  });
+
+  it('omits author when the post has no user (deleted account)', () => {
+    const jsonLd = buildQaPageJsonLd({ post: { ...post, user: null }, answers: [] });
+
+    expect(jsonLd.mainEntity).not.toHaveProperty('author');
+    expect(jsonLd.mainEntity.answerCount).toBe(0);
   });
 });
 
