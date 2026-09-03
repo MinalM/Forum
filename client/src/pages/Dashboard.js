@@ -253,7 +253,7 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {hasPermission(user, 'admin') && (
+        {hasPermission(user, 'accessAdminDashboard') && (
           <div className="dashboard-section">
             <h2>Admin Dashboard</h2>
             <Link to="/admin" className="btn btn-link">
@@ -262,7 +262,7 @@ const Dashboard = () => {
           </div>
         )}
 
-        {hasPermission(user, 'moderator') && (
+        {hasPermission(user, 'accessModeratorDashboard') && (
           <div className="dashboard-section">
             <h2>Moderator Dashboard</h2>
             <Link to="/moderator" className="btn btn-link">
