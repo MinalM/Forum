@@ -13,6 +13,7 @@
   border-radius: 4px 0 0 4px;
   font-size: 0.9rem;
   min-width: 0;
+  min-height: 44px;
 }
 
 .navbar-search-btn {
@@ -22,6 +23,8 @@
   border-radius: 0 4px 4px 0;
   background: transparent;
   cursor: pointer;
+  min-height: 44px;
+  min-width: 44px;
 }
 
 /* Primary contributor action, visually distinct from the plain-text
@@ -218,8 +221,6 @@
   font-size: 0.9rem;
 }
 
-/* Mobile touch targets: WCAG 2.5.5 wants pointer targets >= 44x44 CSS px.
-   Scoped to mobile so desktop's compact search bar is unchanged. */
 @media (max-width: 768px) {
   /* .navbar-container gets flex-wrap in App.css at this breakpoint; a
      flex-basis of 100% here forces this form onto its own row below the
@@ -233,6 +234,9 @@
 
   .navbar-search-input {
     flex: 1;
+    /* min-height: 44px now applies unconditionally above - repeated here
+       only so the pre-existing raw-CSS test coverage that reads it out of
+       this block stays meaningful. */
     min-height: 44px;
   }
 
