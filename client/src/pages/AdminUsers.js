@@ -274,14 +274,14 @@ const AdminUsers = () => {
                         </button>
                       ) : (
                         <>
-                          <button 
-                            className="btn btn-sm btn-warning"
+                          <button
+                            className="btn btn-sm btn-outline-warning"
                             onClick={() => openTimeoutModal(user)}
                           >
                             Timeout
                           </button>
-                          <button 
-                            className="btn btn-sm btn-danger"
+                          <button
+                            className="btn btn-sm btn-outline-danger"
                             onClick={() => openBanModal(user)}
                           >
                             Ban
