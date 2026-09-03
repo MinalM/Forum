@@ -62,7 +62,7 @@ is blocked too, so every `<i class="fas fa-*">` icon renders blank locally.
 Icon-only controls therefore look like unlabelled coloured squares in local
 screenshots — that is the sandbox, not the product.
 
-- [ ] **Every control below the 44px minimum is only fixed at mobile widths —
+- [x] **Every control below the 44px minimum is only fixed at mobile widths —
   at desktop the same controls are 13-42px, and the tests cannot see it.**
   Measured on a local run at 1280px, logged in as admin, across eleven
   authenticated pages. The worst offenders, by rendered height:

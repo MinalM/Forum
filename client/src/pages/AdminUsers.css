@@ -20,6 +20,14 @@
   max-width: 500px;
 }
 
+.search-form input {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  flex: 1;
+}
+
 .user-list-container {
   overflow-x: auto;
   margin-bottom: 20px;

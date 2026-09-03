@@ -16,6 +16,10 @@ const navbarSource = fs.readFileSync(
   path.join(__dirname, '../components/layout/Navbar.js'),
   'utf8'
 );
+const adminUsersCss = fs.readFileSync(
+  path.join(__dirname, '../pages/AdminUsers.css'),
+  'utf8'
+);
 
 const MIN_TARGET = 44;
 
@@ -64,6 +68,43 @@ function extractRule(css, selector) {
   const matches = [...css.matchAll(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`, 'g'))];
   if (matches.length === 0) throw new Error(`selector "${selector}" not found`);
   return matches.map((match) => match[1]).join('\n');
+}
+
+// Removes every top-level `@media (...) { ... }` block (any condition, not
+// just max-width: 768px) from the source, leaving only the CSS that applies
+// regardless of viewport width - used to prove a rule holds *without* a
+// media-query wrapper, rather than merely holding somewhere in the file.
+function stripMediaQueries(css) {
+  let result = '';
+  let i = 0;
+
+  while (true) {
+    const start = css.indexOf('@media', i);
+    if (start === -1) {
+      result += css.slice(i);
+      break;
+    }
+    result += css.slice(i, start);
+
+    const openBrace = css.indexOf('{', start);
+    let depth = 0;
+    let end = -1;
+    for (let j = openBrace; j < css.length; j++) {
+      if (css[j] === '{') depth++;
+      if (css[j] === '}') {
+        depth--;
+        if (depth === 0) {
+          end = j;
+          break;
+        }
+      }
+    }
+    if (end === -1) throw new Error('unbalanced braces in media query');
+
+    i = end + 1;
+  }
+
+  return result;
 }
 
 function minPx(declarations, property) {
@@ -181,6 +222,62 @@ describe('category page filter select is at least 44px tall', () => {
   it('declares a min-height of 44px on #post-filter within the mobile media block', () => {
     const appMobile = extractMobileMediaDeclarations(appCss);
     const rule = extractRule(appMobile, '#post-filter');
+    expect(minPx(rule, 'min-height')).toBeGreaterThanOrEqual(MIN_TARGET);
+  });
+});
+
+// The mobile-scoped tests above only prove these controls are >=44px under
+// `@media (max-width: 768px)` - at wider viewports the same markup used to
+// fall back to whatever (often much smaller) height the unconditional rule
+// gave it. These assert the 44px floor applies with the media queries
+// stripped out entirely, i.e. at every width, closing that gap. WCAG 2.5.8
+// (AA, WCAG 2.2) sets a 24px floor regardless of input device; these use the
+// same 44px (2.5.5) target the rest of the suite does since that's what the
+// shipped rules apply everywhere now.
+describe('touch targets meet the 44px floor at every width, not just <=768px', () => {
+  const indexUnconditional = stripMediaQueries(indexCss);
+  const navbarUnconditional = stripMediaQueries(navbarCss);
+  const appUnconditional = stripMediaQueries(appCss);
+
+  it('.btn is at least 44px tall with no max-width wrapper', () => {
+    const rule = extractRule(indexUnconditional, '.btn');
+    expect(minPx(rule, 'min-height')).toBeGreaterThanOrEqual(MIN_TARGET);
+  });
+
+  it('.btn-sm is at least 44px tall with no max-width wrapper', () => {
+    const rule = extractRule(indexUnconditional, '.btn-sm');
+    expect(minPx(rule, 'min-height')).toBeGreaterThanOrEqual(MIN_TARGET);
+  });
+
+  it('.form-control is at least 44px tall with no max-width wrapper', () => {
+    const rule = extractRule(indexUnconditional, '.form-control');
+    expect(minPx(rule, 'min-height')).toBeGreaterThanOrEqual(MIN_TARGET);
+  });
+
+  it('bare <select> elements are at least 44px tall with no max-width wrapper', () => {
+    const rule = extractRule(indexUnconditional, 'select');
+    expect(minPx(rule, 'min-height')).toBeGreaterThanOrEqual(MIN_TARGET);
+  });
+
+  it('the navbar search input is at least 44px tall with no max-width wrapper', () => {
+    const rule = extractRule(navbarUnconditional, '.navbar-search-input');
+    expect(minPx(rule, 'min-height')).toBeGreaterThanOrEqual(MIN_TARGET);
+  });
+
+  it('the navbar search submit button is at least 44x44 with no max-width wrapper', () => {
+    const rule = extractRule(navbarUnconditional, '.navbar-search-btn');
+    expect(minPx(rule, 'min-height')).toBeGreaterThanOrEqual(MIN_TARGET);
+    expect(minPx(rule, 'min-width')).toBeGreaterThanOrEqual(MIN_TARGET);
+  });
+
+  it('the moderator dashboard Pending/Resolved/Dismissed tabs are at least 44px tall', () => {
+    const rule = extractRule(appUnconditional, '.filter-btn');
+    expect(minPx(rule, 'min-height')).toBeGreaterThanOrEqual(MIN_TARGET);
+  });
+
+  it('the admin user-search input is at least 44px tall', () => {
+    const adminUsersUnconditional = stripMediaQueries(adminUsersCss);
+    const rule = extractRule(adminUsersUnconditional, '.search-form input');
     expect(minPx(rule, 'min-height')).toBeGreaterThanOrEqual(MIN_TARGET);
   });
 });
