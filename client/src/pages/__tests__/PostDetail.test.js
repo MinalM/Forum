@@ -7,7 +7,7 @@ import axios from 'axios';
 import PostDetail from '../PostDetail';
 import { AlertProvider, useAlert } from '../../context/AlertContext';
 import { AuthProvider } from '../../context/AuthContext';
-import { getHeadMeta, getHeadLink } from '../../test-utils/headMeta';
+import { getHeadMeta, getHeadLink, getJsonLd } from '../../test-utils/headMeta';
 
 const appCss = fs.readFileSync(path.join(__dirname, '../../App.css'), 'utf8');
 
@@ -122,6 +122,106 @@ describe('PostDetail <head> metadata', () => {
     expect(getHeadLink('canonical').getAttribute('href')).toContain(
       `/posts/${POST_ID}`
     );
+  });
+});
+
+describe('PostDetail QAPage JSON-LD', () => {
+  const acceptedAnswer = {
+    _id: '000000000000000000000030',
+    content: 'Use LoRA for parameter-efficient fine-tuning.',
+    user: { _id: '000000000000000000000031', name: 'Helper Hana' },
+    createdAt: new Date().toISOString(),
+    isAnswer: true,
+    upvotes: ['000000000000000000000001'],
+    downvotes: []
+  };
+
+  const otherAnswer = {
+    _id: '000000000000000000000032',
+    content: 'Full fine-tuning also works if you have the compute.',
+    user: { _id: '000000000000000000000033', name: 'Helper Hank' },
+    createdAt: new Date().toISOString(),
+    isAnswer: false,
+    upvotes: [],
+    downvotes: []
+  };
+
+  const reply = {
+    _id: '000000000000000000000034',
+    parentComment: acceptedAnswer._id,
+    content: 'Thanks, that worked!',
+    user: { _id: '000000000000000000000035', name: 'Asker' },
+    createdAt: new Date().toISOString(),
+    isAnswer: false,
+    upvotes: [],
+    downvotes: []
+  };
+
+  beforeEach(() => {
+    axios.get.mockReset();
+    axios.get.mockImplementation((url) => {
+      if (url.endsWith('/comments')) {
+        return Promise.resolve({
+          data: { success: true, data: [acceptedAnswer, otherAnswer, reply] }
+        });
+      }
+      return Promise.resolve({
+        data: { success: true, data: { ...basePost, upvotes: ['x'], downvotes: [] } }
+      });
+    });
+  });
+
+  it('emits parseable QAPage JSON-LD with the accepted answer and vote counts', async () => {
+    renderPostDetail();
+
+    await screen.findByText('Orphaned post');
+
+    const jsonLd = await waitFor(() => {
+      const parsed = getJsonLd();
+      expect(parsed).not.toBeNull();
+      return parsed;
+    });
+
+    expect(jsonLd['@context']).toBe('https://schema.org');
+    expect(jsonLd['@type']).toBe('QAPage');
+    expect(jsonLd.mainEntity['@type']).toBe('Question');
+    expect(jsonLd.mainEntity.name).toBe('Orphaned post');
+    expect(jsonLd.mainEntity.upvoteCount).toBe(1);
+    // Replies are not separate answers - only the two top-level comments count.
+    expect(jsonLd.mainEntity.answerCount).toBe(2);
+    expect(jsonLd.mainEntity.acceptedAnswer).toMatchObject({
+      '@type': 'Answer',
+      text: 'Use LoRA for parameter-efficient fine-tuning.',
+      upvoteCount: 1,
+      author: { '@type': 'Person', name: 'Helper Hana' }
+    });
+    expect(jsonLd.mainEntity.suggestedAnswer).toEqual([
+      expect.objectContaining({
+        text: 'Full fine-tuning also works if you have the compute.'
+      })
+    ]);
+  });
+
+  it('omits acceptedAnswer when no answer on the post is accepted', async () => {
+    axios.get.mockImplementation((url) => {
+      if (url.endsWith('/comments')) {
+        return Promise.resolve({
+          data: { success: true, data: [{ ...otherAnswer, isAnswer: false }] }
+        });
+      }
+      return Promise.resolve({ data: { success: true, data: basePost } });
+    });
+
+    renderPostDetail();
+    await screen.findByText('Orphaned post');
+
+    const jsonLd = await waitFor(() => {
+      const parsed = getJsonLd();
+      expect(parsed).not.toBeNull();
+      return parsed;
+    });
+
+    expect(jsonLd.mainEntity).not.toHaveProperty('acceptedAnswer');
   });
 });
 

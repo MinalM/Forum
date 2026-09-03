@@ -10,7 +10,7 @@ import { getPostStatus } from '../utils/postStatus';
 import { getAvatarUrl } from '../utils/avatar';
 import ReportModal from '../components/reports/ReportModal';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
-import Seo, { truncateDescription } from '../components/common/Seo';
+import Seo, { truncateDescription, buildQaPageJsonLd } from '../components/common/Seo';
 
 const PostDetail = () => {
   const { id } = useParams();
@@ -434,6 +434,7 @@ const PostDetail = () => {
         description={truncateDescription(markdownToPlainText(post.content))}
         path={`/posts/${post._id}`}
         type="article"
+        jsonLd={buildQaPageJsonLd({ post, answers: topLevelComments })}
       />
       <div className="post-detail">
         <div className="post-header">
