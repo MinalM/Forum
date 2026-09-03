@@ -167,7 +167,7 @@ screenshots — that is the sandbox, not the product.
   used by the archived overflow tests); a test asserts the table has non-zero
   horizontal cell padding and that the destructive row actions are not rendered
   with the same emphasis class as the primary one; existing `AdminUsers` tests
-  updated.
+  updated. Done: PR #108.
 
 ### Growth: adoption and engagement
 
