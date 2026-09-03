@@ -1491,17 +1491,25 @@
   margin-bottom: 0.25rem;
 }
 
-.stat-content h3 {
+.stat-content .stat-value {
   font-size: 0.9rem;
   font-weight: 700;
   color: var(--primary-color);
   margin: 0;
 }
 
-.stat-content p {
+.stat-content .stat-label {
   margin: 0;
   color: #666;
   font-size: 0.6rem;
+}
+
+/* Moderator dashboard's stat-card heading for the report filter tabs below it. */
+.filter-heading {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--primary-color);
+  margin: 0;
 }
 
 /* Moderator dashboard's Pending/Resolved/Dismissed report filter tabs. */

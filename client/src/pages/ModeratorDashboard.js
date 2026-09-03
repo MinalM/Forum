@@ -107,7 +107,7 @@ const ModeratorDashboard = () => {
       
       <div className="dashboard-stats">
         <div className="stat-card">
-          <h3>Reports</h3>
+          <h2 className="filter-heading">Filter Reports</h2>
           <div className="filter-controls">
             <button 
               className={`filter-btn ${filter === 'pending' ? 'active' : ''}`}
