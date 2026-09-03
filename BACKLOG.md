@@ -121,7 +121,7 @@ screenshots — that is the sandbox, not the product.
   (`HomeHeadingLevel.test.js` and its siblings); existing dashboard tests
   updated. Done: PR #106.
 
-- [ ] **`Dashboard`'s "Go to Admin Dashboard" / "Go to Moderator Dashboard"
+- [x] **`Dashboard`'s "Go to Admin Dashboard" / "Go to Moderator Dashboard"
   links never render, for any role.** Found while fixing the dashboard
   heading outlines above. `client/src/pages/Dashboard.js` gates those two
   `dashboard-section`s on `hasPermission(user, 'admin')` and
@@ -138,7 +138,7 @@ screenshots — that is the sandbox, not the product.
   for route-guarding).
   Acceptance: a test renders `Dashboard` as an admin user and asserts the
   "Go to Admin Dashboard" link is present; same for a moderator user and
-  "Go to Moderator Dashboard"; a plain `user` role sees neither.
+  "Go to Moderator Dashboard"; a plain `user` role sees neither. Done: PR #107.
 
 - [ ] **`/admin` and `/admin/users` overflow horizontally on mobile, and the
   user table is unusable at any width.** Measured locally: `/admin/users`
