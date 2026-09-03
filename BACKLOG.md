@@ -138,7 +138,7 @@ screenshots — that is the sandbox, not the product.
   for route-guarding).
   Acceptance: a test renders `Dashboard` as an admin user and asserts the
   "Go to Admin Dashboard" link is present; same for a moderator user and
-  "Go to Moderator Dashboard"; a plain `user` role sees neither. Done: PR TBD.
+  "Go to Moderator Dashboard"; a plain `user` role sees neither. Done: PR #107.
 
 - [ ] **`/admin` and `/admin/users` overflow horizontally on mobile, and the
   user table is unusable at any width.** Measured locally: `/admin/users`
