@@ -20,7 +20,11 @@ const ROOT_DIR = path.join(__dirname, '..', '..');
 const BUILD_DIR = path.join(ROOT_DIR, 'client', 'build');
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:2000';
 const STATIC_SERVER_PORT = 4599;
-const PRERENDER_PORT = 4174;
+// Vite's own default `vite preview` port - scripts/prerender.js defaults to
+// it too, and it's the one non-3000/2000 origin the server's dev/CI CORS
+// allowlist grants (server/src/server.ts), so axios calls from the crawled
+// page actually reach the API instead of being CORS-blocked.
+const PRERENDER_PORT = 4173;
 
 function startStaticServer(rootDir: string, port: number): Promise<http.Server> {
   const server = http.createServer(async (req, res) => {
