@@ -9,6 +9,8 @@ const {
   registerUser,
   loginUser,
   logout,
+  forgotPassword,
+  resetPassword,
   getMe,
   updateDetails,
   updatePassword,
@@ -32,6 +34,8 @@ const advancedResults = require('../middleware/advancedResults');
 router.post('/register', registerUser);
 router.post('/login', loginUser);
 router.get('/logout', logout);
+router.post('/forgotpassword', forgotPassword);
+router.put('/resetpassword/:resettoken', resetPassword);
 
 // Public profile endpoint
 router.get('/:id/profile', getUserProfile);

@@ -1,7 +1,11 @@
 const request = require('supertest');
 const mongoose = require('mongoose');
+const crypto = require('crypto');
 const User = require('../../models/User');
 const app = require('../../server');
+
+jest.mock('../../utils/sendEmail', () => jest.fn().mockResolvedValue());
+const sendEmail = require('../../utils/sendEmail');
 
 describe('Authentication & Authorization', () => {
   let server;
@@ -251,6 +255,156 @@ describe('Authentication & Authorization', () => {
       expect(updatedUser.onboardingCompleted).toBe(true);
       expect(updatedUser.targetRole).toBe('ML Engineer');
       expect(updatedUser.skills).toEqual(['Python', 'pandas']);
+    });
+  });
+
+  describe('Forgot / Reset Password', () => {
+    beforeEach(async () => {
+      await User.create({
+        name: 'Test User',
+        email: 'test@example.com',
+        password: 'password123'
+      });
+    });
+
+    describe('POST /api/users/forgotpassword', () => {
+      it('responds 200 and emails a reset link for a known email', async () => {
+        const res = await request(app)
+          .post('/api/users/forgotpassword')
+          .send({ email: 'test@example.com' });
+
+        expect(res.status).toBe(200);
+        expect(res.body).toHaveProperty('success', true);
+        expect(sendEmail).toHaveBeenCalledTimes(1);
+        expect(sendEmail.mock.calls[0][0]).toMatchObject({ to: 'test@example.com' });
+
+        const user = await User.findOne({ email: 'test@example.com' });
+        expect(user.resetPasswordToken).toBeTruthy();
+        expect(user.resetPasswordExpire.getTime()).toBeGreaterThan(Date.now());
+      });
+
+      it('responds 200 without emailing or writing a token for an unknown email', async () => {
+        const res = await request(app)
+          .post('/api/users/forgotpassword')
+          .send({ email: 'nobody@example.com' });
+
+        expect(res.status).toBe(200);
+        expect(res.body).toHaveProperty('success', true);
+        expect(sendEmail).not.toHaveBeenCalled();
+      });
+
+      it('responds 200 without emailing or writing a token for a Google-only account', async () => {
+        await User.create({
+          name: 'OAuth User',
+          email: 'oauth@example.com',
+          googleId: 'google-123',
+          authProvider: 'google'
+        });
+
+        const res = await request(app)
+          .post('/api/users/forgotpassword')
+          .send({ email: 'oauth@example.com' });
+
+        expect(res.status).toBe(200);
+        expect(sendEmail).not.toHaveBeenCalled();
+
+        const user = await User.findOne({ email: 'oauth@example.com' });
+        expect(user.resetPasswordToken).toBeFalsy();
+      });
+    });
+
+    describe('PUT /api/users/resetpassword/:resettoken', () => {
+      const getResetToken = async email => {
+        await request(app).post('/api/users/forgotpassword').send({ email });
+        const plainToken = sendEmail.mock.calls[0][0].text.match(/reset-password\/([a-f0-9]+)/)[1];
+        return plainToken;
+      };
+
+      it('sets the new password and clears the token for a valid token', async () => {
+        const resetToken = await getResetToken('test@example.com');
+
+        const res = await request(app)
+          .put(`/api/users/resetpassword/${resetToken}`)
+          .send({ password: 'newpassword456' });
+
+        expect(res.status).toBe(200);
+        expect(res.body).toHaveProperty('token');
+
+        const user = await User.findOne({ email: 'test@example.com' });
+        expect(user.resetPasswordToken).toBeFalsy();
+        expect(user.resetPasswordExpire).toBeFalsy();
+
+        const loginRes = await request(app)
+          .post('/api/users/login')
+          .send({ email: 'test@example.com', password: 'newpassword456' });
+        expect(loginRes.status).toBe(200);
+      });
+
+      it('rejects a reused token', async () => {
+        const resetToken = await getResetToken('test@example.com');
+
+        await request(app)
+          .put(`/api/users/resetpassword/${resetToken}`)
+          .send({ password: 'newpassword456' });
+
+        const res = await request(app)
+          .put(`/api/users/resetpassword/${resetToken}`)
+          .send({ password: 'anotherpassword789' });
+
+        expect(res.status).toBe(400);
+        expect(res.body).toHaveProperty('success', false);
+      });
+
+      it('rejects an expired token', async () => {
+        const resetToken = await getResetToken('test@example.com');
+        const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+
+        await User.findOneAndUpdate(
+          { email: 'test@example.com' },
+          { resetPasswordExpire: Date.now() - 1000 }
+        );
+
+        const res = await request(app)
+          .put(`/api/users/resetpassword/${resetToken}`)
+          .send({ password: 'newpassword456' });
+
+        expect(res.status).toBe(400);
+        expect(res.body).toHaveProperty('success', false);
+
+        // Sanity check the token really was the stored one before expiry made it invalid.
+        const user = await User.findOne({ email: 'test@example.com' });
+        expect(user.resetPasswordToken).toBe(hashedToken);
+      });
+
+      it('rejects a garbage/unknown token', async () => {
+        const res = await request(app)
+          .put('/api/users/resetpassword/not-a-real-token')
+          .send({ password: 'newpassword456' });
+
+        expect(res.status).toBe(400);
+        expect(res.body).toHaveProperty('success', false);
+      });
+
+      it('rejects a reset attempt for a Google-only account even with a manually-set token', async () => {
+        const oauthUser = await User.create({
+          name: 'OAuth User',
+          email: 'oauth@example.com',
+          googleId: 'google-456',
+          authProvider: 'google'
+        });
+
+        const plainToken = 'a-manually-issued-token';
+        oauthUser.resetPasswordToken = crypto.createHash('sha256').update(plainToken).digest('hex');
+        oauthUser.resetPasswordExpire = Date.now() + 30 * 60 * 1000;
+        await oauthUser.save({ validateBeforeSave: false });
+
+        const res = await request(app)
+          .put(`/api/users/resetpassword/${plainToken}`)
+          .send({ password: 'newpassword456' });
+
+        expect(res.status).toBe(400);
+        expect(res.body).toHaveProperty('success', false);
+      });
     });
   });
 });
