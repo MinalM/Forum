@@ -11,6 +11,7 @@ import { getAvatarUrl } from '../utils/avatar';
 import ReportModal from '../components/reports/ReportModal';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import Seo, { truncateDescription, buildQaPageJsonLd } from '../components/common/Seo';
+import TagChip from '../components/common/TagChip';
 
 const PostDetail = () => {
   const { id } = useParams();
@@ -482,10 +483,8 @@ const PostDetail = () => {
 
         <div className="post-tags">
           {post.tags &&
-            post.tags.map((tag, index) => (
-              <span key={index} className="badge badge-primary">
-                {tag}
-              </span>
+            post.tags.map((tag) => (
+              <TagChip key={tag} tag={tag} />
             ))}
         </div>
 

@@ -280,4 +280,9 @@ describe('touch targets meet the 44px floor at every width, not just <=768px', (
     const rule = extractRule(adminUsersUnconditional, '.search-form input');
     expect(minPx(rule, 'min-height')).toBeGreaterThanOrEqual(MIN_TARGET);
   });
+
+  it('the tag follow/unfollow toggle (TagChip) is at least 44px tall', () => {
+    const rule = extractRule(appUnconditional, '.tag-chip-btn');
+    expect(minPx(rule, 'min-height')).toBeGreaterThanOrEqual(MIN_TARGET);
+  });
 });

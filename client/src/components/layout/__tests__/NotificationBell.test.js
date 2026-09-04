@@ -115,6 +115,30 @@ describe('NotificationBell (authenticated member)', () => {
     });
   });
 
+  it('describes a tag_post notification', async () => {
+    mockAuthenticated({
+      count: 1,
+      notifications: [
+        {
+          ...NOTIFICATION,
+          _id: '000000000000000000000098',
+          comment: undefined,
+          type: 'tag_post'
+        }
+      ]
+    });
+    renderBell();
+
+    const button = await screen.findByRole('button', { name: /notifications/i });
+    fireEvent.click(button);
+
+    expect(
+      await screen.findByRole('link', {
+        name: /grace posted "best way to learn transformers\?" in a tag you follow/i
+      })
+    ).toBeInTheDocument();
+  });
+
   it('shows an empty state when there are no notifications', async () => {
     mockAuthenticated({ count: 0, notifications: [] });
     renderBell();

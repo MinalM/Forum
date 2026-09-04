@@ -12,12 +12,13 @@ const NotificationSchema = new mongoose.Schema({
     ref: 'Post',
     required: true
   },
+  // Set for 'answer'/'reply' notifications; absent for 'tag_post' ones,
+  // which are about a new post, not a comment.
   comment: {
     type: mongoose.Schema.ObjectId,
-    ref: 'Comment',
-    required: true
+    ref: 'Comment'
   },
-  // The member whose new answer/reply triggered this notification.
+  // The member whose new answer/reply/post triggered this notification.
   actor: {
     type: mongoose.Schema.ObjectId,
     ref: 'User',
@@ -25,7 +26,7 @@ const NotificationSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['answer', 'reply'],
+    enum: ['answer', 'reply', 'tag_post'],
     required: true
   },
   read: {
