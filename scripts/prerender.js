@@ -5,14 +5,24 @@
  * `client/index.html` ships an empty `<div id="root">` - fine for a real
  * browser (index.js's createRoot fills it in) but useless to a crawler that
  * doesn't execute JavaScript, so post bodies were previously invisible to
- * non-JS indexers. This script runs *after* `npm run build` (client/build
- * already exists), serves that build with `vite preview`, drives a real
- * headless browser over STATIC_ROUTES plus a sample of the most recent
- * posts, and overwrites each route's `index.html` in client/build with the
- * fully-rendered DOM - script/link tags included, so a real browser still
- * hydrates normally on top of it.
+ * non-JS indexers. This script (re)builds the client itself with
+ * `REACT_APP_API_URL` forced to match the `apiUrl` it will crawl against,
+ * serves that build with `vite preview`, drives a real headless browser
+ * over STATIC_ROUTES plus a sample of the most recent posts, and overwrites
+ * each route's `index.html` in client/build with the fully-rendered DOM -
+ * script/link tags included, so a real browser still hydrates normally on
+ * top of it.
  *
- * Run after building the client:
+ * It rebuilds rather than trusting an already-built client/build because
+ * `client/.env.production` (committed, correct for a real deploy - it
+ * points at the production API) outranks a plain `client/.env` file in a
+ * `vite build`, which is production mode by default. A caller that wants
+ * the crawl to hit e.g. a local API instead of production needs that
+ * override to actually win, which only a real process env var achieves
+ * (dotenv - and so Vite's env loading - never overrides a var already set
+ * in the environment).
+ *
+ * Usage:
  *   REACT_APP_API_URL=http://localhost:2000 node scripts/prerender.js
  *
  * Never fails the build: an unreachable API degrades to STATIC_ROUTES only
@@ -21,7 +31,7 @@
  */
 const path = require('path');
 const fs = require('fs/promises');
-const { spawn } = require('child_process');
+const { spawn, execFileSync } = require('child_process');
 
 // `@playwright/test` is required lazily inside main(), not up here: its
 // entry point pulls in MCP-bundle code that does a dynamic import() Jest
@@ -113,6 +123,17 @@ async function main() {
   // extra shell process on some npm versions, and killing just the npx PID
   // then leaves that shell (and vite itself) running as orphans.
   const viteBin = path.join(CLIENT_DIR, 'node_modules', '.bin', 'vite');
+
+  // REACT_APP_API_URL as a real env var (not written to a file) so it
+  // outranks client/.env.production's committed value - see the module
+  // doc comment above.
+  console.log(`[prerender] building client with REACT_APP_API_URL=${apiUrl}`);
+  execFileSync(viteBin, ['build'], {
+    cwd: CLIENT_DIR,
+    stdio: 'inherit',
+    env: { ...process.env, REACT_APP_API_URL: apiUrl }
+  });
+
   const preview = spawn(
     viteBin,
     ['preview', '--port', String(port), '--strictPort'],
