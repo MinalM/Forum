@@ -146,7 +146,16 @@ async function main() {
   try {
     await waitForServer(baseUrl);
 
-    const postIds = await fetchRecentPostIds(apiUrl, postLimit);
+    let postIds = await fetchRecentPostIds(apiUrl, postLimit);
+    if (postIds.length === 0) {
+      // fetchRecentPostIds already logged why. One more try after a short
+      // pause in case that was a transient blip (seen in CI: the API
+      // server intermittently refuses connections right when this script's
+      // own `vite build` is running, presumably CPU contention on a
+      // shared runner) rather than the API being genuinely unreachable.
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      postIds = await fetchRecentPostIds(apiUrl, postLimit);
+    }
     const routes = resolveRoutes({ postIds });
     console.log(`[prerender] crawling ${routes.length} route(s): ${routes.join(', ')}`);
 
