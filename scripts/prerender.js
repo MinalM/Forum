@@ -164,24 +164,6 @@ async function main() {
     const browser = await chromium.launch({ args: ['--no-sandbox'] });
     try {
       const page = await browser.newPage();
-      // Temporary diagnostics: surface why a post route's API calls might
-      // be failing (CORS, 404, network error) instead of just "timed out
-      // waiting for .post-title" - remove once the post-route crawl is
-      // confirmed reliable in CI.
-      page.on('console', (msg) => {
-        if (msg.type() === 'error') console.log(`[prerender][console] ${msg.text()}`);
-      });
-      page.on('pageerror', (err) => console.log(`[prerender][pageerror] ${err.message}`));
-      page.on('requestfailed', (req) => {
-        if (req.url().includes('/api/')) {
-          console.log(`[prerender][requestfailed] ${req.url()}: ${req.failure()?.errorText}`);
-        }
-      });
-      page.on('response', (res) => {
-        if (res.url().includes('/api/')) {
-          console.log(`[prerender][response] ${res.status()} ${res.url()}`);
-        }
-      });
       for (const route of routes) {
         // One retry per route: a single slow/cold navigation shouldn't drop
         // a route from the crawl outright.
