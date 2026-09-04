@@ -380,6 +380,26 @@
   white-space: normal;
 }
 
+/* Tags become follow/unfollow toggles for signed-in members (TagChip) -
+   min-height carries the 44px touch target without changing the badge's
+   font size or horizontal padding. */
+.tag-chip-btn {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  border: none;
+  cursor: pointer;
+}
+
+.tag-chip-btn:hover {
+  opacity: 0.85;
+}
+
+.tag-chip-btn.following {
+  background-color: var(--secondary-color);
+  color: var(--text-on-secondary);
+}
+
 .post-actions {
   display: flex;
   flex-wrap: wrap;

@@ -1212,6 +1212,73 @@ describe('PostDetail save toggle', () => {
   });
 });
 
+describe('PostDetail tag follow toggle', () => {
+  const MEMBER = { _id: '000000000000000000000042', name: 'Member', role: 'user' };
+  const tagPost = { ...basePost, tags: ['pytorch', 'nlp'] };
+
+  const setup = ({ subscribed = false } = {}) => {
+    axios.get.mockReset();
+    axios.put.mockReset();
+    axios.post.mockReset();
+    axios.delete.mockReset();
+    localStorage.clear();
+    localStorage.setItem('token', 'fake-token');
+    axios.get.mockImplementation((url) => {
+      if (url === '/api/users/me') {
+        return Promise.resolve({ data: { data: MEMBER } });
+      }
+      if (url.endsWith('/comments')) {
+        return Promise.resolve({ data: { success: true, data: [] } });
+      }
+      if (url.startsWith('/api/tags/')) {
+        return Promise.resolve({ data: { success: true, data: { subscribed } } });
+      }
+      if (url.endsWith('/subscribe')) {
+        return Promise.resolve({ data: { success: true, data: { subscribed: false } } });
+      }
+      return Promise.resolve({ data: { success: true, data: tagPost } });
+    });
+  };
+
+  afterEach(() => {
+    localStorage.clear();
+  });
+
+  it('renders each tag as a follow toggle for a signed-in member', async () => {
+    setup({ subscribed: false });
+    renderPostDetail();
+
+    await screen.findByRole('button', { name: /follow tag pytorch/i });
+    await screen.findByRole('button', { name: /follow tag nlp/i });
+  });
+
+  it('follows a tag on click', async () => {
+    setup({ subscribed: false });
+    axios.post.mockResolvedValue({ data: { success: true, data: { subscribed: true } } });
+    renderPostDetail();
+
+    const btn = await screen.findByRole('button', { name: /follow tag pytorch/i });
+    fireEvent.click(btn);
+
+    await screen.findByRole('button', { name: /following tag pytorch/i });
+    expect(axios.post).toHaveBeenCalledWith('/api/tags/pytorch/subscribe');
+  });
+
+  it('renders plain, non-interactive tag badges for unauthenticated visitors', async () => {
+    axios.get.mockReset();
+    axios.get.mockImplementation((url) => {
+      if (url.endsWith('/comments')) {
+        return Promise.resolve({ data: { success: true, data: [] } });
+      }
+      return Promise.resolve({ data: { success: true, data: tagPost } });
+    });
+    renderPostDetail();
+
+    await screen.findByText('pytorch');
+    expect(screen.queryByRole('button', { name: /follow tag pytorch/i })).not.toBeInTheDocument();
+  });
+});
+
 const AlertCountProbe = () => {
   const { alerts } = useAlert();
   return <div data-testid="alert-count">{alerts.length}</div>;

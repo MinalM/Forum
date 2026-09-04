@@ -8,6 +8,9 @@ const POLL_INTERVAL_MS = 60000;
 const describeNotification = (notification) => {
   const actorName = notification.actor?.name || 'Someone';
   const postTitle = notification.post?.title || 'a post';
+  if (notification.type === 'tag_post') {
+    return `${actorName} posted "${postTitle}" in a tag you follow`;
+  }
   return notification.type === 'reply'
     ? `${actorName} replied on "${postTitle}"`
     : `${actorName} answered "${postTitle}"`;
