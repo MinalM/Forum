@@ -270,25 +270,66 @@ enough traffic for it to work.
   or the deployed sitemap's post URLs) shows real post title/body content
   in the raw HTML; `build-and-test` and the rest of `deploy` unchanged.
 
-- [ ] **Email delivery, password reset, and welcome email.** The server
-  has no email capability — no mail dependency, no `sendEmail`, no
-  reset-token fields on `User`. Two consequences: a member who registered
-  with a local password and forgets it is permanently locked out with no
-  recovery path, and there is no channel to bring anyone back. Add a mail
-  transport (a provider SDK — Resend / Postmark / SES — configured by
-  env, a no-op logger transport under test/dev), `resetPasswordToken` +
-  `resetPasswordExpire` on `User`, `POST /api/auth/forgot-password`
-  (always 200; emails a time-boxed single-use link only when the address
-  exists) and `POST /api/auth/reset-password/:token`, a "Forgot
-  password?" flow off `/login`, and a welcome email on registration.
-  Google-OAuth accounts (no local password) stay out of the reset path.
-  Acceptance: integration tests for forgot-password (known and unknown
-  email both 200; a token row is written only for the known one),
-  reset-password (valid token sets the new password and clears the
-  token; expired / used / blank token 400s; an OAuth-only account cannot
-  reset), and that registration enqueues exactly one welcome send;
-  delivery is asserted through a test double, never a real send; existing
-  auth tests unchanged.
+**Email delivery, password reset, and welcome email.** Split into slices —
+the original item bundled a mail transport, the forgot/reset-password API,
+a client UI flow, and a welcome send into one PR, which is bigger than the
+one-PR-or-less rule allows.
+
+- [x] **Mail transport + forgot/reset-password API (server-only).** Adds
+  `server/utils/sendEmail.js` (SMTP via `nodemailer`, so it works with any
+  provider that exposes an SMTP endpoint — Resend, Postmark, SES, etc. —
+  configured by `SMTP_HOST`/`SMTP_PORT`/`SMTP_SECURE`/`SMTP_USER`/
+  `SMTP_PASS`/`MAIL_FROM`; falls back to a no-op logger transport under
+  test or when `SMTP_HOST` is unset, e.g. local dev). `User` already had
+  unused `resetPasswordToken`/`resetPasswordExpire` fields — this is what
+  populates them. Adds `POST /api/users/forgotpassword` (always 200; looks
+  up the address, and for a `local`-auth match only, writes a hashed,
+  30-minute single-use token and emails the plaintext reset link — unknown
+  addresses and Google-only accounts get the same 200 with no email sent,
+  so the endpoint can't be used to enumerate accounts) and
+  `PUT /api/users/resetpassword/:resettoken` (valid unexpired token sets
+  the new password, clears the token, and logs the user in; invalid,
+  expired, reused, blank, or Google-account tokens 400). Routes live under
+  `/api/users` rather than a new `/api/auth` prefix, matching how
+  register/login/logout are already mounted there.
+  Acceptance: integration tests for forgot-password (known local email
+  200 + emailed + token written; unknown email and Google-only account
+  both 200 + not emailed + no token written), reset-password (valid token
+  sets the new password, clears the token, and the new password logs in;
+  reused token 400s; expired token 400s; garbage/unknown token 400s; a
+  Google-only account 400s even with a manually-set valid token); delivery
+  is asserted through a `jest.mock` of `sendEmail`, never a real send;
+  existing auth tests unchanged. Done: PR #111.
+  Caveat: `mongodb-memory-server`'s binary download 403s from this sandbox
+  (documented above under "Logged-in experience"), so the new suite
+  — like every other server integration suite — could not be run to
+  completion here; verified instead by loading every touched module in a
+  plain `node -e` smoke test (no runtime errors) and by manual review
+  against the acceptance criteria above. Treat the first CI run on PR #111
+  as the real verification.
+- [ ] **"Forgot password?" UI flow off `/login`.** Builds on the API
+  slice above. Add a "Forgot password?" link on the login page, a
+  request-reset form (email in, generic "check your email" message out,
+  matching the API's always-200 non-enumerating behaviour), and a
+  `/reset-password/:token` page (new password + confirm, submits to the
+  API above, redirects to login with a success message on 200, shows an
+  inline error — "invalid or expired link" — on 400 rather than a form
+  validation message).
+  Acceptance: component tests for the request-reset form (submits the
+  email, shows the generic confirmation regardless of API response
+  shape), the reset page (valid-token submit redirects with a success
+  message; a 400 response renders the invalid/expired state, not a
+  generic error), and that both pages carry a real `<title>`/heading and
+  meet the 44px control floor; existing login page tests unchanged.
+- [ ] **Welcome email on registration.** Builds on the mail transport
+  slice above. On successful `POST /api/users/register`, send exactly one
+  welcome email to the new user (fire-and-forget — a delivery failure
+  must not fail registration or roll back the created account).
+  Acceptance: an integration test asserts `sendEmail` (mocked) is called
+  exactly once with the new user's address on a successful registration,
+  zero times on a failed one, and that a `sendEmail` rejection still
+  leaves the response and created `User` row unaffected; existing
+  registration tests unchanged.
 
 - [ ] **Weekly digest email and notification preferences.** Builds on
   the email item above. The in-app notification bell (#69) only fires
