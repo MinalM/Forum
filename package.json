@@ -19,6 +19,7 @@
     "start:prod": "NODE_ENV=production node server/server.js",
     "seed": "node server/seeder.js -i",
     "seed:delete": "node server/seeder.js -d",
+    "prerender": "node scripts/prerender.js",
     "ci": "npm ci && cd client && npm ci && cd ../server && npm ci",
     "mongo:up": "docker-compose -f docker-compose.dev.yml up -d",
     "mongo:down": "docker-compose -f docker-compose.dev.yml down",

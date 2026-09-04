@@ -35,7 +35,11 @@ const app = (0, express_1.default)();
 const PORT = process.env.PORT || 5000;
 const allowedOrigins = process.env.NODE_ENV === 'production'
     ? [process.env.CORS_ORIGIN || 'https://cerulean-marshmallow-003d16.netlify.app']
-    : ['http://localhost:3000', 'http://127.0.0.1:3000', 'http://localhost:2000', 'http://127.0.0.1:2000'];
+    : [
+        'http://localhost:3000', 'http://127.0.0.1:3000',
+        'http://localhost:2000', 'http://127.0.0.1:2000',
+        'http://localhost:4173', 'http://127.0.0.1:4173'
+    ];
 app.use((0, cors_1.default)({
     origin: function (origin, callback) {
         if (!origin)

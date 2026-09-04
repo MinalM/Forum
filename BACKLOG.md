@@ -206,18 +206,69 @@ enough traffic for it to work.
   it, but is worth a note here in case a future per-page metadata item
   assumes head-only placement.
 
-- [ ] **Prerendering for crawlers.** Even with per-route tags (item
-  above) and the sitemap/robots.txt item above, a crawler that does not
-  execute JavaScript still receives `client/index.html`'s empty
-  `<div id="root">` — the client has no SSR or prerender step, so post
-  bodies are invisible to non-JS indexers. Add crawler prerendering
-  (Netlify's built-in prerender service, or a build-time pass such as
-  `react-snap` / `@prerenderer` over the static routes plus a sample of
-  post URLs).
+- [x] **Prerendering for crawlers: the build-time pass itself.** Even with
+  per-route tags (item above) and the sitemap/robots.txt item above, a
+  crawler that does not execute JavaScript still receives
+  `client/index.html`'s empty `<div id="root">` — the client has no SSR or
+  prerender step, so post bodies are invisible to non-JS indexers. Split
+  from the original single item (below) because wiring the result into the
+  actual deploy pipeline needs a `.github/workflows` edit, which this
+  autonomous cycle cannot make (same constraint as the three CI items
+  under "Carried over" below) — this slice is everything that doesn't
+  require that edit.
+  Added `scripts/prerender.js`: after `npm run build` produces
+  `client/build`, it serves that build with `vite preview`, drives a real
+  headless Chromium (`@playwright/test`, already a root dependency) over
+  `/`, `/categories`, `/search` plus up to 20 of the most recent posts
+  (`GET /api/posts?limit=20&sort=-createdAt`), and overwrites each route's
+  `index.html` in `client/build` with the fully-rendered DOM — script/link
+  tags included, so a real browser still hydrates normally on top of it.
+  Never fails the build: an unreachable API degrades to the three static
+  routes only (logged, not thrown), and a route that errors mid-crawl is
+  skipped with a warning rather than aborting the rest. Runnable via
+  `npm run prerender` after `npm run build`.
   Acceptance: an e2e/integration check fetches a post URL with a non-JS
   user agent (or inspects the prerendered artifact) and asserts the post
   title and body text are in the raw HTML; the existing Playwright suite
-  against the live SPA still passes.
+  against the live SPA still passes. Done: PR #110 — `tests/e2e/prerender.test.ts`
+  runs the script against CI's already-built `client/build` and already-seeded
+  API, serves the result with a plain (non-browser) `fetch` carrying a
+  Googlebot user agent, and asserts the post title/body and the homepage are
+  real content rather than the empty root shell; `server/__tests__/tooling/prerender.test.js`
+  unit-tests the route-resolution/output-path/API-degradation logic. Neither
+  suite could be run locally in this sandbox — the e2e test needs the live
+  DB+API CI provides, and even the pure-logic unit test is blocked by
+  `server/jest.setup.js`'s global `beforeAll`, which starts
+  `mongodb-memory-server` for every server-side Jest file regardless of
+  content and can't download its binary here (the same `fastdl.mongodb.org`
+  403 BACKLOG.md's "Logged-in experience" section already documents); the
+  pure route/path functions were hand-verified with a scratch Node script
+  instead. Both are written to run for real in CI, where earlier PRs'
+  `server/__tests__/tooling/*.test.js` files evidently do pass.
+
+- [ ] **Wire the crawler-prerender pass into the deploy pipeline.** Split
+  off the item above: `scripts/prerender.js` exists and is proven against a
+  live build+API in its own e2e test, but nothing runs it as part of an
+  actual deploy yet. `.github/workflows/node.js.yml`'s `deploy` job builds
+  `client/build` and publishes it via `nwtgck/actions-netlify` without ever
+  calling `npm run prerender` — and even if it did, that job doesn't install
+  Playwright's browser binaries (only `build-and-test` runs
+  `npx playwright install chromium`), so the crawl would fail immediately.
+  `client/netlify.toml`'s own `[build] command` is not the live path either:
+  the GitHub Actions `deploy` job builds the client itself and hands
+  `nwtgck/actions-netlify` the pre-built `client/build` folder to publish,
+  bypassing Netlify's own build system (and thus its `netlify.toml`
+  `command`) entirely. Needs a `.github/workflows/node.js.yml` edit — add a
+  `npx playwright install chromium` step and an `npm run prerender` step
+  (with `REACT_APP_API_URL` pointed at the deployed Render API) to the
+  `deploy` job before the Netlify publish step — which per this repo's
+  autonomous-cycle rules requires its own explicitly-scoped, human-driven
+  PR, same as the three CI items under "Carried over" below.
+  Acceptance: the `deploy` job's build step is followed by a prerender step
+  that does not fail the job when the API is briefly unreachable; a
+  post-merge check against the live site (`curl` with a non-JS user agent,
+  or the deployed sitemap's post URLs) shows real post title/body content
+  in the raw HTML; `build-and-test` and the rest of `deploy` unchanged.
 
 - [ ] **Email delivery, password reset, and welcome email.** The server
   has no email capability — no mail dependency, no `sendEmail`, no
