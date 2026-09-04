@@ -1,7 +1,9 @@
+const crypto = require('crypto');
 const ErrorResponse = require('../utils/errorResponse');
 const asyncHandler = require('../middleware/async');
 const passport = require('passport');
 const User = require('../models/User');
+const sendEmail = require('../utils/sendEmail');
 const { userSignupCounter, userLoginCounter, userLoginOAuthCounter, userSessionCounter } = require('../dist/instrumentation/metrics');
 
 // @desc    Register user
@@ -67,6 +69,88 @@ exports.loginUser = asyncHandler(async (req, res, next) => {
     auth_method: 'regular',
     role: user.role
   });
+
+  sendTokenResponse(user, 200, res);
+});
+
+// @desc    Request a password reset link
+// @route   POST /api/users/forgotpassword
+// @access  Public
+exports.forgotPassword = asyncHandler(async (req, res, next) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return next(new ErrorResponse('Please provide an email', 400));
+  }
+
+  const user = await User.findOne({ email });
+
+  // Always respond 200 whether or not the address exists, so this endpoint
+  // can't be used to enumerate accounts. Google-only accounts have no
+  // password to reset, so they're treated the same as an unknown address.
+  if (!user || user.authProvider !== 'local') {
+    return res.status(200).json({ success: true, data: {} });
+  }
+
+  const resetToken = crypto.randomBytes(20).toString('hex');
+  user.resetPasswordToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+  user.resetPasswordExpire = Date.now() + 30 * 60 * 1000; // 30 minutes
+  await user.save({ validateBeforeSave: false });
+
+  const clientUrl = process.env.CORS_ORIGIN || 'http://localhost:3000';
+  const resetUrl = `${clientUrl}/reset-password/${resetToken}`;
+
+  try {
+    await sendEmail({
+      to: user.email,
+      subject: 'Password reset request',
+      text: `You requested a password reset for your AI/ML Career Forum account.\n\n` +
+        `Reset your password within 30 minutes here: ${resetUrl}\n\n` +
+        `If you didn't request this, you can safely ignore this email.`
+    });
+  } catch (err) {
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpire = undefined;
+    await user.save({ validateBeforeSave: false });
+    return next(new ErrorResponse('Email could not be sent', 500));
+  }
+
+  res.status(200).json({ success: true, data: {} });
+});
+
+// @desc    Reset password using a token from the forgot-password email
+// @route   PUT /api/users/resetpassword/:resettoken
+// @access  Public
+exports.resetPassword = asyncHandler(async (req, res, next) => {
+  const { resettoken } = req.params;
+
+  if (!resettoken || !resettoken.trim()) {
+    return next(new ErrorResponse('Invalid or expired token', 400));
+  }
+
+  if (!req.body.password) {
+    return next(new ErrorResponse('Please provide a new password', 400));
+  }
+
+  const hashedToken = crypto.createHash('sha256').update(resettoken).digest('hex');
+
+  const user = await User.findOne({
+    resetPasswordToken: hashedToken,
+    resetPasswordExpire: { $gt: Date.now() }
+  });
+
+  if (!user) {
+    return next(new ErrorResponse('Invalid or expired token', 400));
+  }
+
+  if (user.authProvider !== 'local') {
+    return next(new ErrorResponse('This account cannot reset its password', 400));
+  }
+
+  user.password = req.body.password;
+  user.resetPasswordToken = undefined;
+  user.resetPasswordExpire = undefined;
+  await user.save();
 
   sendTokenResponse(user, 200, res);
 });
