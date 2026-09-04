@@ -48,6 +48,9 @@ describe('Saved posts', () => {
 
   describe('SavedPost model', () => {
     it('enforces a unique compound index on user + post', async () => {
+      // Without this, the check below races mongoose's background
+      // createIndexes() call - init() resolves once index builds are done.
+      await SavedPost.init();
       const indexes = await SavedPost.collection.getIndexes({ full: true });
       const userPostIndex = indexes.find(
         (idx) => idx.key.user === 1 && idx.key.post === 1
