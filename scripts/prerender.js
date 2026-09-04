@@ -77,10 +77,14 @@ async function fetchRecentPostIds(apiUrl, limit, fetchImpl = fetch) {
 // Navigates to one route and returns its fully-rendered outerHTML. Post
 // routes additionally wait for `.post-title` so the crawl doesn't capture a
 // loading state for the one page type whose content is the whole point.
+// Generous timeouts: this runs alongside a full dev stack (DB, API, another
+// client instance) competing for the same CI runner, and a post page does
+// more work than the static routes (an extra fetch for the post + its
+// populated comments, then markdown rendering).
 async function prerenderRoute(page, baseUrl, route) {
-  await page.goto(`${baseUrl}${route}`, { waitUntil: 'networkidle', timeout: 30000 });
+  await page.goto(`${baseUrl}${route}`, { waitUntil: 'networkidle', timeout: 45000 });
   if (isPostRoute(route)) {
-    await page.waitForSelector('.post-title', { timeout: 15000 });
+    await page.waitForSelector('.post-title', { timeout: 20000 });
   }
   return page.content();
 }
@@ -131,14 +135,23 @@ async function main() {
     try {
       const page = await browser.newPage();
       for (const route of routes) {
-        try {
-          const html = await prerenderRoute(page, baseUrl, route);
-          const outputPath = routeToOutputPath(BUILD_DIR, route);
-          await fs.mkdir(path.dirname(outputPath), { recursive: true });
-          await fs.writeFile(outputPath, html);
-          console.log(`[prerender] wrote ${path.relative(BUILD_DIR, outputPath)}`);
-        } catch (err) {
-          console.warn(`[prerender] skipping ${route}: ${err.message}`);
+        // One retry per route: a single slow/cold navigation shouldn't drop
+        // a route from the crawl outright.
+        for (let attempt = 1; attempt <= 2; attempt += 1) {
+          try {
+            const html = await prerenderRoute(page, baseUrl, route);
+            const outputPath = routeToOutputPath(BUILD_DIR, route);
+            await fs.mkdir(path.dirname(outputPath), { recursive: true });
+            await fs.writeFile(outputPath, html);
+            console.log(`[prerender] wrote ${path.relative(BUILD_DIR, outputPath)}`);
+            break;
+          } catch (err) {
+            if (attempt === 2) {
+              console.warn(`[prerender] skipping ${route}: ${err.message}`);
+            } else {
+              console.warn(`[prerender] retrying ${route} after error: ${err.message}`);
+            }
+          }
         }
       }
     } finally {
