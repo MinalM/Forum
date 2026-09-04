@@ -8,7 +8,7 @@ const Category = require('../models/Category');
 const { trace, SpanStatusCode } = require('@opentelemetry/api');
 const { postCreatedCounter, postViewCounter } = require('../dist/instrumentation/metrics');
 const { getExperimentationService } = require('../dist/services/experimentation');
-const { subscribeUserToPost } = require('../utils/subscriptions');
+const { subscribeUserToPost, notifyTagFollowers } = require('../utils/subscriptions');
 const { hasPersonalizationSignal, roleWordSet, scorePost } = require('../utils/feedRanking');
 const { findUnansweredPostIds } = require('../utils/postCounters');
 
@@ -187,6 +187,13 @@ exports.createPost = asyncHandler(async (req, res, next) => {
       // A member is automatically subscribed to answers/replies on their
       // own posts.
       await subscribeUserToPost(req.user.id, post._id);
+
+      // Notify anyone following one of this post's tags, except the author.
+      await notifyTagFollowers({
+        postId: post._id,
+        actorId: req.user.id,
+        tags: post.tags
+      });
 
       // Increment metric using centralized counter
       postCreatedCounter.add(1, {

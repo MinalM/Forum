@@ -1,4 +1,5 @@
 const Subscription = require('../models/Subscription');
+const TagSubscription = require('../models/TagSubscription');
 const Notification = require('../models/Notification');
 
 // Idempotently subscribes a user to a post. Safe to call on every post a
@@ -34,4 +35,34 @@ async function notifySubscribers({ postId, actorId, commentId, type }) {
   );
 }
 
-module.exports = { subscribeUserToPost, notifySubscribers };
+// Writes a 'tag_post' notification for every member following any of
+// `tags` (case-insensitive), except `actorId` - the post's own author.
+// Followers of more than one matching tag are notified once, not once per
+// matching tag.
+async function notifyTagFollowers({ postId, actorId, tags }) {
+  if (!Array.isArray(tags) || tags.length === 0) {
+    return;
+  }
+
+  const normalizedTags = tags.map(tag => tag.toLowerCase());
+
+  const followerIds = await TagSubscription.find({
+    tag: { $in: normalizedTags },
+    user: { $ne: actorId }
+  }).distinct('user');
+
+  if (followerIds.length === 0) {
+    return;
+  }
+
+  await Notification.insertMany(
+    followerIds.map(userId => ({
+      user: userId,
+      post: postId,
+      actor: actorId,
+      type: 'tag_post'
+    }))
+  );
+}
+
+module.exports = { subscribeUserToPost, notifySubscribers, notifyTagFollowers };
