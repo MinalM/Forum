@@ -256,21 +256,48 @@ enough traffic for it to work.
   unsubscribe token flips `digest` to `off` with no session; the
   scheduled entry point is covered and sends no real mail in tests.
 
-- [ ] **Follow a tag or topic.** `Subscription` is post-only
-  (`user` + `post`, `server/models/Subscription.js`) — a member can be
-  told about replies on one thread but cannot say "tell me about new
-  questions tagged `pytorch`." Generalise it to an optional `tag` target
-  (a `tag` field alongside `post`, exactly one of the two set, each with
-  its own unique compound index — or a separate `TagSubscription` model
-  if that reads cleaner), a follow/unfollow control on tag chips and
-  category pages, and a hook in `createPost` that calls `notifySubscribers`
-  for every follower of any of the new post's tags, never the author.
-  Feeds the digest item above.
+- [x] **Follow a tag or topic: the model, API, notification hook, and the
+  PostDetail tag chips.** `Subscription` was post-only (`user` + `post`,
+  `server/models/Subscription.js`) — a member could be told about replies
+  on one thread but couldn't say "tell me about new questions tagged
+  `pytorch`." Added a separate `TagSubscription` model (`user` + `tag`,
+  unique compound index, tag stored lowercased) rather than overloading
+  `Subscription` with an optional field, since the two have different
+  shapes (no post reference, no comment on the resulting notification) and
+  this kept the well-covered existing post-subscribe code and tests
+  untouched. `POST`/`DELETE`/`GET /api/tags/:tag/subscribe` and
+  `GET /api/tags/subscriptions` (the "tags I follow" listing), and a hook
+  in `createPost` that notifies every distinct follower of any of the new
+  post's tags, except the author, via a new `notifyTagFollowers` util
+  (`Notification.comment` had to become optional and gained a `tag_post`
+  type, since this notification isn't about a comment). On `PostDetail`,
+  each tag badge is now a `TagChip` follow/unfollow toggle for signed-in
+  members (plain badge otherwise); `NotificationBell` describes the new
+  notification type.
   Acceptance: integration tests for follow/unfollow idempotency, a new
   post notifying every tag follower except its author, no duplicate
   notification when a follower follows two of the post's tags, and
   per-user isolation on the "tags I follow" listing; the existing
-  post-subscribe tests still pass.
+  post-subscribe tests still pass. Done: PR #112.
+
+- [ ] **Follow a tag or topic: extend the follow toggle to list/feed tag
+  chips.** Split off the item above, which shipped the model, API,
+  notification hook, and the `TagChip` follow toggle on `PostDetail`
+  only. `PostItem` (the card used on Home, category pages, Search, and
+  every other post list) still renders tags as plain static badges — the
+  literal original scope ("a follow/unfollow control on tag chips and
+  category pages") wanted list/card tag chips followable too, but turning
+  every tag on every card of a list into an interactive 44px control was
+  a large, visually-invasive UI change in its own right and didn't belong
+  in the same PR as the backend work. `TagChip` (`client/src/components/
+  common/TagChip.js`) is already shared/reusable — this item is "use it
+  in `PostItem` too, with a layout that doesn't blow out card density."
+  Acceptance: `PostItem`'s tag badges become `TagChip` follow toggles
+  (or an equivalent affordance) without regressing existing card-density/
+  overflow tests (`postTagsOverflow.test.js` et al.); a component test
+  renders a card with tags, follows one, and asserts the request hits
+  `POST /api/tags/:tag/subscribe`; 44px targets maintained; existing
+  `PostItem` tests still pass.
 
 - [ ] **Markdown composer with a preview tab and a formatting toolbar.**
   Post and comment bodies render Markdown now (archived items), but the
