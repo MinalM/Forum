@@ -73,3 +73,28 @@ describe('Login autocomplete attributes', () => {
     expect(screen.getByLabelText('Password')).toHaveAttribute('autocomplete', 'current-password');
   });
 });
+
+describe('Login forgot-password link', () => {
+  beforeEach(() => {
+    axios.get.mockReset();
+    axios.get.mockRejectedValue(new Error('not authenticated'));
+  });
+
+  it('links to the forgot-password page', async () => {
+    render(
+      <AuthProvider>
+        <AlertProvider>
+          <MemoryRouter>
+            <Login />
+          </MemoryRouter>
+        </AlertProvider>
+      </AuthProvider>
+    );
+
+    await screen.findByText('Sign in to your AI/ML Career Forum account');
+    expect(screen.getByRole('link', { name: /forgot password\?/i })).toHaveAttribute(
+      'href',
+      '/forgot-password'
+    );
+  });
+});

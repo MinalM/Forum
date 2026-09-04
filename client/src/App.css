@@ -1025,6 +1025,11 @@
   text-align: center;
 }
 
+.forgot-password-link {
+  text-align: right;
+  margin-bottom: 1.5rem;
+}
+
 /* Onboarding (post-signup track step) */
 .onboarding-container {
   background: var(--surface-color);

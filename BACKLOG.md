@@ -307,20 +307,31 @@ one-PR-or-less rule allows.
   plain `node -e` smoke test (no runtime errors) and by manual review
   against the acceptance criteria above. Treat the first CI run on PR #111
   as the real verification.
-- [ ] **"Forgot password?" UI flow off `/login`.** Builds on the API
-  slice above. Add a "Forgot password?" link on the login page, a
-  request-reset form (email in, generic "check your email" message out,
-  matching the API's always-200 non-enumerating behaviour), and a
+- [x] **"Forgot password?" UI flow off `/login`.** Builds on the API
+  slice above. Added a "Forgot password?" link on the login page, a
+  `/forgot-password` request-reset form (email in, generic "check your
+  email" message out, matching the API's always-200 non-enumerating
+  behaviour — the same confirmation renders whether the POST resolves or
+  rejects, so the UI never reveals whether an address exists), and a
   `/reset-password/:token` page (new password + confirm, submits to the
-  API above, redirects to login with a success message on 200, shows an
-  inline error — "invalid or expired link" — on 400 rather than a form
-  validation message).
+  API above, redirects to `/login` with a success alert on 200, shows an
+  inline "Invalid or expired link" error on any failure response rather
+  than a form validation message — every failure the `resetPassword`
+  controller returns is a 400, so no separate status branching was
+  needed). Both new pages reuse `.form-container`/`.form-control`/`.btn`,
+  which already carry an unconditional `min-height: 44px` from the
+  earlier desktop touch-target item, so no new CSS was needed for the
+  44px floor.
   Acceptance: component tests for the request-reset form (submits the
-  email, shows the generic confirmation regardless of API response
-  shape), the reset page (valid-token submit redirects with a success
-  message; a 400 response renders the invalid/expired state, not a
-  generic error), and that both pages carry a real `<title>`/heading and
-  meet the 44px control floor; existing login page tests unchanged.
+  email to `POST /api/users/forgotpassword`, shows the generic
+  confirmation on both a resolved and a rejected request), the reset
+  page (valid submit posts to `PUT /api/users/resetpassword/:token` and
+  redirects to `/login` with a success alert; a 400 response renders the
+  invalid/expired state inline without navigating; a client-side password
+  mismatch shows an alert without calling the API), and that both pages
+  set a real `<title>`/level-1 heading; a new Login test asserts the
+  "Forgot password?" link points at `/forgot-password`; existing login
+  page tests unchanged. Done: PR #113.
 - [ ] **Welcome email on registration.** Builds on the mail transport
   slice above. On successful `POST /api/users/register`, send exactly one
   welcome email to the new user (fire-and-forget — a delivery failure
