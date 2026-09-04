@@ -22,8 +22,13 @@
 const path = require('path');
 const fs = require('fs/promises');
 const { spawn } = require('child_process');
-const { chromium } = require('@playwright/test');
 
+// `@playwright/test` is required lazily inside main(), not up here: its
+// entry point pulls in MCP-bundle code that does a dynamic import() Jest
+// can't handle without --experimental-vm-modules, which broke every test
+// in this file (server/__tests__/tooling/prerender.test.js) even though
+// none of them touch chromium. Only main() ever launches a browser, so
+// only main() needs the module loaded.
 const CLIENT_DIR = path.join(__dirname, '..', 'client');
 const BUILD_DIR = path.join(CLIENT_DIR, 'build');
 const STATIC_ROUTES = ['/', '/categories', '/search'];
@@ -94,6 +99,7 @@ async function waitForServer(url, { retries = 60, delayMs = 500 } = {}) {
 }
 
 async function main() {
+  const { chromium } = require('@playwright/test');
   const port = process.env.PRERENDER_PORT || DEFAULT_PORT;
   const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:2000';
   const postLimit = Number(process.env.PRERENDER_POST_LIMIT) || DEFAULT_POST_LIMIT;
