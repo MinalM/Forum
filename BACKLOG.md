@@ -424,14 +424,42 @@ as the "Email delivery, password reset, and welcome email" split above).
   were hand-verified with a scratch Node script instead. Treat the first
   CI run on this PR as the real verification. Done: PR #116.
 
-- [ ] **Weekly digest: notification preferences screen.** Builds on the
+- [x] **Weekly digest: notification preferences screen.** Builds on the
   slices above. Add a preferences screen (or a section of the existing
   profile/settings screen) where a member can see and change their
   digest preference, backed by a small API to read/update
   `notificationPrefs.digest` for the signed-in user.
-  Acceptance: a component test toggles the preference and asserts the
-  request/response round-trip; an API test asserts the endpoint reads
-  and updates only the signed-in user's own preference.
+  Added `GET`/`PUT /api/users/notification-prefs` (`server/controllers/users.js`,
+  `server/routes/users.js`), scoped to `req.user.id` like the existing
+  `/me`/`updatedetails` routes rather than the admin-only `/:id` routes, so a
+  member can only ever read or change their own preference; `PUT` 400s on
+  anything other than `'weekly'`/`'off'`. On the client, `EditProfile.js`
+  gained a "Notification Preferences" section — a `<select>` that saves
+  immediately on change (no separate submit button, since it's a toggle
+  rather than a multi-field form) via the new `PUT` endpoint, with an
+  optimistic update that rolls back and shows an alert if the request fails.
+  It's intentionally independent of the existing "Update Profile" form/
+  `updateProfile()` (which still only covers name/email/bio/etc.) rather than
+  folding `notificationPrefs` into `updatedetails`, matching this backlog
+  item's "backed by a small API" framing.
+  Acceptance: `server/__tests__/integration/notificationPrefs.test.js` covers
+  the default (`weekly`), a successful update, an invalid-value 400 that
+  leaves the stored value unchanged, auth-required on both routes, and that
+  updating one user's preference never touches another user's;
+  `client/src/pages/__tests__/EditProfileNotificationPrefs.test.js` covers
+  the toggle preselecting the signed-in user's current value, a successful
+  save round-tripping through `PUT /api/users/notification-prefs`, and a
+  failed save reverting the toggle and showing an error alert; existing
+  `EditProfile`/user-account tests unchanged.
+  Caveat: same `mongodb-memory-server`/`fastdl.mongodb.org` 403 documented
+  throughout this file — the new server integration suite could not run to
+  completion here; confirmed the failure is the shared DB bootstrap and not
+  the new code by running the full pre-existing server suite (all 36 suites
+  fail identically) and by loading every touched module in a plain `node -e`
+  smoke test (routes register, no runtime errors). The client suite ran to
+  completion locally: all 68 suites / 366 tests pass, including the 4 new
+  tests. Treat the first CI run on this PR as the real server-side
+  verification. Done: PR #117.
 
 - [x] **Follow a tag or topic: the model, API, notification hook, and the
   PostDetail tag chips.** `Subscription` was post-only (`user` + `post`,

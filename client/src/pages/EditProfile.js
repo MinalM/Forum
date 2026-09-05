@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
+import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { useAlert } from '../context/AlertContext';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
@@ -19,6 +20,8 @@ const EditProfile = () => {
     aiMlExperience: '',
     skills: ''
   });
+  const [digestPref, setDigestPref] = useState('weekly');
+  const [savingDigestPref, setSavingDigestPref] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -31,6 +34,7 @@ const EditProfile = () => {
         aiMlExperience: user.aiMlExperience || 'beginner',
         skills: user.skills ? user.skills.join(', ') : ''
       });
+      setDigestPref(user.notificationPrefs?.digest || 'weekly');
     }
   }, [user]);
 
@@ -64,6 +68,24 @@ const EditProfile = () => {
     if (success) {
       setAlert('Profile updated successfully', 'success');
       navigate(`/profile/${user._id}`);
+    }
+  };
+
+  const onDigestPrefChange = async e => {
+    const value = e.target.value;
+    const previousValue = digestPref;
+
+    setDigestPref(value);
+    setSavingDigestPref(true);
+
+    try {
+      await axios.put('/api/users/notification-prefs', { digest: value });
+      setAlert('Notification preference saved', 'success');
+    } catch (err) {
+      setDigestPref(previousValue);
+      setAlert('Failed to save notification preference', 'danger');
+    } finally {
+      setSavingDigestPref(false);
     }
   };
 
@@ -174,6 +196,22 @@ const EditProfile = () => {
             Update Profile
           </button>
         </form>
+
+        <h2 className="form-title">Notification Preferences</h2>
+        <div className="form-group">
+          <label htmlFor="digestPref">Weekly digest email</label>
+          <select
+            className="form-control"
+            id="digestPref"
+            name="digestPref"
+            value={digestPref}
+            onChange={onDigestPrefChange}
+            disabled={savingDigestPref}
+          >
+            <option value="weekly">On — email me a weekly summary</option>
+            <option value="off">Off — don&apos;t email me</option>
+          </select>
+        </div>
       </div>
     </div>
   );
