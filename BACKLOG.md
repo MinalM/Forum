@@ -382,7 +382,7 @@ as the "Email delivery, password reset, and welcome email" split above).
   by manual review against the acceptance criteria above. Treat the first
   CI run on this PR as the real verification. Done: PR #115.
 
-- [ ] **Weekly digest: send the email, a scheduled entry point, and the
+- [x] **Weekly digest: send the email, a scheduled entry point, and the
   unsubscribe token.** Builds on the builder above. Wire
   `buildWeeklyDigests` up to `server/utils/sendEmail.js` to send each
   recipient's digest, add a scheduled entry point (a script following the
@@ -390,11 +390,39 @@ as the "Email delivery, password reset, and welcome email" split above).
   point itself covered by a test, not a live cron wired into infra), and
   a one-click unsubscribe link (signed token, no login required) that
   flips `notificationPrefs.digest` to `'off'`.
-  Acceptance: sending is asserted through a `jest.mock` of `sendEmail`,
-  never a real send; the scheduled entry point is covered and sends no
-  real mail in tests; the unsubscribe token flips `digest` to `'off'`
-  with no session, and an invalid/expired/reused token 400s without
-  changing the preference.
+  Added `User.digestUnsubscribeToken`/`digestUnsubscribeExpire` (same
+  hashed-token-with-expiry shape as `resetPasswordToken`/
+  `resetPasswordExpire`). `server/utils/digestMailer.js`'s
+  `sendDigestEmail`/`sendWeeklyDigestEmails` mint a fresh single-use token
+  per send, persist it, and email each recipient via `sendEmail`,
+  logging and skipping any one recipient's send failure rather than
+  aborting the rest of the run. `GET /api/users/digest-unsubscribe/:token`
+  (`server/controllers/users.js`, mirroring `resetPassword`'s
+  hash-and-expiry-check shape) flips `notificationPrefs.digest` to
+  `'off'` and clears the token, with no session required. The scheduled
+  entry point is `scripts/send-weekly-digest.js` (shape of
+  `scripts/cleanup-post-tags.js`): fetches every user, builds the week's
+  digests via `buildWeeklyDigests`, sends them, and accepts an optional
+  `--since=<ISO date>` for a manual re-run after a missed week. Since the
+  digest is composed outside any HTTP request, the emailed unsubscribe
+  link needs the server's own base URL from a new `SERVER_URL` env var
+  (documented in `.env.example`, defaulting to `http://localhost:2000`).
+  Acceptance: `server/__tests__/integration/digestMailer.test.js` mocks
+  `sendEmail` and asserts the token/link/content and that one recipient's
+  send failure doesn't abort the batch;
+  `server/__tests__/tooling/sendWeeklyDigest.test.js` covers the entry
+  point end to end (opt-outs/no-activity skipped, `sendEmail` mocked) plus
+  `parseSinceArg`'s default/explicit/invalid cases;
+  `server/__tests__/integration/digestUnsubscribe.test.js` covers the
+  valid/reused/expired/garbage token cases against the real route.
+  Caveat: same `mongodb-memory-server`/`fastdl.mongodb.org` 403 as the
+  builder slice above — none of the three new suites could run to
+  completion in this sandbox; confirmed the failure is the shared DB
+  bootstrap and not the new code by running the full pre-existing suite
+  and seeing the identical failure on all 35 suites. The pure
+  `parseSinceArg` logic and `digestMailer`'s token/link/content generation
+  were hand-verified with a scratch Node script instead. Treat the first
+  CI run on this PR as the real verification. Done: PR #116.
 
 - [ ] **Weekly digest: notification preferences screen.** Builds on the
   slices above. Add a preferences screen (or a section of the existing
@@ -622,3 +650,26 @@ one PR rather than three.
   server test suite still passes; note in the PR whether `express`/
   `body-parser`/`superagent` have since published their own fix
   upstream (in which case the override may already be unnecessary).
+
+- [ ] **`server/.env.production` is committed to the repo with live
+  secrets.** Discovered while checking existing env-var conventions for
+  the weekly digest's unsubscribe link: `.gitignore` only ignores the
+  literal `.env`, not `.env.production`, so `server/.env.production` —
+  containing a real MongoDB Atlas connection string with credentials,
+  `JWT_SECRET`, and `SESSION_SECRET` — has been committed since PR #65
+  and sits in the repo's git history on every clone. This is a live
+  secrets leak, not a hypothetical one.
+  Needs a human: rotate the Atlas credentials, `JWT_SECRET`, and
+  `SESSION_SECRET` in Render's actual environment config, then remove
+  the file from the working tree going forward (add `.env.production` to
+  `.gitignore`, `git rm --cached` it) — and, since rotation alone doesn't
+  un-leak already-published history, decide whether the exposed commits
+  need scrubbing (e.g. a filtered history rewrite), given this is a
+  private repo that's already been cloned into at least this sandbox.
+  Deliberately not fixed inline: rotating live production credentials
+  needs a human with Render/Atlas access, and rewriting git history is
+  exactly the kind of destructive, hard-to-reverse operation these
+  autonomous-cycle ground rules keep off-limits without a human driving.
+  Acceptance: `server/.env.production` no longer trackable going forward;
+  the Atlas/JWT/session secrets it contained are rotated; a fresh clone
+  can no longer read the old credentials.
