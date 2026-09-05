@@ -332,7 +332,7 @@ one-PR-or-less rule allows.
   set a real `<title>`/level-1 heading; a new Login test asserts the
   "Forgot password?" link points at `/forgot-password`; existing login
   page tests unchanged. Done: PR #113.
-- [ ] **Welcome email on registration.** Builds on the mail transport
+- [x] **Welcome email on registration.** Builds on the mail transport
   slice above. On successful `POST /api/users/register`, send exactly one
   welcome email to the new user (fire-and-forget — a delivery failure
   must not fail registration or roll back the created account).
@@ -340,7 +340,7 @@ one-PR-or-less rule allows.
   exactly once with the new user's address on a successful registration,
   zero times on a failed one, and that a `sendEmail` rejection still
   leaves the response and created `User` row unaffected; existing
-  registration tests unchanged.
+  registration tests unchanged. Done: PR #114.
 
 - [ ] **Weekly digest email and notification preferences.** Builds on
   the email item above. The in-app notification bell (#69) only fires

@@ -74,6 +74,41 @@ describe('Authentication & Authorization', () => {
       expect(res.status).toBe(400);
       expect(res.body).toHaveProperty('success', false);
     });
+
+    it('sends exactly one welcome email to the new user on successful registration', async () => {
+      const res = await request(app)
+        .post('/api/users/register')
+        .send(validUser);
+
+      expect(res.status).toBe(200);
+      expect(sendEmail).toHaveBeenCalledTimes(1);
+      expect(sendEmail.mock.calls[0][0]).toMatchObject({ to: validUser.email });
+    });
+
+    it('does not send a welcome email when registration fails', async () => {
+      await User.create(validUser);
+
+      const res = await request(app)
+        .post('/api/users/register')
+        .send(validUser);
+
+      expect(res.status).toBe(400);
+      expect(sendEmail).not.toHaveBeenCalled();
+    });
+
+    it('still creates the user and returns success when the welcome email fails to send', async () => {
+      sendEmail.mockRejectedValueOnce(new Error('SMTP down'));
+
+      const res = await request(app)
+        .post('/api/users/register')
+        .send(validUser);
+
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveProperty('token');
+
+      const user = await User.findOne({ email: validUser.email });
+      expect(user).toBeDefined();
+    });
   });
 
   describe('User Login', () => {
