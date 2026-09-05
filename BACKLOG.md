@@ -342,22 +342,68 @@ one-PR-or-less rule allows.
   leaves the response and created `User` row unaffected; existing
   registration tests unchanged. Done: PR #114.
 
-- [ ] **Weekly digest email and notification preferences.** Builds on
-  the email item above. The in-app notification bell (#69) only fires
-  while a tab is open, so a member who does not visit gets nothing. Add
-  an opt-out weekly digest — new answers/replies on posts they authored
-  or subscribed to since the last send, plus up to N unanswered
-  questions matching their `skills` / `targetRole` (reusing
-  `server/utils/feedRanking.js`) — sent by a scheduled job. Add a
-  `notificationPrefs` object on `User` (`digest: 'weekly' | 'off'`,
-  default `weekly`), a preferences screen, and a one-click unsubscribe
-  link (signed token, no login required) in every digest footer.
-  Acceptance: a test drives the digest builder against a fixture with a
-  mix of subscribed / authored / skill-matching posts and asserts the
-  recipient list and each recipient's contents (a member with
-  `digest: 'off'` is skipped; one with nothing new is not emailed); the
-  unsubscribe token flips `digest` to `off` with no session; the
-  scheduled entry point is covered and sends no real mail in tests.
+**Weekly digest email and notification preferences.** The in-app
+notification bell (#69) only fires while a tab is open, so a member who
+does not visit gets nothing. Split into slices — the original item bundled
+a model field, the recipient/content builder, the actual send, a
+scheduled entry point, an unsubscribe token, and a preferences screen into
+one PR, which is bigger than the one-PR-or-less rule allows (same reasoning
+as the "Email delivery, password reset, and welcome email" split above).
+
+- [x] **Digest content builder: `notificationPrefs` on `User` and the
+  weekly digest builder (server-only — no email send or scheduling yet).**
+  This slice is everything provable with pure data: who gets a digest and
+  what goes in it, not sending mail or running on a schedule.
+  Added `notificationPrefs.digest` (`'weekly' | 'off'`, default
+  `'weekly'`, so the digest is opt-out) to `User`. Added
+  `server/utils/digestBuilder.js`: `buildDigestForUser(user, since)`
+  collects new answers/replies since `since` on posts the user authored or
+  is subscribed to (excluding the user's own comments and
+  hidden/moderated ones), plus up to 5 unanswered questions ranked against
+  the user's profile — reusing `server/utils/feedRanking.js` via a new
+  shared `rankUnansweredForUser` (`server/utils/postCounters.js`)
+  extracted from the "You can answer these" rail
+  (`server/controllers/posts.js`'s `getRecommendedUnanswered`, refactored
+  to call the same function so the two features' ranking can't drift
+  apart — same output, no behavior change). `buildDigestForUser` returns
+  `null` for an opted-out user or one whose digest would be entirely
+  empty (a blank email is worse than no email); `buildWeeklyDigests(users,
+  since)` maps a user list down to the non-null digests only.
+  Acceptance: tests drive the builder against a fixture with a mix of
+  subscribed / authored / skill-matching posts and assert the recipient
+  list and each recipient's contents; a member with `digest: 'off'` is
+  skipped even with new activity; one with nothing new is not included;
+  existing `getRecommendedUnanswered`/"for you" ranking tests unchanged.
+  Caveat: `mongodb-memory-server`'s binary download still 403s in this
+  sandbox (documented above under "Logged-in experience"), so the new
+  integration suite and the refactored controller's existing suite could
+  not be run to completion here; verified instead by loading every
+  touched module in a plain `node -e` smoke test (no runtime errors) and
+  by manual review against the acceptance criteria above. Treat the first
+  CI run on this PR as the real verification. Done: PR #115.
+
+- [ ] **Weekly digest: send the email, a scheduled entry point, and the
+  unsubscribe token.** Builds on the builder above. Wire
+  `buildWeeklyDigests` up to `server/utils/sendEmail.js` to send each
+  recipient's digest, add a scheduled entry point (a script following the
+  shape of `scripts/cleanup-post-tags.js` — this only needs the entry
+  point itself covered by a test, not a live cron wired into infra), and
+  a one-click unsubscribe link (signed token, no login required) that
+  flips `notificationPrefs.digest` to `'off'`.
+  Acceptance: sending is asserted through a `jest.mock` of `sendEmail`,
+  never a real send; the scheduled entry point is covered and sends no
+  real mail in tests; the unsubscribe token flips `digest` to `'off'`
+  with no session, and an invalid/expired/reused token 400s without
+  changing the preference.
+
+- [ ] **Weekly digest: notification preferences screen.** Builds on the
+  slices above. Add a preferences screen (or a section of the existing
+  profile/settings screen) where a member can see and change their
+  digest preference, backed by a small API to read/update
+  `notificationPrefs.digest` for the signed-in user.
+  Acceptance: a component test toggles the preference and asserts the
+  request/response round-trip; an API test asserts the endpoint reads
+  and updates only the signed-in user's own preference.
 
 - [x] **Follow a tag or topic: the model, API, notification hook, and the
   PostDetail tag chips.** `Subscription` was post-only (`user` + `post`,

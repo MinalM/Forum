@@ -94,6 +94,16 @@ const UserSchema = new mongoose.Schema({
   },
   resetPasswordToken: String,
   resetPasswordExpire: Date,
+  // Defaults to 'weekly' so the digest is opt-out, not opt-in - a member
+  // has to explicitly ask to stop hearing about new activity. See
+  // server/utils/digestBuilder.js.
+  notificationPrefs: {
+    digest: {
+      type: String,
+      enum: ['weekly', 'off'],
+      default: 'weekly'
+    }
+  },
   createdAt: {
     type: Date,
     default: Date.now
