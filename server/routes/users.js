@@ -11,6 +11,7 @@ const {
   logout,
   forgotPassword,
   resetPassword,
+  digestUnsubscribe,
   getMe,
   updateDetails,
   updatePassword,
@@ -36,6 +37,7 @@ router.post('/login', loginUser);
 router.get('/logout', logout);
 router.post('/forgotpassword', forgotPassword);
 router.put('/resetpassword/:resettoken', resetPassword);
+router.get('/digest-unsubscribe/:token', digestUnsubscribe);
 
 // Public profile endpoint
 router.get('/:id/profile', getUserProfile);
