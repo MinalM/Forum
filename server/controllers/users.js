@@ -27,6 +27,17 @@ exports.registerUser = asyncHandler(async (req, res, next) => {
     role: user.role
   });
 
+  // Fire-and-forget: a delivery failure must not fail registration.
+  sendEmail({
+    to: user.email,
+    subject: 'Welcome to the AI/ML Career Forum',
+    text: `Hi ${user.name},\n\n` +
+      `Welcome to the AI/ML Career Forum! We're glad you're here.\n\n` +
+      `Head over to the forum to explore questions, share what you know, and connect with the community.`
+  }).catch(err => {
+    console.error('Failed to send welcome email:', err);
+  });
+
   sendTokenResponse(user, 200, res);
 });
 
