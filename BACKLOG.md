@@ -380,7 +380,7 @@ as the "Email delivery, password reset, and welcome email" split above).
   not be run to completion here; verified instead by loading every
   touched module in a plain `node -e` smoke test (no runtime errors) and
   by manual review against the acceptance criteria above. Treat the first
-  CI run on this PR as the real verification.
+  CI run on this PR as the real verification. Done: PR #115.
 
 - [ ] **Weekly digest: send the email, a scheduled entry point, and the
   unsubscribe token.** Builds on the builder above. Wire
