@@ -15,6 +15,8 @@ const {
   getMe,
   updateDetails,
   updatePassword,
+  getNotificationPrefs,
+  updateNotificationPrefs,
   googleLogin,
   googleCallback,
   googleSuccess,
@@ -79,6 +81,8 @@ router.use(protect);
 router.get('/me', getMe);
 router.put('/updatedetails', updateDetails);
 router.put('/updatepassword', updatePassword);
+router.get('/notification-prefs', getNotificationPrefs);
+router.put('/notification-prefs', updateNotificationPrefs);
 
 // Moderator/Admin routes
 router.use(authorize('admin', 'moderator'));

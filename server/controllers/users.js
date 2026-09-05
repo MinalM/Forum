@@ -264,6 +264,42 @@ exports.updateDetails = asyncHandler(async (req, res, next) => {
   sendTokenResponse(user, 200, res);
 });
 
+// @desc    Get the signed-in user's notification preferences
+// @route   GET /api/users/notification-prefs
+// @access  Private
+exports.getNotificationPrefs = asyncHandler(async (req, res, next) => {
+  const user = await User.findById(req.user.id);
+
+  res.status(200).json({
+    success: true,
+    data: { digest: user.notificationPrefs.digest }
+  });
+});
+
+// @desc    Update the signed-in user's notification preferences
+// @route   PUT /api/users/notification-prefs
+// @access  Private
+exports.updateNotificationPrefs = asyncHandler(async (req, res, next) => {
+  const validDigestValues = ['weekly', 'off'];
+
+  if (!validDigestValues.includes(req.body.digest)) {
+    return next(
+      new ErrorResponse(`Digest preference must be one of: ${validDigestValues.join(', ')}`, 400)
+    );
+  }
+
+  const user = await User.findByIdAndUpdate(
+    req.user.id,
+    { 'notificationPrefs.digest': req.body.digest },
+    { new: true, runValidators: true }
+  );
+
+  res.status(200).json({
+    success: true,
+    data: { digest: user.notificationPrefs.digest }
+  });
+});
+
 // @desc    Update password
 // @route   PUT /api/users/updatepassword
 // @access  Private
