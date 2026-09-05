@@ -166,6 +166,35 @@ exports.resetPassword = asyncHandler(async (req, res, next) => {
   sendTokenResponse(user, 200, res);
 });
 
+// @desc    One-click unsubscribe from the weekly digest email
+// @route   GET /api/users/digest-unsubscribe/:token
+// @access  Public
+exports.digestUnsubscribe = asyncHandler(async (req, res, next) => {
+  const { token } = req.params;
+
+  if (!token || !token.trim()) {
+    return next(new ErrorResponse('Invalid or expired unsubscribe link', 400));
+  }
+
+  const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+
+  const user = await User.findOne({
+    digestUnsubscribeToken: hashedToken,
+    digestUnsubscribeExpire: { $gt: Date.now() }
+  });
+
+  if (!user) {
+    return next(new ErrorResponse('Invalid or expired unsubscribe link', 400));
+  }
+
+  user.notificationPrefs.digest = 'off';
+  user.digestUnsubscribeToken = undefined;
+  user.digestUnsubscribeExpire = undefined;
+  await user.save({ validateBeforeSave: false });
+
+  res.status(200).json({ success: true, data: {} });
+});
+
 // @desc    Log user out / clear cookie
 // @route   GET /api/users/logout
 // @access  Private

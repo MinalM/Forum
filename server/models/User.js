@@ -94,6 +94,12 @@ const UserSchema = new mongoose.Schema({
   },
   resetPasswordToken: String,
   resetPasswordExpire: Date,
+  // Same shape as resetPasswordToken/resetPasswordExpire above, but for the
+  // one-click "unsubscribe from this digest" link emailed with each weekly
+  // digest (server/utils/digestMailer.js) - a session-free way to flip
+  // notificationPrefs.digest to 'off'.
+  digestUnsubscribeToken: String,
+  digestUnsubscribeExpire: Date,
   // Defaults to 'weekly' so the digest is opt-out, not opt-in - a member
   // has to explicitly ask to stop hearing about new activity. See
   // server/utils/digestBuilder.js.
