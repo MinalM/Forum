@@ -1,4 +1,10 @@
 const Comment = require('../models/Comment');
+const { hasPersonalizationSignal, roleWordSet, scorePost } = require('./feedRanking');
+
+// How many unanswered candidates rankUnansweredForUser ranks before
+// truncating to `limit` - bounded for the same reason as
+// PERSONALIZATION_CANDIDATE_POOL in middleware/advancedResults.js.
+const RANKING_CANDIDATE_POOL = 100;
 
 // Whether a post has no comments should be resolved against the Comment
 // collection directly, not the denormalised `Post.commentCount` field.
@@ -41,4 +47,38 @@ async function findUnansweredPostIds(Post, matchFilter = {}) {
   return rows.map(row => row._id);
 }
 
-module.exports = { findUnansweredPostIds };
+// Unanswered posts (see findUnansweredPostIds above), ranked against a
+// member's profile via server/utils/feedRanking.js and truncated to
+// `limit`. Shared by the "You can answer these" rail
+// (server/controllers/posts.js) and the weekly digest builder
+// (server/utils/digestBuilder.js) so the two features' ranking never
+// drifts apart. A member with no personalization signal set
+// (feedRanking.hasPersonalizationSignal) gets the oldest-first order
+// findUnansweredPostIds already produced, rather than an arbitrary one.
+async function rankUnansweredForUser(Post, user, { limit, select, populate } = {}) {
+  const unansweredIds = (await findUnansweredPostIds(Post)).slice(0, RANKING_CANDIDATE_POOL);
+
+  let query = Post.find({ _id: { $in: unansweredIds } });
+  if (select) query = query.select(select);
+  if (populate) query = query.populate(populate);
+  const candidateDocs = await query.lean();
+
+  // $in doesn't preserve order - reassemble in the oldest-first order
+  // findUnansweredPostIds already sorted.
+  const docsById = new Map(candidateDocs.map(doc => [doc._id.toString(), doc]));
+  const candidates = unansweredIds.map(id => docsById.get(id.toString())).filter(Boolean);
+
+  let ranked = candidates;
+  if (hasPersonalizationSignal(user)) {
+    const roleWords = roleWordSet(user.targetRole);
+    // Stable sort: ties (including an all-zero score for every candidate,
+    // i.e. nothing matches) keep the oldest-first order fetched above.
+    ranked = [...candidates].sort(
+      (a, b) => scorePost(b, user, roleWords) - scorePost(a, user, roleWords)
+    );
+  }
+
+  return typeof limit === 'number' ? ranked.slice(0, limit) : ranked;
+}
+
+module.exports = { findUnansweredPostIds, rankUnansweredForUser };

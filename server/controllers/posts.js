@@ -9,13 +9,10 @@ const { trace, SpanStatusCode } = require('@opentelemetry/api');
 const { postCreatedCounter, postViewCounter } = require('../dist/instrumentation/metrics');
 const { getExperimentationService } = require('../dist/services/experimentation');
 const { subscribeUserToPost, notifyTagFollowers } = require('../utils/subscriptions');
-const { hasPersonalizationSignal, roleWordSet, scorePost } = require('../utils/feedRanking');
-const { findUnansweredPostIds } = require('../utils/postCounters');
+const { rankUnansweredForUser } = require('../utils/postCounters');
 
-// How many unanswered posts the "You can answer these" rail considers before
-// ranking/truncating to RECOMMENDED_LIMIT - bounded for the same reason as
-// PERSONALIZATION_CANDIDATE_POOL in middleware/advancedResults.js.
-const RECOMMENDED_CANDIDATE_POOL = 100;
+// How many unanswered posts the "You can answer these" rail shows, once
+// ranked by rankUnansweredForUser.
 const RECOMMENDED_LIMIT = 5;
 
 // @desc    Get all posts. GET /api/posts supports ?feed=recent|unanswered|top
@@ -549,29 +546,11 @@ exports.searchPosts = asyncHandler(async (req, res, next) => {
 // @route   GET /api/posts/recommended
 // @access  Private
 exports.getRecommendedUnanswered = asyncHandler(async (req, res, next) => {
-  const unansweredIds = (await findUnansweredPostIds(Post)).slice(0, RECOMMENDED_CANDIDATE_POOL);
-
-  const candidateDocs = await Post.find({ _id: { $in: unansweredIds } })
-    .select('title tags aiMlLevel category createdAt')
-    .populate('category', 'name')
-    .lean();
-
-  // $in doesn't preserve order - reassemble in the oldest-first order
-  // findUnansweredPostIds already sorted.
-  const docsById = new Map(candidateDocs.map(doc => [doc._id.toString(), doc]));
-  const candidates = unansweredIds.map(id => docsById.get(id.toString())).filter(Boolean);
-
-  let ranked = candidates;
-  if (hasPersonalizationSignal(req.user)) {
-    const roleWords = roleWordSet(req.user.targetRole);
-    // Stable sort: ties (including an all-zero score for every candidate,
-    // i.e. nothing matches) keep the oldest-first order fetched above.
-    ranked = [...candidates].sort(
-      (a, b) => scorePost(b, req.user, roleWords) - scorePost(a, req.user, roleWords)
-    );
-  }
-
-  const data = ranked.slice(0, RECOMMENDED_LIMIT);
+  const data = await rankUnansweredForUser(Post, req.user, {
+    limit: RECOMMENDED_LIMIT,
+    select: 'title tags aiMlLevel category createdAt',
+    populate: { path: 'category', select: 'name' }
+  });
 
   res.status(200).json({
     success: true,
