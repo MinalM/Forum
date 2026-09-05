@@ -158,4 +158,42 @@ describe('User Model Test', () => {
 
     expect(user.avatar).toBe('/images/default-avatar1.png');
   });
+
+  // Defaults to 'weekly' so the digest (server/utils/digestBuilder.js) is
+  // opt-out, not opt-in - a member has to explicitly turn it off.
+  it('should default notificationPrefs.digest to weekly', async () => {
+    const user = await User.create({
+      name: 'Test User',
+      email: 'digest-default@example.com',
+      password: 'password123'
+    });
+
+    expect(user.notificationPrefs.digest).toBe('weekly');
+  });
+
+  it('should allow opting out of the digest', async () => {
+    const user = await User.create({
+      name: 'Test User',
+      email: 'digest-opt-out@example.com',
+      password: 'password123',
+      notificationPrefs: { digest: 'off' }
+    });
+
+    expect(user.notificationPrefs.digest).toBe('off');
+  });
+
+  it('should reject an invalid digest preference', async () => {
+    const userWithInvalidDigest = new User({
+      name: 'Test User',
+      email: 'test@example.com',
+      password: 'password123',
+      notificationPrefs: { digest: 'daily' }
+    });
+
+    try {
+      await userWithInvalidDigest.validate();
+    } catch (error) {
+      expect(error.errors['notificationPrefs.digest']).toBeDefined();
+    }
+  });
 });
