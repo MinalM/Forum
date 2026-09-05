@@ -340,7 +340,7 @@ one-PR-or-less rule allows.
   exactly once with the new user's address on a successful registration,
   zero times on a failed one, and that a `sendEmail` rejection still
   leaves the response and created `User` row unaffected; existing
-  registration tests unchanged. Done: PR #TBD.
+  registration tests unchanged. Done: PR #114.
 
 - [ ] **Weekly digest email and notification preferences.** Builds on
   the email item above. The in-app notification bell (#69) only fires
