@@ -10,6 +10,7 @@ const { postCreatedCounter, postViewCounter } = require('../dist/instrumentation
 const { getExperimentationService } = require('../dist/services/experimentation');
 const { subscribeUserToPost, notifyTagFollowers } = require('../utils/subscriptions');
 const { rankUnansweredForUser } = require('../utils/postCounters');
+const { processMentions, notifyMentionedUsers } = require('../utils/mentions');
 
 // How many unanswered posts the "You can answer these" rail shows, once
 // ranked by rankUnansweredForUser.
@@ -178,6 +179,13 @@ exports.createPost = asyncHandler(async (req, res, next) => {
         );
       }
 
+      // Resolve @mentions before the post is created, so the stored content
+      // already carries the resolved links and no follow-up update is needed.
+      const { content: contentWithMentions, mentionedUsers } = await processMentions(
+        req.body.content
+      );
+      req.body.content = contentWithMentions;
+
       const post = await Post.create(req.body);
       span.setAttribute('post.id', post._id.toString());
 
@@ -190,6 +198,13 @@ exports.createPost = asyncHandler(async (req, res, next) => {
         postId: post._id,
         actorId: req.user.id,
         tags: post.tags
+      });
+
+      // Notify every @mentioned member except the author.
+      await notifyMentionedUsers({
+        postId: post._id,
+        actorId: req.user.id,
+        mentionedUsers
       });
 
       // Increment metric using centralized counter

@@ -26,7 +26,7 @@ const NotificationSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['answer', 'reply', 'tag_post'],
+    enum: ['answer', 'reply', 'tag_post', 'mention'],
     required: true
   },
   read: {

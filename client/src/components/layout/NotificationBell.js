@@ -11,6 +11,9 @@ const describeNotification = (notification) => {
   if (notification.type === 'tag_post') {
     return `${actorName} posted "${postTitle}" in a tag you follow`;
   }
+  if (notification.type === 'mention') {
+    return `${actorName} mentioned you in "${postTitle}"`;
+  }
   return notification.type === 'reply'
     ? `${actorName} replied on "${postTitle}"`
     : `${actorName} answered "${postTitle}"`;
