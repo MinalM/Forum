@@ -485,11 +485,11 @@ as the "Email delivery, password reset, and welcome email" split above).
   per-user isolation on the "tags I follow" listing; the existing
   post-subscribe tests still pass. Done: PR #112.
 
-- [ ] **Follow a tag or topic: extend the follow toggle to list/feed tag
+- [x] **Follow a tag or topic: extend the follow toggle to list/feed tag
   chips.** Split off the item above, which shipped the model, API,
   notification hook, and the `TagChip` follow toggle on `PostDetail`
   only. `PostItem` (the card used on Home, category pages, Search, and
-  every other post list) still renders tags as plain static badges — the
+  every other post list) still rendered tags as plain static badges — the
   literal original scope ("a follow/unfollow control on tag chips and
   category pages") wanted list/card tag chips followable too, but turning
   every tag on every card of a list into an interactive 44px control was
@@ -497,12 +497,17 @@ as the "Email delivery, password reset, and welcome email" split above).
   in the same PR as the backend work. `TagChip` (`client/src/components/
   common/TagChip.js`) is already shared/reusable — this item is "use it
   in `PostItem` too, with a layout that doesn't blow out card density."
+  `PostItem`'s tag badges now render through `TagChip`; no new CSS was
+  needed since `.post-tags`/`.tag-chip-btn` (added when `TagChip` first
+  shipped) already give it layout, wrapping, and the unconditional 44px
+  touch target, and `TagChip`'s signed-out state is a plain
+  non-interactive badge identical to the markup it replaced.
   Acceptance: `PostItem`'s tag badges become `TagChip` follow toggles
   (or an equivalent affordance) without regressing existing card-density/
   overflow tests (`postTagsOverflow.test.js` et al.); a component test
   renders a card with tags, follows one, and asserts the request hits
   `POST /api/tags/:tag/subscribe`; 44px targets maintained; existing
-  `PostItem` tests still pass.
+  `PostItem` tests still pass. Done: PR #118.
 
 - [ ] **Markdown composer with a preview tab and a formatting toolbar.**
   Post and comment bodies render Markdown now (archived items), but the
