@@ -72,8 +72,14 @@ is blocked too, so every `<i class="fas fa-*">` icon renders blank locally.
 Icon-only controls therefore look like unlabelled coloured squares in local
 screenshots — that is the sandbox, not the product.
 
-- [ ] **The post view's tag chips and action controls have no `gap` —
+- [x] **The post view's tag chips and action controls have no `gap` —
   wrapped tag rows touch, and the tag block sits flush on the action row.**
+  Done in #122: `.post-tags` got a real `gap` and bottom margin, and
+  `.comment-actions` got a `gap` (its old spacing depended on a
+  `.comment-action` rule that no rendered element actually carried - removed
+  as dead CSS). Regression coverage in
+  `client/src/__tests__/tagActionGaps.test.js`, same raw-CSS-source pattern
+  as `mobileTouchTargets.test.js`.
   Filed once before (2026-09-02) and lost when that work's branch was
   rebased before a PR was opened for it — re-verified live 2026-09-06,
   still present, unchanged. Three separate spacings, all zero, at both
