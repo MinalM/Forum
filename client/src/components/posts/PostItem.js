@@ -8,6 +8,7 @@ import { getPostStatus } from '../../utils/postStatus';
 import { useAuth } from '../../context/AuthContext';
 import { useAlert } from '../../context/AlertContext';
 import { useFeedComposer } from '../../context/FeedComposerContext';
+import TagChip from '../common/TagChip';
 
 // Defensive cap on how many tag chips a card renders — pairs with the
 // server-side MAX_TAGS validator (server/utils/normalizeTags.js) so a
@@ -277,10 +278,8 @@ const PostItem = ({ post: initialPost }) => {
             <div className="post-footer">
               <div className="post-tags">
                 {tags &&
-                  tags.slice(0, MAX_VISIBLE_TAGS).map((tag, index) => (
-                    <span key={index} className="badge badge-primary">
-                      {tag}
-                    </span>
+                  tags.slice(0, MAX_VISIBLE_TAGS).map((tag) => (
+                    <TagChip key={tag} tag={tag} />
                   ))}
               </div>
               <div className="post-actions">

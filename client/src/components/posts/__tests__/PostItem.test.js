@@ -148,6 +148,41 @@ describe('PostItem tags', () => {
   });
 });
 
+describe('PostItem tag follow toggle', () => {
+  const signInWithTagStatus = (subscribed) => {
+    localStorage.setItem('token', 'test-token');
+    axios.get.mockImplementation((url) => {
+      if (url === '/api/users/me') {
+        return Promise.resolve({ data: { data: CURRENT_USER } });
+      }
+      if (url.endsWith('/subscribe')) {
+        return Promise.resolve({ data: { success: true, data: { subscribed } } });
+      }
+      return Promise.reject(new Error(`unexpected GET ${url}`));
+    });
+  };
+
+  it('renders card tags as follow toggles for a signed-in member and follows one on click', async () => {
+    signInWithTagStatus(false);
+    axios.post.mockResolvedValue({ data: { success: true, data: { subscribed: true } } });
+
+    renderPostItem({ ...basePost, tags: ['pytorch', 'nlp'] });
+
+    const followBtn = await screen.findByRole('button', { name: /follow tag pytorch/i });
+    fireEvent.click(followBtn);
+
+    await screen.findByRole('button', { name: /following tag pytorch/i });
+    expect(axios.post).toHaveBeenCalledWith('/api/tags/pytorch/subscribe');
+  });
+
+  it('renders plain, non-interactive tag badges for a signed-out visitor', () => {
+    renderPostItem({ ...basePost, tags: ['pytorch', 'nlp'] });
+
+    expect(screen.getByText('pytorch')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /follow tag/i })).not.toBeInTheDocument();
+  });
+});
+
 describe('PostItem post/solved/needs-answer states', () => {
   it('shows a "Needs an answer" badge and the amber card modifier for a commentless open question', () => {
     renderPostItem({ ...basePost, commentCount: 0, isSolved: false });
