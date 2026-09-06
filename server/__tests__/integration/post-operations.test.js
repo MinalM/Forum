@@ -245,4 +245,142 @@ describe('Additional Post Operations', () => {
       expect(res.body.data.isSolved).toBe(true);
     });
   });
+
+  // BACKLOG.md: pinPost/lockThread were exported from the controller but
+  // never mounted in server/routes/posts.js, so PUT .../pin and .../lock
+  // 404'd for every caller, including the moderation buttons in
+  // PostDetail.js. These routes are now mounted; these tests exercise them
+  // end to end for the first time.
+  describe('Pin Post (Moderator/Admin only)', () => {
+    it('should pin a post as admin', async () => {
+      const res = await request(server)
+        .put(`/api/posts/${post._id}/pin`)
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.isPinned).toBe(true);
+    });
+
+    it('should toggle pinned status when called again', async () => {
+      await request(server)
+        .put(`/api/posts/${post._id}/pin`)
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      const res = await request(server)
+        .put(`/api/posts/${post._id}/pin`)
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.isPinned).toBe(false);
+    });
+
+    it('should not allow a regular user to pin a post', async () => {
+      const res = await request(server)
+        .put(`/api/posts/${post._id}/pin`)
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(403);
+
+      const unchanged = await Post.findById(post._id);
+      expect(unchanged.isPinned).toBe(false);
+    });
+
+    it('should not allow pinning without authentication', async () => {
+      const res = await request(server).put(`/api/posts/${post._id}/pin`);
+
+      expect(res.status).toBe(401);
+    });
+  });
+
+  describe('Lock Thread (Moderator/Admin only)', () => {
+    it('should lock a thread as admin', async () => {
+      const res = await request(server)
+        .put(`/api/posts/${post._id}/lock`)
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.isLocked).toBe(true);
+    });
+
+    it('should toggle locked status when called again', async () => {
+      await request(server)
+        .put(`/api/posts/${post._id}/lock`)
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      const res = await request(server)
+        .put(`/api/posts/${post._id}/lock`)
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.isLocked).toBe(false);
+    });
+
+    it('should not allow a regular user to lock a thread', async () => {
+      const res = await request(server)
+        .put(`/api/posts/${post._id}/lock`)
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(403);
+
+      const unchanged = await Post.findById(post._id);
+      expect(unchanged.isLocked).toBe(false);
+    });
+
+    it('should not allow locking without authentication', async () => {
+      const res = await request(server).put(`/api/posts/${post._id}/lock`);
+
+      expect(res.status).toBe(401);
+    });
+  });
+
+  // BACKLOG.md: upvotePost/downvotePost/pinPost/lockThread persisted via
+  // post.save(), which full-document-validates every field including
+  // `tags` - so any post whose stored tags predate the #33 length/count
+  // caps 400'd on vote/pin/lock, exactly as previously found for
+  // markAsAnswer. All four now persist via a targeted findByIdAndUpdate,
+  // matching the fix already applied to markAsAnswer for isSolved.
+  describe('Voting and moderation on a post with pre-existing oversized tags', () => {
+    beforeEach(async () => {
+      // Bypass write-path validators to simulate a row seeded before tag
+      // length enforcement existed, matching what's currently in production.
+      post.tags = ['a'.repeat(31)];
+      await post.save({ validateBeforeSave: false });
+    });
+
+    it('upvotes without 400ing on the legacy tag', async () => {
+      const res = await request(server)
+        .put(`/api/posts/${post._id}/upvote`)
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.upvotes).toContain(user._id.toString());
+    });
+
+    it('downvotes without 400ing on the legacy tag', async () => {
+      const res = await request(server)
+        .put(`/api/posts/${post._id}/downvote`)
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.downvotes).toContain(user._id.toString());
+    });
+
+    it('pins without 400ing on the legacy tag', async () => {
+      const res = await request(server)
+        .put(`/api/posts/${post._id}/pin`)
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.isPinned).toBe(true);
+    });
+
+    it('locks without 400ing on the legacy tag', async () => {
+      const res = await request(server)
+        .put(`/api/posts/${post._id}/lock`)
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.isLocked).toBe(true);
+    });
+  });
 });

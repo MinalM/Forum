@@ -162,7 +162,16 @@ const PostDetail = () => {
 
     try {
       const res = await axios.put(`/api/posts/${id}/upvote`);
-      setPost(res.data.data);
+      // Merge only the vote fields the server actually returns unpopulated -
+      // res.data.data.user/category are raw ids here, not the populated
+      // objects this page renders, so replacing the whole post (as this used
+      // to) wiped the author name/link and category link on every vote.
+      setPost((prev) => ({
+        ...prev,
+        upvotes: res.data.data.upvotes,
+        downvotes: res.data.data.downvotes,
+        score: res.data.data.score
+      }));
     } catch (err) {
       if (err.response?.status === 401) {
         setAlert('Your session has expired. Please login again.', 'danger');
@@ -181,7 +190,13 @@ const PostDetail = () => {
 
     try {
       const res = await axios.put(`/api/posts/${id}/downvote`);
-      setPost(res.data.data);
+      // See handleUpvote above: merge, don't replace.
+      setPost((prev) => ({
+        ...prev,
+        upvotes: res.data.data.upvotes,
+        downvotes: res.data.data.downvotes,
+        score: res.data.data.score
+      }));
     } catch (err) {
       setAlert('Error downvoting post', 'danger');
     }
@@ -207,7 +222,8 @@ const PostDetail = () => {
   const handleLockThread = async () => {
     try {
       const res = await axios.put(`/api/posts/${id}/lock`);
-      setPost(res.data.data);
+      // Merge, don't replace - see handleUpvote above.
+      setPost((prev) => ({ ...prev, isLocked: res.data.data.isLocked }));
       setAlert(
         res.data.data.isLocked
           ? 'Thread locked successfully'
@@ -222,7 +238,8 @@ const PostDetail = () => {
   const handlePinThread = async () => {
     try {
       const res = await axios.put(`/api/posts/${id}/pin`);
-      setPost(res.data.data);
+      // Merge, don't replace - see handleUpvote above.
+      setPost((prev) => ({ ...prev, isPinned: res.data.data.isPinned }));
       setAlert(
         res.data.data.isPinned
           ? 'Thread pinned successfully'
