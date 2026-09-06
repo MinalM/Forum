@@ -139,6 +139,29 @@ describe('NotificationBell (authenticated member)', () => {
     ).toBeInTheDocument();
   });
 
+  it('describes a mention notification', async () => {
+    mockAuthenticated({
+      count: 1,
+      notifications: [
+        {
+          ...NOTIFICATION,
+          _id: '000000000000000000000097',
+          type: 'mention'
+        }
+      ]
+    });
+    renderBell();
+
+    const button = await screen.findByRole('button', { name: /notifications/i });
+    fireEvent.click(button);
+
+    expect(
+      await screen.findByRole('link', {
+        name: /grace mentioned you in "best way to learn transformers\?"/i
+      })
+    ).toBeInTheDocument();
+  });
+
   it('shows an empty state when there are no notifications', async () => {
     mockAuthenticated({ count: 0, notifications: [] });
     renderBell();
