@@ -4,6 +4,7 @@ const Comment = require('../models/Comment');
 const Post = require('../models/Post');
 const { commentCreatedCounter } = require('../dist/instrumentation/metrics');
 const { subscribeUserToPost, notifySubscribers } = require('../utils/subscriptions');
+const { processMentions, notifyMentionedUsers } = require('../utils/mentions');
 
 // @desc    Get comments
 // @route   GET /api/comments
@@ -71,6 +72,11 @@ exports.addComment = asyncHandler(async (req, res, next) => {
     );
   }
 
+  const { content: contentWithMentions, mentionedUsers } = await processMentions(
+    req.body.content
+  );
+  req.body.content = contentWithMentions;
+
   const comment = await Comment.create(req.body);
 
   await Post.findByIdAndUpdate(post._id, { $inc: { commentCount: 1 } });
@@ -81,6 +87,14 @@ exports.addComment = asyncHandler(async (req, res, next) => {
     actorId: req.user.id,
     commentId: comment._id,
     type: 'answer'
+  });
+
+  // Notify every @mentioned member except the author.
+  await notifyMentionedUsers({
+    postId: post._id,
+    actorId: req.user.id,
+    commentId: comment._id,
+    mentionedUsers
   });
 
   // Increment comment counter metric
@@ -334,6 +348,11 @@ exports.addReply = asyncHandler(async (req, res, next) => {
   req.body.post = parentComment.post;
   req.body.user = req.user.id;
 
+  const { content: contentWithMentions, mentionedUsers } = await processMentions(
+    req.body.content
+  );
+  req.body.content = contentWithMentions;
+
   const reply = await Comment.create(req.body);
 
   await Post.findByIdAndUpdate(parentComment.post, { $inc: { commentCount: 1 } });
@@ -344,6 +363,14 @@ exports.addReply = asyncHandler(async (req, res, next) => {
     actorId: req.user.id,
     commentId: reply._id,
     type: 'reply'
+  });
+
+  // Notify every @mentioned member except the author.
+  await notifyMentionedUsers({
+    postId: parentComment.post,
+    actorId: req.user.id,
+    commentId: reply._id,
+    mentionedUsers
   });
 
   // Increment comment counter metric (for replies)
