@@ -546,17 +546,58 @@ as the "Email delivery, password reset, and welcome email" split above).
   forked, matching that file's pattern); full client suite (69 suites /
   384 tests) and `npm run lint` both pass with no new errors. Done: PR #119.
 
-- [ ] **`@mentions` in posts and comments.** No way to pull a specific
+- [x] **`@mentions` in posts and comments.** No way to pull a specific
   person into a thread. Parse `@username` tokens on post/comment save,
   resolve them to users, write a `mention`-type `Notification`
   (extending the model's `type` enum), and render the mention as a link
   to `/profile/:id`. Cap at a few mentions per body to prevent
   notification spam, and never notify someone mentioning themselves.
-  Acceptance: tests for parsing (valid handle, unknown handle ignored,
-  `@` mid-word ignored, self-mention produces nothing), a `mention`
-  notification landing for each distinct valid handle up to the cap, and
-  the rendered body linking the mention; the notification bell and
-  unread count surface the new type with no further change.
+  There is no dedicated `@handle`/username field on `User` (only `name`,
+  which is not unique and can contain spaces) - added
+  `server/utils/mentions.js`, which resolves a `@handle` token against
+  every user's `name` with everything but letters/digits stripped and
+  lowercased (so `@AdminUser` matches a user named "Admin User"); a
+  handle whose normalized form matches more than one member is skipped
+  rather than guessed at. Mentions are parsed and resolved before the
+  post/comment is created, and the stored `content` is rewritten so each
+  resolved `@handle` becomes a real markdown link
+  (`[@handle](/profile/:id)`) - the existing `renderMarkdown()` pipeline
+  (already sanitizing/linkifying markdown links elsewhere) renders it
+  with no client-side changes needed. Capped at 5 distinct handles per
+  body (`MAX_MENTIONS`); notifications are written for every resolved,
+  non-self mention, wired into `createPost`, `addComment`, and
+  `addReply` (mirroring the existing `notifySubscribers`/
+  `notifyTagFollowers` hooks). `NotificationBell` gained a `mention`
+  description line.
+  Acceptance: `server/__tests__/utils/mentions.test.js` covers parsing
+  (valid handle, multiple distinct handles, `@` mid-word/email ignored,
+  case-insensitive dedup, the `MAX_MENTIONS` cap), resolution (matches a
+  normalized name, unknown handle dropped, ambiguous name skipped), and
+  notification writing (excludes the actor, no-op with nothing to
+  notify) against mocked models;
+  `server/__tests__/integration/mentions.test.js` drives the same
+  behavior end to end through `POST /api/posts`,
+  `POST /api/posts/:postId/comments`, and `POST /api/comments/:id/replies`
+  (valid handle notifies + stored content links it, unknown handle and
+  mid-word `@` produce nothing, self-mention produces nothing, the cap
+  holds across a body with more than `MAX_MENTIONS` distinct handles,
+  an ambiguous name is skipped); `NotificationBell.test.js` covers the
+  new description line; existing `NotificationBell`/dashboard tests
+  unchanged.
+  Caveat: same `mongodb-memory-server`/`fastdl.mongodb.org` 403
+  documented throughout this file - the new server integration suite
+  (and every pre-existing one) could not run to completion here;
+  confirmed the failure is the shared DB bootstrap and not the new code
+  by running an unrelated pre-existing suite (`posts.test.js`) and
+  seeing the identical failure. The pure-logic half of
+  `mentions.test.js` (parsing/linkifying, plus resolution/notification
+  against mocked `User`/`Notification` models) was run directly under a
+  minimal Jest config that skips the global Mongo bootstrap: 19/19 pass.
+  The client suite ran to completion locally: all 69 suites / 385 tests
+  pass, including the new `NotificationBell` case; `npm run lint` is
+  unchanged (the 4 pre-existing errors/warnings are all in files this
+  PR doesn't touch). Treat the first CI run on this PR as the real
+  server-side verification. Done: PR #120.
 
 - [ ] **"Related questions" on the post thread.** A thread is a dead end
   once read. Below the post (or beside the comments) show 3–5 other
