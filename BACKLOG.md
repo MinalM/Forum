@@ -43,13 +43,23 @@ From a review of the signed-in experience (logged in as an admin account)
 on the live site at desktop and 375px with Playwright — navigation, the
 post-detail layout, and the accept-answer flow. Bug first, then design.
 
-The original batch of findings shipped as #93-#100 and is archived under
-"Cycle 5". The items below come from a **second** sweep on 2026-09-01, run
-locally against eleven authenticated routes at 1280px and 375px, which covered
-the pages the first review did not reach: the Dashboard, the admin and
-moderator surfaces, Categories, Profile, Create Post, Saved and Search. The
-deployed site stays unreachable from the agent sandbox (its egress policy 403s
-the Netlify host), so everything here was measured locally.
+The first two batches of findings shipped as #93-#100 and #105-#108 and are
+archived under "Cycle 5" and "Cycle 6". A **third** sweep on 2026-09-06, run
+locally logged in as `admin@example.com`, found the navbar, dashboard
+headings, and admin/mobile overflow all still fixed (no regression) and two
+new items below. The deployed site stays unreachable from the agent sandbox
+(its egress policy 403s the Netlify host), so everything here was measured
+locally.
+
+Three post-level bugs also found in this sweep - upvote/lock/pin clobbering
+the post's populated user/category fields, lock and pin 404ing because their
+routes were never mounted, and all four (plus upvote/downvote) 400ing on
+posts with legacy oversized tags - were fixed directly rather than filed
+here; see the commit fixing them for the detail. They are the reason lock and
+pin never appeared broken to any test: `PostDetail.test.js` and
+`PostDetailActionRow.test.js` mock `axios` entirely, so a route that was
+never wired into Express, or a response that silently dropped populated
+fields, was never exercised end to end.
 
 Running the stack locally is possible but not obvious — the Docker daemon is
 not started in the sandbox, Docker Hub's blob CDN is 403 so `mongo:6.0` must be
@@ -62,112 +72,57 @@ is blocked too, so every `<i class="fas fa-*">` icon renders blank locally.
 Icon-only controls therefore look like unlabelled coloured squares in local
 screenshots — that is the sandbox, not the product.
 
-- [x] **Every control below the 44px minimum is only fixed at mobile widths —
-  at desktop the same controls are 13-42px, and the tests cannot see it.**
-  Measured on a local run at 1280px, logged in as admin, across eleven
-  authenticated pages. The worst offenders, by rendered height:
-  the navbar search **submit button at 13px** and its input at 29px (on every
-  page); the moderator dashboard's `Pending` / `Resolved` / `Dismissed` tab
-  buttons at **19px**; the category page's Solved/Unsolved `<select>` at
-  **19px**; `/admin/users`' `Edit Role` / `Timeout` / `Ban` buttons at **26px**;
-  the Dashboard's `Edit Profile` and `Create New Post` links at 29px; the
-  admin user-search input and its Search button at 34px; the Create Post
-  category and level `<select>`s at 37px; and a long tail of `.btn` links
-  (`View All Discussions`, `Join the Community`, `New Post`, `Manage Users`) at
-  42px. The same sweep at 375px reports **zero** controls under 44px on every
-  one of those pages.
-  That gap is the point: the 44px rules added by the archived touch-target
-  items were written inside `@media (max-width: 768px)` blocks, so the desktop
-  rendering was never covered, and `client/src/__tests__/mobileTouchTargets.test.js`
-  asserts against the mobile CSS only — it passes while a 13px button ships.
-  Pointer targets are not a mobile-only concern: WCAG 2.5.8 (AA, WCAG 2.2) sets
-  a 24px floor regardless of input device, which the 13px and 19px controls
-  fail outright, and touchscreen laptops hit exactly these controls.
-  Scope: client CSS plus the test. Lift the target floor out of the mobile
-  media queries so it applies at every width — the brand's own `.btn`,
-  `.btn-sm`, `.form-control`, `<select>` and the navbar search should carry it
-  by default rather than each page re-fixing it. Keep the visual density
-  reasonable at desktop: a 44px minimum on `min-height` does not require
-  changing font sizes or padding elsewhere.
-  Acceptance: a test asserts the minimum applies **without** a
-  `max-width` media query wrapper (extend `mobileTouchTargets.test.js`, or add
-  a desktop-width sibling, so the mobile-only regression cannot come back); a
-  jsdom or raw-CSS assertion covers the specific controls named above; a sweep
-  at 1280px finds no interactive control under 44px on the eleven
-  authenticated routes; the existing mobile assertions stay green.
+- [ ] **The post view's tag chips and action controls have no `gap` —
+  wrapped tag rows touch, and the tag block sits flush on the action row.**
+  Filed once before (2026-09-02) and lost when that work's branch was
+  rebased before a PR was opened for it — re-verified live 2026-09-06,
+  still present, unchanged. Three separate spacings, all zero, at both
+  1280px and 375px:
+  1. `.post-tags` (`client/src/App.css:367`) is `display: flex; flex-wrap:
+     wrap` with **no `gap`**. Its horizontal spacing comes entirely from the
+     legacy `.badge { margin-right: 0.5rem }` in `client/src/index.css`
+     (still applied — `TagChip`'s follow-toggle button keeps the `badge
+     badge-primary` classes alongside `tag-chip-btn`, per
+     `client/src/components/common/TagChip.js:53`), which does nothing
+     between *rows*. Measured on a post with 8 tags: 2 rows, same-row gaps
+     of 8px each (the margin), **row gap 0px** — the two rows touch and read
+     as one solid purple block.
+  2. `.post-tags` has no bottom margin, so the measured vertical gap from
+     the tag block to `.post-actions` is **0px**.
+  3. `.comment-actions` (`App.css:830`) is `display: flex` with no `gap`;
+     spacing relies on `.comment-action { margin-right: 1rem }`, which the
+     `<button>` children do not carry — two of its buttons measure **0px**
+     apart.
+  This affects `PostItem`'s feed/list cards too, not only the thread page —
+  `PostItem.js:279` renders tags through the same `.post-tags` class, so any
+  card whose tags wrap to two lines has the identical touching rows.
+  Scope: `client/src/App.css`, client-only, no markup or route changes
+  needed. Put a real `gap` on each of these flex containers (`.post-actions`
+  already does this correctly with `gap: 0.75rem` — follow it), give
+  `.post-tags` a row gap and a bottom margin, and stop relying on
+  `.badge`'s `margin-right` for spacing inside a flex row — it does not
+  survive wrapping, `gap` does.
+  Acceptance: a raw-CSS assertion that `.post-tags`, `.comment-actions` and
+  the feed card's tag row each declare a non-zero `gap` and do not depend on
+  `.badge`'s `margin-right` for separation; a jsdom/rendered check on a post
+  with enough tags to wrap asserts a non-zero vertical gap between tag rows
+  and between the tag block and `.post-actions`; existing `PostDetail` and
+  `PostItem` tests updated.
 
-- [x] **The three dashboards have broken heading outlines, and the stat-card
-  numbers are themselves headings.** Measured locally at 1280px. The Dashboard
-  outline reads `H1 "Dashboard"` → `H3 "1"` → `H3 "3"` → `H3 "0"` →
-  `H2 "Your Recent Posts"`; `/admin` reads `H1 "Admin Dashboard"` →
-  `H3 "3"` → `H3 "5"` → `H3 "1"` → `H3 "0"` → `H2 "Recent Users"`; and
-  `/moderator` reads `H1 "Moderator Dashboard"` → `H3 "Reports"` →
-  `H2 "Reports (pending)"`. So all three skip H1→H3, `/moderator` additionally
-  emits an H3 before its H2, and on the two stat dashboards the headings a
-  screen-reader user navigates by are the bare numerals "1", "3", "0" — the
-  count, not what it counts.
-  This is the same defect class the archived items fixed on `/`, `/categories`,
-  a category page and `/search`; that work never reached the authenticated
-  dashboards, which were not part of those reviews.
-  Scope: `client/src/pages/Dashboard.js`, `AdminDashboard.js`,
-  `ModeratorDashboard.js`, client-only. The stat cards should not be headings
-  at all — the number is data and its label is the caption, so a `<p>`/`<dl>`
-  pairing is the right markup; if a heading is wanted per card it must carry
-  the **label** text and sit at the correct level. Fix `/moderator`'s H3-before-H2
-  ordering in the same pass.
-  Acceptance: a test per page walks the rendered heading list and asserts no
-  level is skipped and no heading's accessible name is a bare number, reusing
-  the pattern from the archived heading-level tests
-  (`HomeHeadingLevel.test.js` and its siblings); existing dashboard tests
-  updated. Done: PR #106.
-
-- [x] **`Dashboard`'s "Go to Admin Dashboard" / "Go to Moderator Dashboard"
-  links never render, for any role.** Found while fixing the dashboard
-  heading outlines above. `client/src/pages/Dashboard.js` gates those two
-  `dashboard-section`s on `hasPermission(user, 'admin')` and
-  `hasPermission(user, 'moderator')`, but `hasPermission`
-  (`client/src/utils/permissions.js`) only recognizes action-style permission
-  keys (`accessAdminDashboard`, `accessModeratorDashboard`, `manageUsers`,
-  etc.) — `'admin'` and `'moderator'` are not keys in its `permissions` map,
-  so `permissions[permission]` is `undefined` and the call always returns
-  `false`. An admin or moderator visiting `/dashboard` never sees the
-  shortcut into their own dashboard, regardless of role.
-  Scope: `client/src/pages/Dashboard.js`, client-only — swap the two calls
-  for the existing `accessAdminDashboard` / `accessModeratorDashboard` keys
-  (already used correctly by `AdminDashboard.js` / `ModeratorDashboard.js`
-  for route-guarding).
-  Acceptance: a test renders `Dashboard` as an admin user and asserts the
-  "Go to Admin Dashboard" link is present; same for a moderator user and
-  "Go to Moderator Dashboard"; a plain `user` role sees neither. Done: PR #107.
-
-- [x] **`/admin` and `/admin/users` overflow horizontally on mobile, and the
-  user table is unusable at any width.** Measured locally: `/admin/users`
-  reports `scrollWidth` 410 against `clientWidth` 375 with the offending node
-  identified as `TABLE.table.users-table`, and `/admin` reports 432 against 375
-  with `DIV.stat-card` — the admin surfaces were not part of the archived
-  mobile-overflow work, which covered the public pages and left these two.
-  `/moderator` is clean at 375px.
-  At desktop the same table is a separate design problem, visible in the review
-  screenshot: it renders inside roughly the left half of a 1280px viewport and
-  leaves the rest empty, while its own columns are so tight that "Admin User"
-  runs flush into "admin@example.com" with no cell padding and the Role badge
-  abuts the Status column. Each row then repeats three full-weight buttons —
-  `Edit Role`, `Timeout`, and a red `Ban` — so the most destructive action in
-  the product is the most visually prominent element, on every row.
-  Scope: `client/src/pages/AdminUsers.css` / `AdminUsers.js` and the admin
-  dashboard's stat-card grid, client-only, no route or API changes. Give the
-  table real cell padding and let it use the available width; wrap it in a
-  horizontally scrollable container so narrow viewports scroll the table rather
-  than the page (or switch to a stacked card layout under a breakpoint); make
-  the stat cards reflow instead of overflowing; and demote `Timeout`/`Ban` to a
-  quiet or overflow treatment so a destructive action is not the loudest thing
-  on each row. Row heights should satisfy the target floor from the item above.
-  Acceptance: a raw-CSS/jsdom assertion that neither `/admin` nor
-  `/admin/users` produces an element wider than a 375px viewport (the pattern
-  used by the archived overflow tests); a test asserts the table has non-zero
-  horizontal cell padding and that the destructive row actions are not rendered
-  with the same emphasis class as the primary one; existing `AdminUsers` tests
-  updated. Done: PR #108.
+- [ ] **`moveThread` (move a post to a different category) has no UI and is
+  dead code end to end.** Found alongside the pin/lock routing bug: unlike
+  `pinPost`/`lockThread`, `moveThread` (`server/controllers/posts.js`) is
+  correctly exported and mounted at `PUT /api/posts/:id/move`, but nothing
+  in the client calls it — `client/src/utils/permissions.js` defines the
+  `moveThread` permission and nothing else references it. Low priority: no
+  user-facing regression (there was never a working feature here to break),
+  but it's either a capability worth finishing or code worth removing.
+  Scope: either add a "Move to category" control to the post-detail
+  moderation menu (`PostDetailActionRow`) calling the existing endpoint, or
+  remove `moveThread`/its route/its permission entry if the feature isn't
+  wanted. Acceptance depends on which direction is chosen; if adding UI,
+  follow the pattern of `handleLockThread`/`handlePinThread` (merge the
+  response, don't replace `post`).
 
 ### Growth: adoption and engagement
 
@@ -182,69 +137,6 @@ empty `feed=unanswered`) before the two SEO items — indexing broken
 content is worse than not indexing it. The last item
 (reputation/leaderboard) is deliberately parked until the forum has
 enough traffic for it to work.
-
-- [x] **`QAPage` + `Question`/`Answer` JSON-LD structured data on post
-  pages.** Second half of the per-page metadata item above (#101 did the
-  description/canonical/OG/Twitter half). On post pages emit `QAPage` +
-  `Question` / `Answer` JSON-LD (the accepted answer as `acceptedAnswer`,
-  the rest as `suggestedAnswer`, vote counts as `upvoteCount`) so Google
-  can render a Q&A rich result — the JSON-LD must describe only what is
-  visibly on the page. Build on `client/src/components/common/Seo.js`
-  (e.g. an optional `jsonLd` prop, or a sibling component) rather than a
-  second ad hoc `<script type="application/ld+json">` — `PostDetail`
-  already computes `postStatus`/comment data the JSON-LD needs.
-  Acceptance: a post-page test asserts the emitted JSON-LD parses, is
-  `@type: QAPage`, and its `acceptedAnswer` / `upvoteCount` match the
-  fixture; a post with no accepted answer omits `acceptedAnswer` rather
-  than emitting a null/empty one. Done: PR #109.
-  Follow-up discovered: `<script type="application/ld+json">` (like any
-  inline `<script>`) is not one of the tags React 19 auto-hoists to
-  `document.head` — only `<title>`/`<meta>`/`<link>` are — so the JSON-LD
-  renders wherever `<Seo>` is mounted in the tree, not in `<head>`. This
-  is harmless for JSON-LD (crawlers don't require `<head>` placement,
-  unlike the og/twitter meta tags) and both new test suites account for
-  it, but is worth a note here in case a future per-page metadata item
-  assumes head-only placement.
-
-- [x] **Prerendering for crawlers: the build-time pass itself.** Even with
-  per-route tags (item above) and the sitemap/robots.txt item above, a
-  crawler that does not execute JavaScript still receives
-  `client/index.html`'s empty `<div id="root">` — the client has no SSR or
-  prerender step, so post bodies are invisible to non-JS indexers. Split
-  from the original single item (below) because wiring the result into the
-  actual deploy pipeline needs a `.github/workflows` edit, which this
-  autonomous cycle cannot make (same constraint as the three CI items
-  under "Carried over" below) — this slice is everything that doesn't
-  require that edit.
-  Added `scripts/prerender.js`: after `npm run build` produces
-  `client/build`, it serves that build with `vite preview`, drives a real
-  headless Chromium (`@playwright/test`, already a root dependency) over
-  `/`, `/categories`, `/search` plus up to 20 of the most recent posts
-  (`GET /api/posts?limit=20&sort=-createdAt`), and overwrites each route's
-  `index.html` in `client/build` with the fully-rendered DOM — script/link
-  tags included, so a real browser still hydrates normally on top of it.
-  Never fails the build: an unreachable API degrades to the three static
-  routes only (logged, not thrown), and a route that errors mid-crawl is
-  skipped with a warning rather than aborting the rest. Runnable via
-  `npm run prerender` after `npm run build`.
-  Acceptance: an e2e/integration check fetches a post URL with a non-JS
-  user agent (or inspects the prerendered artifact) and asserts the post
-  title and body text are in the raw HTML; the existing Playwright suite
-  against the live SPA still passes. Done: PR #110 — `tests/e2e/prerender.test.ts`
-  runs the script against CI's already-built `client/build` and already-seeded
-  API, serves the result with a plain (non-browser) `fetch` carrying a
-  Googlebot user agent, and asserts the post title/body and the homepage are
-  real content rather than the empty root shell; `server/__tests__/tooling/prerender.test.js`
-  unit-tests the route-resolution/output-path/API-degradation logic. Neither
-  suite could be run locally in this sandbox — the e2e test needs the live
-  DB+API CI provides, and even the pure-logic unit test is blocked by
-  `server/jest.setup.js`'s global `beforeAll`, which starts
-  `mongodb-memory-server` for every server-side Jest file regardless of
-  content and can't download its binary here (the same `fastdl.mongodb.org`
-  403 BACKLOG.md's "Logged-in experience" section already documents); the
-  pure route/path functions were hand-verified with a scratch Node script
-  instead. Both are written to run for real in CI, where earlier PRs'
-  `server/__tests__/tooling/*.test.js` files evidently do pass.
 
 - [ ] **Wire the crawler-prerender pass into the deploy pipeline.** Split
   off the item above: `scripts/prerender.js` exists and is proven against a
@@ -274,330 +166,6 @@ enough traffic for it to work.
 the original item bundled a mail transport, the forgot/reset-password API,
 a client UI flow, and a welcome send into one PR, which is bigger than the
 one-PR-or-less rule allows.
-
-- [x] **Mail transport + forgot/reset-password API (server-only).** Adds
-  `server/utils/sendEmail.js` (SMTP via `nodemailer`, so it works with any
-  provider that exposes an SMTP endpoint — Resend, Postmark, SES, etc. —
-  configured by `SMTP_HOST`/`SMTP_PORT`/`SMTP_SECURE`/`SMTP_USER`/
-  `SMTP_PASS`/`MAIL_FROM`; falls back to a no-op logger transport under
-  test or when `SMTP_HOST` is unset, e.g. local dev). `User` already had
-  unused `resetPasswordToken`/`resetPasswordExpire` fields — this is what
-  populates them. Adds `POST /api/users/forgotpassword` (always 200; looks
-  up the address, and for a `local`-auth match only, writes a hashed,
-  30-minute single-use token and emails the plaintext reset link — unknown
-  addresses and Google-only accounts get the same 200 with no email sent,
-  so the endpoint can't be used to enumerate accounts) and
-  `PUT /api/users/resetpassword/:resettoken` (valid unexpired token sets
-  the new password, clears the token, and logs the user in; invalid,
-  expired, reused, blank, or Google-account tokens 400). Routes live under
-  `/api/users` rather than a new `/api/auth` prefix, matching how
-  register/login/logout are already mounted there.
-  Acceptance: integration tests for forgot-password (known local email
-  200 + emailed + token written; unknown email and Google-only account
-  both 200 + not emailed + no token written), reset-password (valid token
-  sets the new password, clears the token, and the new password logs in;
-  reused token 400s; expired token 400s; garbage/unknown token 400s; a
-  Google-only account 400s even with a manually-set valid token); delivery
-  is asserted through a `jest.mock` of `sendEmail`, never a real send;
-  existing auth tests unchanged. Done: PR #111.
-  Caveat: `mongodb-memory-server`'s binary download 403s from this sandbox
-  (documented above under "Logged-in experience"), so the new suite
-  — like every other server integration suite — could not be run to
-  completion here; verified instead by loading every touched module in a
-  plain `node -e` smoke test (no runtime errors) and by manual review
-  against the acceptance criteria above. Treat the first CI run on PR #111
-  as the real verification.
-- [x] **"Forgot password?" UI flow off `/login`.** Builds on the API
-  slice above. Added a "Forgot password?" link on the login page, a
-  `/forgot-password` request-reset form (email in, generic "check your
-  email" message out, matching the API's always-200 non-enumerating
-  behaviour — the same confirmation renders whether the POST resolves or
-  rejects, so the UI never reveals whether an address exists), and a
-  `/reset-password/:token` page (new password + confirm, submits to the
-  API above, redirects to `/login` with a success alert on 200, shows an
-  inline "Invalid or expired link" error on any failure response rather
-  than a form validation message — every failure the `resetPassword`
-  controller returns is a 400, so no separate status branching was
-  needed). Both new pages reuse `.form-container`/`.form-control`/`.btn`,
-  which already carry an unconditional `min-height: 44px` from the
-  earlier desktop touch-target item, so no new CSS was needed for the
-  44px floor.
-  Acceptance: component tests for the request-reset form (submits the
-  email to `POST /api/users/forgotpassword`, shows the generic
-  confirmation on both a resolved and a rejected request), the reset
-  page (valid submit posts to `PUT /api/users/resetpassword/:token` and
-  redirects to `/login` with a success alert; a 400 response renders the
-  invalid/expired state inline without navigating; a client-side password
-  mismatch shows an alert without calling the API), and that both pages
-  set a real `<title>`/level-1 heading; a new Login test asserts the
-  "Forgot password?" link points at `/forgot-password`; existing login
-  page tests unchanged. Done: PR #113.
-- [x] **Welcome email on registration.** Builds on the mail transport
-  slice above. On successful `POST /api/users/register`, send exactly one
-  welcome email to the new user (fire-and-forget — a delivery failure
-  must not fail registration or roll back the created account).
-  Acceptance: an integration test asserts `sendEmail` (mocked) is called
-  exactly once with the new user's address on a successful registration,
-  zero times on a failed one, and that a `sendEmail` rejection still
-  leaves the response and created `User` row unaffected; existing
-  registration tests unchanged. Done: PR #114.
-
-**Weekly digest email and notification preferences.** The in-app
-notification bell (#69) only fires while a tab is open, so a member who
-does not visit gets nothing. Split into slices — the original item bundled
-a model field, the recipient/content builder, the actual send, a
-scheduled entry point, an unsubscribe token, and a preferences screen into
-one PR, which is bigger than the one-PR-or-less rule allows (same reasoning
-as the "Email delivery, password reset, and welcome email" split above).
-
-- [x] **Digest content builder: `notificationPrefs` on `User` and the
-  weekly digest builder (server-only — no email send or scheduling yet).**
-  This slice is everything provable with pure data: who gets a digest and
-  what goes in it, not sending mail or running on a schedule.
-  Added `notificationPrefs.digest` (`'weekly' | 'off'`, default
-  `'weekly'`, so the digest is opt-out) to `User`. Added
-  `server/utils/digestBuilder.js`: `buildDigestForUser(user, since)`
-  collects new answers/replies since `since` on posts the user authored or
-  is subscribed to (excluding the user's own comments and
-  hidden/moderated ones), plus up to 5 unanswered questions ranked against
-  the user's profile — reusing `server/utils/feedRanking.js` via a new
-  shared `rankUnansweredForUser` (`server/utils/postCounters.js`)
-  extracted from the "You can answer these" rail
-  (`server/controllers/posts.js`'s `getRecommendedUnanswered`, refactored
-  to call the same function so the two features' ranking can't drift
-  apart — same output, no behavior change). `buildDigestForUser` returns
-  `null` for an opted-out user or one whose digest would be entirely
-  empty (a blank email is worse than no email); `buildWeeklyDigests(users,
-  since)` maps a user list down to the non-null digests only.
-  Acceptance: tests drive the builder against a fixture with a mix of
-  subscribed / authored / skill-matching posts and assert the recipient
-  list and each recipient's contents; a member with `digest: 'off'` is
-  skipped even with new activity; one with nothing new is not included;
-  existing `getRecommendedUnanswered`/"for you" ranking tests unchanged.
-  Caveat: `mongodb-memory-server`'s binary download still 403s in this
-  sandbox (documented above under "Logged-in experience"), so the new
-  integration suite and the refactored controller's existing suite could
-  not be run to completion here; verified instead by loading every
-  touched module in a plain `node -e` smoke test (no runtime errors) and
-  by manual review against the acceptance criteria above. Treat the first
-  CI run on this PR as the real verification. Done: PR #115.
-
-- [x] **Weekly digest: send the email, a scheduled entry point, and the
-  unsubscribe token.** Builds on the builder above. Wire
-  `buildWeeklyDigests` up to `server/utils/sendEmail.js` to send each
-  recipient's digest, add a scheduled entry point (a script following the
-  shape of `scripts/cleanup-post-tags.js` — this only needs the entry
-  point itself covered by a test, not a live cron wired into infra), and
-  a one-click unsubscribe link (signed token, no login required) that
-  flips `notificationPrefs.digest` to `'off'`.
-  Added `User.digestUnsubscribeToken`/`digestUnsubscribeExpire` (same
-  hashed-token-with-expiry shape as `resetPasswordToken`/
-  `resetPasswordExpire`). `server/utils/digestMailer.js`'s
-  `sendDigestEmail`/`sendWeeklyDigestEmails` mint a fresh single-use token
-  per send, persist it, and email each recipient via `sendEmail`,
-  logging and skipping any one recipient's send failure rather than
-  aborting the rest of the run. `GET /api/users/digest-unsubscribe/:token`
-  (`server/controllers/users.js`, mirroring `resetPassword`'s
-  hash-and-expiry-check shape) flips `notificationPrefs.digest` to
-  `'off'` and clears the token, with no session required. The scheduled
-  entry point is `scripts/send-weekly-digest.js` (shape of
-  `scripts/cleanup-post-tags.js`): fetches every user, builds the week's
-  digests via `buildWeeklyDigests`, sends them, and accepts an optional
-  `--since=<ISO date>` for a manual re-run after a missed week. Since the
-  digest is composed outside any HTTP request, the emailed unsubscribe
-  link needs the server's own base URL from a new `SERVER_URL` env var
-  (documented in `.env.example`, defaulting to `http://localhost:2000`).
-  Acceptance: `server/__tests__/integration/digestMailer.test.js` mocks
-  `sendEmail` and asserts the token/link/content and that one recipient's
-  send failure doesn't abort the batch;
-  `server/__tests__/tooling/sendWeeklyDigest.test.js` covers the entry
-  point end to end (opt-outs/no-activity skipped, `sendEmail` mocked) plus
-  `parseSinceArg`'s default/explicit/invalid cases;
-  `server/__tests__/integration/digestUnsubscribe.test.js` covers the
-  valid/reused/expired/garbage token cases against the real route.
-  Caveat: same `mongodb-memory-server`/`fastdl.mongodb.org` 403 as the
-  builder slice above — none of the three new suites could run to
-  completion in this sandbox; confirmed the failure is the shared DB
-  bootstrap and not the new code by running the full pre-existing suite
-  and seeing the identical failure on all 35 suites. The pure
-  `parseSinceArg` logic and `digestMailer`'s token/link/content generation
-  were hand-verified with a scratch Node script instead. Treat the first
-  CI run on this PR as the real verification. Done: PR #116.
-
-- [x] **Weekly digest: notification preferences screen.** Builds on the
-  slices above. Add a preferences screen (or a section of the existing
-  profile/settings screen) where a member can see and change their
-  digest preference, backed by a small API to read/update
-  `notificationPrefs.digest` for the signed-in user.
-  Added `GET`/`PUT /api/users/notification-prefs` (`server/controllers/users.js`,
-  `server/routes/users.js`), scoped to `req.user.id` like the existing
-  `/me`/`updatedetails` routes rather than the admin-only `/:id` routes, so a
-  member can only ever read or change their own preference; `PUT` 400s on
-  anything other than `'weekly'`/`'off'`. On the client, `EditProfile.js`
-  gained a "Notification Preferences" section — a `<select>` that saves
-  immediately on change (no separate submit button, since it's a toggle
-  rather than a multi-field form) via the new `PUT` endpoint, with an
-  optimistic update that rolls back and shows an alert if the request fails.
-  It's intentionally independent of the existing "Update Profile" form/
-  `updateProfile()` (which still only covers name/email/bio/etc.) rather than
-  folding `notificationPrefs` into `updatedetails`, matching this backlog
-  item's "backed by a small API" framing.
-  Acceptance: `server/__tests__/integration/notificationPrefs.test.js` covers
-  the default (`weekly`), a successful update, an invalid-value 400 that
-  leaves the stored value unchanged, auth-required on both routes, and that
-  updating one user's preference never touches another user's;
-  `client/src/pages/__tests__/EditProfileNotificationPrefs.test.js` covers
-  the toggle preselecting the signed-in user's current value, a successful
-  save round-tripping through `PUT /api/users/notification-prefs`, and a
-  failed save reverting the toggle and showing an error alert; existing
-  `EditProfile`/user-account tests unchanged.
-  Caveat: same `mongodb-memory-server`/`fastdl.mongodb.org` 403 documented
-  throughout this file — the new server integration suite could not run to
-  completion here; confirmed the failure is the shared DB bootstrap and not
-  the new code by running the full pre-existing server suite (all 36 suites
-  fail identically) and by loading every touched module in a plain `node -e`
-  smoke test (routes register, no runtime errors). The client suite ran to
-  completion locally: all 68 suites / 366 tests pass, including the 4 new
-  tests. Treat the first CI run on this PR as the real server-side
-  verification. Done: PR #117.
-
-- [x] **Follow a tag or topic: the model, API, notification hook, and the
-  PostDetail tag chips.** `Subscription` was post-only (`user` + `post`,
-  `server/models/Subscription.js`) — a member could be told about replies
-  on one thread but couldn't say "tell me about new questions tagged
-  `pytorch`." Added a separate `TagSubscription` model (`user` + `tag`,
-  unique compound index, tag stored lowercased) rather than overloading
-  `Subscription` with an optional field, since the two have different
-  shapes (no post reference, no comment on the resulting notification) and
-  this kept the well-covered existing post-subscribe code and tests
-  untouched. `POST`/`DELETE`/`GET /api/tags/:tag/subscribe` and
-  `GET /api/tags/subscriptions` (the "tags I follow" listing), and a hook
-  in `createPost` that notifies every distinct follower of any of the new
-  post's tags, except the author, via a new `notifyTagFollowers` util
-  (`Notification.comment` had to become optional and gained a `tag_post`
-  type, since this notification isn't about a comment). On `PostDetail`,
-  each tag badge is now a `TagChip` follow/unfollow toggle for signed-in
-  members (plain badge otherwise); `NotificationBell` describes the new
-  notification type.
-  Acceptance: integration tests for follow/unfollow idempotency, a new
-  post notifying every tag follower except its author, no duplicate
-  notification when a follower follows two of the post's tags, and
-  per-user isolation on the "tags I follow" listing; the existing
-  post-subscribe tests still pass. Done: PR #112.
-
-- [x] **Follow a tag or topic: extend the follow toggle to list/feed tag
-  chips.** Split off the item above, which shipped the model, API,
-  notification hook, and the `TagChip` follow toggle on `PostDetail`
-  only. `PostItem` (the card used on Home, category pages, Search, and
-  every other post list) still rendered tags as plain static badges — the
-  literal original scope ("a follow/unfollow control on tag chips and
-  category pages") wanted list/card tag chips followable too, but turning
-  every tag on every card of a list into an interactive 44px control was
-  a large, visually-invasive UI change in its own right and didn't belong
-  in the same PR as the backend work. `TagChip` (`client/src/components/
-  common/TagChip.js`) is already shared/reusable — this item is "use it
-  in `PostItem` too, with a layout that doesn't blow out card density."
-  `PostItem`'s tag badges now render through `TagChip`; no new CSS was
-  needed since `.post-tags`/`.tag-chip-btn` (added when `TagChip` first
-  shipped) already give it layout, wrapping, and the unconditional 44px
-  touch target, and `TagChip`'s signed-out state is a plain
-  non-interactive badge identical to the markup it replaced.
-  Acceptance: `PostItem`'s tag badges become `TagChip` follow toggles
-  (or an equivalent affordance) without regressing existing card-density/
-  overflow tests (`postTagsOverflow.test.js` et al.); a component test
-  renders a card with tags, follows one, and asserts the request hits
-  `POST /api/tags/:tag/subscribe`; 44px targets maintained; existing
-  `PostItem` tests still pass. Done: PR #118.
-
-- [x] **Markdown composer with a preview tab and a formatting toolbar.**
-  Post and comment bodies render Markdown now (archived items), but the
-  composer is a bare `<textarea>` (`client/src/pages/CreatePost.js:127`,
-  and the same in the inline answer/reply composers) with no formatting
-  affordance and no preview — high friction on an AI/ML forum where
-  answers are mostly code, error output and links. Add a lightweight
-  editor: a small toolbar (bold, inline code, code block, link, list)
-  that wraps the current selection, and a Write / Preview toggle that
-  renders through the *same* Markdown renderer the display side already
-  uses. Not a WYSIWYG — the stored value stays Markdown text.
-  Added `client/src/components/common/MarkdownComposer.js`: a controlled
-  drop-in replacement for a `<textarea>` (same `id`/`name`/`value`/
-  `onChange`/`placeholder`/`rows`/`required` props) with a five-button
-  formatting toolbar (Bold, Inline code, Code block, Link, Bulleted list)
-  that wraps the current selection — or, with nothing selected, inserts
-  and selects placeholder text so a user can type straight over it — and
-  restores focus/selection after each edit. The Link action leaves the
-  inserted `(url)` selected so the destination can be typed immediately.
-  A Write/Preview tab pair swaps the textarea for a div rendered through
-  the existing `renderMarkdown()` (`client/src/utils/markdown.js`), the
-  same function `PostDetail` already uses to display posts/comments, so
-  preview output can't drift from the real render; toolbar buttons
-  disable while in Preview. Wired into `CreatePost.js`'s content field
-  and `PostDetail.js`'s top-level comment form and inline reply form
-  (the three composers the item named); `EditPost.js`'s content field
-  was left as a plain textarea — not named in this item's scope.
-  Acceptance: `client/src/components/common/__tests__/MarkdownComposer.test.js`
-  covers each toolbar action against both a selection and an empty
-  textarea, the Write/Preview toggle (preview matches `renderMarkdown()`
-  output, toolbar disabled in preview, switching back leaves the
-  underlying Markdown untouched), and that the field keeps submitting
-  the raw Markdown string rather than rendered HTML; the toolbar and tab
-  buttons get the unconditional 44px assertions in the existing
-  `client/src/__tests__/mobileTouchTargets.test.js` (extended, not
-  forked, matching that file's pattern); full client suite (69 suites /
-  384 tests) and `npm run lint` both pass with no new errors. Done: PR #119.
-
-- [x] **`@mentions` in posts and comments.** No way to pull a specific
-  person into a thread. Parse `@username` tokens on post/comment save,
-  resolve them to users, write a `mention`-type `Notification`
-  (extending the model's `type` enum), and render the mention as a link
-  to `/profile/:id`. Cap at a few mentions per body to prevent
-  notification spam, and never notify someone mentioning themselves.
-  There is no dedicated `@handle`/username field on `User` (only `name`,
-  which is not unique and can contain spaces) - added
-  `server/utils/mentions.js`, which resolves a `@handle` token against
-  every user's `name` with everything but letters/digits stripped and
-  lowercased (so `@AdminUser` matches a user named "Admin User"); a
-  handle whose normalized form matches more than one member is skipped
-  rather than guessed at. Mentions are parsed and resolved before the
-  post/comment is created, and the stored `content` is rewritten so each
-  resolved `@handle` becomes a real markdown link
-  (`[@handle](/profile/:id)`) - the existing `renderMarkdown()` pipeline
-  (already sanitizing/linkifying markdown links elsewhere) renders it
-  with no client-side changes needed. Capped at 5 distinct handles per
-  body (`MAX_MENTIONS`); notifications are written for every resolved,
-  non-self mention, wired into `createPost`, `addComment`, and
-  `addReply` (mirroring the existing `notifySubscribers`/
-  `notifyTagFollowers` hooks). `NotificationBell` gained a `mention`
-  description line.
-  Acceptance: `server/__tests__/utils/mentions.test.js` covers parsing
-  (valid handle, multiple distinct handles, `@` mid-word/email ignored,
-  case-insensitive dedup, the `MAX_MENTIONS` cap), resolution (matches a
-  normalized name, unknown handle dropped, ambiguous name skipped), and
-  notification writing (excludes the actor, no-op with nothing to
-  notify) against mocked models;
-  `server/__tests__/integration/mentions.test.js` drives the same
-  behavior end to end through `POST /api/posts`,
-  `POST /api/posts/:postId/comments`, and `POST /api/comments/:id/replies`
-  (valid handle notifies + stored content links it, unknown handle and
-  mid-word `@` produce nothing, self-mention produces nothing, the cap
-  holds across a body with more than `MAX_MENTIONS` distinct handles,
-  an ambiguous name is skipped); `NotificationBell.test.js` covers the
-  new description line; existing `NotificationBell`/dashboard tests
-  unchanged.
-  Caveat: same `mongodb-memory-server`/`fastdl.mongodb.org` 403
-  documented throughout this file - the new server integration suite
-  (and every pre-existing one) could not run to completion here;
-  confirmed the failure is the shared DB bootstrap and not the new code
-  by running an unrelated pre-existing suite (`posts.test.js`) and
-  seeing the identical failure. The pure-logic half of
-  `mentions.test.js` (parsing/linkifying, plus resolution/notification
-  against mocked `User`/`Notification` models) was run directly under a
-  minimal Jest config that skips the global Mongo bootstrap: 19/19 pass.
-  The client suite ran to completion locally: all 69 suites / 385 tests
-  pass, including the new `NotificationBell` case; `npm run lint` is
-  unchanged (the 4 pre-existing errors/warnings are all in files this
-  PR doesn't touch). Treat the first CI run on this PR as the real
-  server-side verification. Done: PR #120.
 
 - [ ] **"Related questions" on the post thread.** A thread is a dead end
   once read. Below the post (or beside the comments) show 3–5 other
