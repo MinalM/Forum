@@ -12,6 +12,7 @@ import ReportModal from '../components/reports/ReportModal';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import Seo, { truncateDescription, buildQaPageJsonLd } from '../components/common/Seo';
 import TagChip from '../components/common/TagChip';
+import MarkdownComposer from '../components/common/MarkdownComposer';
 
 const PostDetail = () => {
   const { id } = useParams();
@@ -632,15 +633,14 @@ const PostDetail = () => {
           <div className="comment-form">
             <form onSubmit={handleCommentSubmit}>
               <div className="form-group">
-                <textarea
-                  className="form-control"
+                <MarkdownComposer
                   name="comment"
                   rows="3"
                   placeholder="Add a comment..."
                   value={commentText}
                   onChange={(e) => setCommentText(e.target.value)}
                   required
-                ></textarea>
+                />
               </div>
               <button type="submit" className="btn">
                 Post Comment
@@ -812,15 +812,14 @@ const PostDetail = () => {
                       }}
                     >
                       <div className="form-group">
-                        <textarea
-                          className="form-control"
+                        <MarkdownComposer
                           name="reply"
                           rows="2"
                           placeholder="Write a reply..."
                           value={replyText}
                           onChange={(e) => setReplyText(e.target.value)}
                           required
-                        ></textarea>
+                        />
                       </div>
                       <button type="submit" className="reply-btn">
                         Post reply
