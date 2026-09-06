@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router';
 import axios from 'axios';
 import { useAlert } from '../context/AlertContext';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
+import MarkdownComposer from '../components/common/MarkdownComposer';
 
 const CreatePost = () => {
   const { setAlert } = useAlert();
@@ -124,8 +125,7 @@ const CreatePost = () => {
 
           <div className="form-group">
             <label htmlFor="content">Content *</label>
-            <textarea
-              className="form-control"
+            <MarkdownComposer
               id="content"
               name="content"
               value={content}
@@ -133,7 +133,7 @@ const CreatePost = () => {
               rows="10"
               placeholder="Describe your question or share your knowledge in detail"
               required
-            ></textarea>
+            />
           </div>
 
           <div className="form-group">

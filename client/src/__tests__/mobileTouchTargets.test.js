@@ -285,4 +285,15 @@ describe('touch targets meet the 44px floor at every width, not just <=768px', (
     const rule = extractRule(appUnconditional, '.tag-chip-btn');
     expect(minPx(rule, 'min-height')).toBeGreaterThanOrEqual(MIN_TARGET);
   });
+
+  it('the markdown composer toolbar buttons (MarkdownComposer) are at least 44x44', () => {
+    const rule = extractRule(appUnconditional, '.markdown-toolbar-btn');
+    expect(minPx(rule, 'min-height')).toBeGreaterThanOrEqual(MIN_TARGET);
+    expect(minPx(rule, 'min-width')).toBeGreaterThanOrEqual(MIN_TARGET);
+  });
+
+  it('the markdown composer Write/Preview tab buttons (MarkdownComposer) are at least 44px tall', () => {
+    const rule = extractRule(appUnconditional, '.markdown-tab-btn');
+    expect(minPx(rule, 'min-height')).toBeGreaterThanOrEqual(MIN_TARGET);
+  });
 });

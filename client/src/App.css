@@ -1806,3 +1806,73 @@
     line-height: 16px;
   }
 }
+
+/* Markdown composer: the toolbar + Write/Preview toggle shared by
+   CreatePost and PostDetail's comment/reply forms. Unconditional (no
+   max-width wrapper) so the toolbar buttons meet the 44px floor at every
+   width, not just mobile. */
+.markdown-composer-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.markdown-composer-format-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.markdown-toolbar-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  min-width: 44px;
+  border: 1px solid #dddddd;
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--primary-color);
+  cursor: pointer;
+}
+
+.markdown-toolbar-btn:hover:not(:disabled) {
+  background: var(--background-color);
+}
+
+.markdown-toolbar-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.markdown-composer-tabs {
+  display: flex;
+  gap: 4px;
+}
+
+.markdown-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid #dddddd;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #555555;
+  cursor: pointer;
+}
+
+.markdown-tab-btn.active {
+  background: var(--primary-color);
+  border-color: var(--primary-color);
+  color: #ffffff;
+}
+
+.markdown-composer-preview {
+  min-height: 44px;
+  overflow-wrap: break-word;
+}
