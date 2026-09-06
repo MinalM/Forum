@@ -301,7 +301,7 @@ exports.deletePost = asyncHandler(async (req, res, next) => {
 // @route   PUT /api/posts/:id/upvote
 // @access  Private
 exports.upvotePost = asyncHandler(async (req, res, next) => {
-  let post = await Post.findById(req.params.id);
+  const post = await Post.findById(req.params.id);
 
   if (!post) {
     return next(
@@ -309,27 +309,32 @@ exports.upvotePost = asyncHandler(async (req, res, next) => {
     );
   }
 
-  // Check if the user has already upvoted
-  if (post.upvotes.includes(req.user.id)) {
+  let upvotes = post.upvotes.map(id => id.toString());
+  let downvotes = post.downvotes.map(id => id.toString());
+
+  if (upvotes.includes(req.user.id)) {
     // Remove upvote
-    post.upvotes = post.upvotes.filter(
-      upvote => upvote.toString() !== req.user.id
-    );
+    upvotes = upvotes.filter(id => id !== req.user.id);
   } else {
-    // Add upvote
-    post.upvotes.push(req.user.id);
-    // Remove downvote if exists
-    post.downvotes = post.downvotes.filter(
-      downvote => downvote.toString() !== req.user.id
-    );
+    // Add upvote, remove downvote if present
+    upvotes.push(req.user.id);
+    downvotes = downvotes.filter(id => id !== req.user.id);
   }
 
-  post.score = post.upvotes.length - post.downvotes.length;
-  await post.save();
+  const score = upvotes.length - downvotes.length;
+
+  // Targeted update (not post.save()) so this never full-document-validates
+  // unrelated fields - e.g. legacy tags that predate the #33 tag caps -
+  // the same fix already applied to markAsAnswer for isSolved.
+  const updated = await Post.findByIdAndUpdate(
+    post._id,
+    { upvotes, downvotes, score },
+    { new: true }
+  );
 
   res.status(200).json({
     success: true,
-    data: post
+    data: updated
   });
 });
 
@@ -337,7 +342,7 @@ exports.upvotePost = asyncHandler(async (req, res, next) => {
 // @route   PUT /api/posts/:id/downvote
 // @access  Private
 exports.downvotePost = asyncHandler(async (req, res, next) => {
-  let post = await Post.findById(req.params.id);
+  const post = await Post.findById(req.params.id);
 
   if (!post) {
     return next(
@@ -345,27 +350,30 @@ exports.downvotePost = asyncHandler(async (req, res, next) => {
     );
   }
 
-  // Check if the user has already downvoted
-  if (post.downvotes.includes(req.user.id)) {
+  let upvotes = post.upvotes.map(id => id.toString());
+  let downvotes = post.downvotes.map(id => id.toString());
+
+  if (downvotes.includes(req.user.id)) {
     // Remove downvote
-    post.downvotes = post.downvotes.filter(
-      downvote => downvote.toString() !== req.user.id
-    );
+    downvotes = downvotes.filter(id => id !== req.user.id);
   } else {
-    // Add downvote
-    post.downvotes.push(req.user.id);
-    // Remove upvote if exists
-    post.upvotes = post.upvotes.filter(
-      upvote => upvote.toString() !== req.user.id
-    );
+    // Add downvote, remove upvote if present
+    downvotes.push(req.user.id);
+    upvotes = upvotes.filter(id => id !== req.user.id);
   }
 
-  post.score = post.upvotes.length - post.downvotes.length;
-  await post.save();
+  const score = upvotes.length - downvotes.length;
+
+  // Targeted update (not post.save()) - see upvotePost above.
+  const updated = await Post.findByIdAndUpdate(
+    post._id,
+    { upvotes, downvotes, score },
+    { new: true }
+  );
 
   res.status(200).json({
     success: true,
-    data: post
+    data: updated
   });
 });
 
@@ -404,7 +412,7 @@ exports.solvePost = asyncHandler(async (req, res, next) => {
 // @route   PUT /api/posts/:id/pin
 // @access  Private (Moderator & Admin)
 exports.pinPost = asyncHandler(async (req, res, next) => {
-  let post = await Post.findById(req.params.id);
+  const post = await Post.findById(req.params.id);
 
   if (!post) {
     return next(
@@ -422,12 +430,16 @@ exports.pinPost = asyncHandler(async (req, res, next) => {
     );
   }
 
-  post.isPinned = !post.isPinned;
-  await post.save();
+  // Targeted update (not post.save()) - see upvotePost above.
+  const updated = await Post.findByIdAndUpdate(
+    post._id,
+    { isPinned: !post.isPinned },
+    { new: true }
+  );
 
   res.status(200).json({
     success: true,
-    data: post
+    data: updated
   });
 });
 
@@ -435,7 +447,7 @@ exports.pinPost = asyncHandler(async (req, res, next) => {
 // @route   PUT /api/posts/:id/lock
 // @access  Private (Moderator & Admin)
 exports.lockThread = asyncHandler(async (req, res, next) => {
-  let post = await Post.findById(req.params.id);
+  const post = await Post.findById(req.params.id);
 
   if (!post) {
     return next(
@@ -453,12 +465,16 @@ exports.lockThread = asyncHandler(async (req, res, next) => {
     );
   }
 
-  post.isLocked = !post.isLocked;
-  await post.save();
+  // Targeted update (not post.save()) - see upvotePost above.
+  const updated = await Post.findByIdAndUpdate(
+    post._id,
+    { isLocked: !post.isLocked },
+    { new: true }
+  );
 
   res.status(200).json({
     success: true,
-    data: post
+    data: updated
   });
 });
 

@@ -8,6 +8,8 @@ const {
   upvotePost,
   downvotePost,
   solvePost,
+  pinPost,
+  lockThread,
   getPostsByLevel,
   searchPosts,
   getRecommendedUnanswered
@@ -39,6 +41,12 @@ router.get('/recommended', protect, getRecommendedUnanswered);
 router.put('/:id/upvote', protect, upvotePost);
 router.put('/:id/downvote', protect, downvotePost);
 router.put('/:id/solve', protect, solvePost);
+// pinPost/lockThread do their own admin/moderator check (see
+// server/controllers/posts.js), matching solvePost's own-author check above -
+// these routes were never mounted before, so PUT .../pin and .../lock 404'd
+// for every caller, including the moderation buttons in PostDetail.js.
+router.put('/:id/pin', protect, pinPost);
+router.put('/:id/lock', protect, lockThread);
 
 router
   .route('/:id/subscribe')

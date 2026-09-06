@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, within } from '@testing-library/react';
+import { render, screen, fireEvent, within, waitFor } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router';
 import axios from 'axios';
 import PostDetail from '../PostDetail';
@@ -203,5 +203,119 @@ describe('PostDetail action row: 44x44 touch targets and quiet overflow styling'
       // None of the old alert-color button variants survive the move.
       expect(item.className).not.toMatch(/btn-danger|btn-outline-warning|btn-outline-info|btn-outline-danger|btn-warning|btn-info/);
     });
+  });
+});
+
+// BACKLOG.md: upvote/downvote/lock/pin all overwrote the entire `post` state
+// with the raw response from their PUT endpoint (`setPost(res.data.data)`),
+// and that response's `user`/`category` are unpopulated ids, not the
+// populated objects this page renders - so every vote/lock/pin silently blew
+// away the author name/link and category link. Fixed by merging only the
+// field each action actually changes, matching the pattern already used by
+// handleMarkAnswer. These tests reproduce the mocked response shape the real
+// (now-fixed) API returns - a raw post document - and assert the populated
+// fields survive.
+describe('PostDetail voting and moderation actions preserve populated post fields', () => {
+  const rawUnpopulatedPost = (overrides) => ({
+    ...basePost,
+    ...overrides,
+    user: AUTHOR._id,
+    category: basePost.category._id
+  });
+
+  it('keeps the author name/link and category link after upvoting', async () => {
+    setupAsUser(OTHER_USER);
+    renderPostDetail();
+
+    await screen.findByText('A post with actions');
+    expect(screen.getByRole('link', { name: AUTHOR.name })).toHaveAttribute(
+      'href',
+      `/profile/${AUTHOR._id}`
+    );
+
+    axios.put.mockResolvedValueOnce({
+      data: { success: true, data: rawUnpopulatedPost({ upvotes: [OTHER_USER._id] }) }
+    });
+    fireEvent.click(screen.getByRole('button', { name: /upvote question/i }));
+
+    await waitFor(() => expect(axios.put).toHaveBeenCalledWith(
+      `/api/posts/${POST_ID}/upvote`
+    ));
+    // Still populated - not "undefined" or missing, as it was before the fix.
+    expect(screen.getByRole('link', { name: AUTHOR.name })).toHaveAttribute(
+      'href',
+      `/profile/${AUTHOR._id}`
+    );
+    expect(screen.getByRole('link', { name: basePost.category.name })).toHaveAttribute(
+      'href',
+      `/categories/${basePost.category._id}`
+    );
+  });
+
+  it('keeps the author name/link and category link after downvoting', async () => {
+    setupAsUser(OTHER_USER);
+    renderPostDetail();
+
+    await screen.findByText('A post with actions');
+    axios.put.mockResolvedValueOnce({
+      data: { success: true, data: rawUnpopulatedPost({ downvotes: [OTHER_USER._id] }) }
+    });
+    fireEvent.click(screen.getByRole('button', { name: /downvote question/i }));
+
+    await waitFor(() => expect(axios.put).toHaveBeenCalledWith(
+      `/api/posts/${POST_ID}/downvote`
+    ));
+    expect(screen.getByRole('link', { name: AUTHOR.name })).toHaveAttribute(
+      'href',
+      `/profile/${AUTHOR._id}`
+    );
+    expect(screen.getByRole('link', { name: basePost.category.name })).toHaveAttribute(
+      'href',
+      `/categories/${basePost.category._id}`
+    );
+  });
+
+  it('locks the thread and keeps the author/category context intact', async () => {
+    setupAsUser(ADMIN);
+    renderPostDetail();
+
+    await screen.findByText('A post with actions');
+    fireEvent.click(screen.getByRole('button', { name: /more actions/i }));
+    axios.put.mockResolvedValueOnce({
+      data: { success: true, data: rawUnpopulatedPost({ isLocked: true }) }
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^lock$/i }));
+
+    await waitFor(() => expect(axios.put).toHaveBeenCalledWith(
+      `/api/posts/${POST_ID}/lock`
+    ));
+    // The success alert renders in a sibling <Alert /> this test tree does
+    // not mount (see App.js) - the regression under test is the merge fix
+    // below, not the alert copy.
+    expect(screen.getByRole('link', { name: AUTHOR.name })).toHaveAttribute(
+      'href',
+      `/profile/${AUTHOR._id}`
+    );
+  });
+
+  it('pins the thread and keeps the author/category context intact', async () => {
+    setupAsUser(ADMIN);
+    renderPostDetail();
+
+    await screen.findByText('A post with actions');
+    fireEvent.click(screen.getByRole('button', { name: /more actions/i }));
+    axios.put.mockResolvedValueOnce({
+      data: { success: true, data: rawUnpopulatedPost({ isPinned: true }) }
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^pin$/i }));
+
+    await waitFor(() => expect(axios.put).toHaveBeenCalledWith(
+      `/api/posts/${POST_ID}/pin`
+    ));
+    // See the lock test above re: the alert not rendering in this tree.
+    expect(screen.getByRole('link', { name: AUTHOR.name })).toHaveAttribute(
+      'href',
+      `/profile/${AUTHOR._id}`
+    );
   });
 });
