@@ -509,7 +509,7 @@ as the "Email delivery, password reset, and welcome email" split above).
   `POST /api/tags/:tag/subscribe`; 44px targets maintained; existing
   `PostItem` tests still pass. Done: PR #118.
 
-- [ ] **Markdown composer with a preview tab and a formatting toolbar.**
+- [x] **Markdown composer with a preview tab and a formatting toolbar.**
   Post and comment bodies render Markdown now (archived items), but the
   composer is a bare `<textarea>` (`client/src/pages/CreatePost.js:127`,
   and the same in the inline answer/reply composers) with no formatting
@@ -519,12 +519,32 @@ as the "Email delivery, password reset, and welcome email" split above).
   that wraps the current selection, and a Write / Preview toggle that
   renders through the *same* Markdown renderer the display side already
   uses. Not a WYSIWYG — the stored value stays Markdown text.
-  Acceptance: component tests for each toolbar action transforming the
-  selection correctly, the preview toggle producing output identical to
-  the post/comment display renderer for a sample document, and the field
-  still submitting the raw Markdown string; applied to the create-post
-  form and the inline answer/reply composers; keyboard focus and 44px
-  targets on the toolbar buttons.
+  Added `client/src/components/common/MarkdownComposer.js`: a controlled
+  drop-in replacement for a `<textarea>` (same `id`/`name`/`value`/
+  `onChange`/`placeholder`/`rows`/`required` props) with a five-button
+  formatting toolbar (Bold, Inline code, Code block, Link, Bulleted list)
+  that wraps the current selection — or, with nothing selected, inserts
+  and selects placeholder text so a user can type straight over it — and
+  restores focus/selection after each edit. The Link action leaves the
+  inserted `(url)` selected so the destination can be typed immediately.
+  A Write/Preview tab pair swaps the textarea for a div rendered through
+  the existing `renderMarkdown()` (`client/src/utils/markdown.js`), the
+  same function `PostDetail` already uses to display posts/comments, so
+  preview output can't drift from the real render; toolbar buttons
+  disable while in Preview. Wired into `CreatePost.js`'s content field
+  and `PostDetail.js`'s top-level comment form and inline reply form
+  (the three composers the item named); `EditPost.js`'s content field
+  was left as a plain textarea — not named in this item's scope.
+  Acceptance: `client/src/components/common/__tests__/MarkdownComposer.test.js`
+  covers each toolbar action against both a selection and an empty
+  textarea, the Write/Preview toggle (preview matches `renderMarkdown()`
+  output, toolbar disabled in preview, switching back leaves the
+  underlying Markdown untouched), and that the field keeps submitting
+  the raw Markdown string rather than rendered HTML; the toolbar and tab
+  buttons get the unconditional 44px assertions in the existing
+  `client/src/__tests__/mobileTouchTargets.test.js` (extended, not
+  forked, matching that file's pattern); full client suite (69 suites /
+  384 tests) and `npm run lint` both pass with no new errors. Done: PR #119.
 
 - [ ] **`@mentions` in posts and comments.** No way to pull a specific
   person into a thread. Parse `@username` tokens on post/comment save,
