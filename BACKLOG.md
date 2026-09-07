@@ -189,16 +189,46 @@ enough traffic for it to work.
   its binary host there, and the Docker daemon isn't running either) — see
   #124 for the caveat and lean on CI to confirm it.
 
-- [ ] **Draft autosave for the composer.** A long answer lost to an
-  accidental navigation or refresh is a silent contribution killed.
-  Autosave the create-post and answer/reply composer contents to
-  `localStorage` (debounced, keyed by route/target), restore on return
-  behind a visible "Draft restored — discard?" affordance, and clear the
-  key on successful submit or explicit discard.
-  Acceptance: tests for debounced save-on-change, restore-on-mount
-  populating the field, the discard control clearing storage, and a
-  successful submit clearing the key; storage access is wrapped so a
-  storage-disabled browser degrades to no autosave rather than throwing.
+- [x] **Draft autosave for the composer.** Done in #PR_NUMBER: added a
+  shared `useDraftAutosave(key, value, { isEmpty })` hook
+  (`client/src/hooks/useDraftAutosave.js`) that debounces (800ms) writing
+  `value` to `localStorage` under `key`, surfaces any previously-saved,
+  non-empty draft as `restoredDraft` on mount, and exposes `clearDraft` for
+  a discard action or a successful submit; every `localStorage` call is
+  wrapped in try/catch so a storage-disabled browser silently gets no
+  autosave instead of a thrown error. Wired into the two primary composers:
+  `CreatePost.js` (`draft:create-post`, saving `{ title, content }`) and
+  `PostDetail.js`'s top-level comment form (`` draft:post:${id}:comment ``,
+  saving the comment text). Both show a "Draft restored — Discard" banner
+  (`.alert.alert-info` + an existing `.btn.btn-sm`, already unconditionally
+  44px per the existing touch-target rule, so no new CSS was needed) when a
+  draft is restored.
+  Not covered by this slice - same pattern, smaller composers, split out
+  to keep this PR to one slice: `PostDetail.js`'s reply-to-comment form
+  (`replyText`/`replyingTo`) and `PostItem.js`'s inline feed-card answer
+  composer (`draftText`). Filed as a new item below.
+  Acceptance: `client/src/hooks/__tests__/useDraftAutosave.test.js` (9
+  cases: no draft on mount, debounced save, no save while empty, restore,
+  ignoring an empty stored draft, discard clearing storage, clearing after
+  a simulated submit, and both `getItem`/`setItem` throwing degrading to a
+  no-op) plus `CreatePost.draftAutosave.test.js` and
+  `PostDetail.draftAutosave.test.js` (4 cases each: debounced save,
+  restore-on-mount populating the field, discard clearing the field and
+  storage, successful submit clearing the key). Full client suite (74
+  suites / 421 tests) and lint run clean locally - see PR #PR_NUMBER for
+  the actual output.
+
+- [ ] **Extend draft autosave to the reply-to-comment and feed-card
+  quick-answer composers.** Split off the item above: `PostDetail.js`'s
+  reply form (`replyText`, keyed by the comment being replied to -
+  `` draft:post:${id}:reply:${parentId} ``) and `PostItem.js`'s inline
+  answer composer on feed/list cards (`draftText`, keyed by the post's
+  `_id`) are the same composer pattern and can reuse
+  `useDraftAutosave` as-is; they were left out of the first slice to keep
+  it to one PR.
+  Acceptance: same shape as the shipped slice - debounced save, restore
+  with a discard affordance, and clearing on discard/successful submit,
+  for both composers; existing `PostDetail`/`PostItem` tests unchanged.
 
 - [ ] **RSS / Atom feeds.** Power users and aggregators cannot follow the
   forum without an account. Add `GET /api/feed.xml` (newest questions)
