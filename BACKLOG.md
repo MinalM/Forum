@@ -189,7 +189,7 @@ enough traffic for it to work.
   its binary host there, and the Docker daemon isn't running either) — see
   #124 for the caveat and lean on CI to confirm it.
 
-- [x] **Draft autosave for the composer.** Done in #PR_NUMBER: added a
+- [x] **Draft autosave for the composer.** Done in #126: added a
   shared `useDraftAutosave(key, value, { isEmpty })` hook
   (`client/src/hooks/useDraftAutosave.js`) that debounces (800ms) writing
   `value` to `localStorage` under `key`, surfaces any previously-saved,
@@ -215,7 +215,7 @@ enough traffic for it to work.
   `PostDetail.draftAutosave.test.js` (4 cases each: debounced save,
   restore-on-mount populating the field, discard clearing the field and
   storage, successful submit clearing the key). Full client suite (74
-  suites / 421 tests) and lint run clean locally - see PR #PR_NUMBER for
+  suites / 421 tests) and lint run clean locally - see PR #126 for
   the actual output.
 
 - [ ] **Extend draft autosave to the reply-to-comment and feed-card
