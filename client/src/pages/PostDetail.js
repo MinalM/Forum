@@ -13,6 +13,7 @@ import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import Seo, { truncateDescription, buildQaPageJsonLd } from '../components/common/Seo';
 import TagChip from '../components/common/TagChip';
 import MarkdownComposer from '../components/common/MarkdownComposer';
+import MoveThreadModal from '../components/posts/MoveThreadModal';
 
 const PostDetail = () => {
   const { id } = useParams();
@@ -32,6 +33,7 @@ const PostDetail = () => {
   const [subscribed, setSubscribed] = useState(false);
   const [saved, setSaved] = useState(false);
   const [showMoreActions, setShowMoreActions] = useState(false);
+  const [showMoveModal, setShowMoveModal] = useState(false);
   const [reportModal, setReportModal] = useState({
     isOpen: false,
     type: 'post',
@@ -251,6 +253,12 @@ const PostDetail = () => {
     }
   };
 
+  const handleThreadMoved = (category) => {
+    // Merge, don't replace - see handleUpvote above.
+    setPost((prev) => ({ ...prev, category: category || prev.category }));
+    setShowMoveModal(false);
+  };
+
   const openReportModal = (type, itemId, itemName) => {
     setReportModal({
       isOpen: true,
@@ -397,8 +405,9 @@ const PostDetail = () => {
   const canMarkAnswer = isAuthor || hasPermission(user, 'markAnswer');
   const canLock = hasPermission(user, 'lockThread');
   const canPin = hasPermission(user, 'pinPost');
+  const canMove = hasPermission(user, 'moveThread');
   const canReport = isAuthenticated && !isAuthor;
-  const hasOverflowActions = canEdit || canLock || canPin || canReport;
+  const hasOverflowActions = canEdit || canLock || canPin || canMove || canReport;
   const formattedDate = formatDistanceToNow(new Date(post.createdAt), {
     addSuffix: true
   });
@@ -619,6 +628,19 @@ const PostDetail = () => {
                     >
                       <i className="fas fa-thumbtack"></i>{' '}
                       {post.isPinned ? 'Unpin' : 'Pin'}
+                    </button>
+                  )}
+
+                  {canMove && (
+                    <button
+                      type="button"
+                      className="post-actions-overflow-item"
+                      onClick={() => {
+                        closeMoreActions();
+                        setShowMoveModal(true);
+                      }}
+                    >
+                      <i className="fas fa-arrows-alt"></i> Move to category
                     </button>
                   )}
 
@@ -923,6 +945,14 @@ const PostDetail = () => {
         type={reportModal.type}
         itemId={reportModal.itemId}
         itemName={reportModal.itemName}
+      />
+
+      <MoveThreadModal
+        isOpen={showMoveModal}
+        onClose={() => setShowMoveModal(false)}
+        onMoved={handleThreadMoved}
+        postId={post._id}
+        currentCategoryId={post.category._id}
       />
     </div>
   );

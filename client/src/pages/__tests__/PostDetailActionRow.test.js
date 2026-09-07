@@ -29,6 +29,9 @@ const AUTHOR = { _id: '000000000000000000000010', name: 'Author', role: 'user' }
 const OTHER_USER = { _id: '000000000000000000000011', name: 'Reader', role: 'user' };
 const ADMIN = { _id: '000000000000000000000012', name: 'Admin', role: 'admin' };
 
+const OTHER_CATEGORY = { _id: '000000000000000000000003', name: 'Interview Prep' };
+const CATEGORIES = [{ _id: '000000000000000000000002', name: 'Career Advice' }, OTHER_CATEGORY];
+
 const basePost = {
   _id: POST_ID,
   title: 'A post with actions',
@@ -71,6 +74,9 @@ const setupAsUser = (currentUser, post = basePost) => {
     if (url.endsWith('/comments')) {
       return Promise.resolve({ data: { success: true, data: [] } });
     }
+    if (url === '/api/categories') {
+      return Promise.resolve({ data: { success: true, data: CATEGORIES } });
+    }
     return Promise.resolve({ data: { success: true, data: post } });
   });
 };
@@ -100,7 +106,7 @@ describe('PostDetail action row: inline reader actions vs. overflow menu', () =>
     expect(screen.getByRole('button', { name: /notify me of answers/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^save$/i })).toBeInTheDocument();
 
-    // Edit/Delete/Lock/Pin never apply to this reader, but Report does -
+    // Edit/Delete/Lock/Pin/Move never apply to this reader, but Report does -
     // it must not render inline (unopened), only behind the toggle.
     expect(screen.queryByRole('button', { name: /^report$/i })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /more actions/i })).toBeInTheDocument();
@@ -119,6 +125,7 @@ describe('PostDetail action row: inline reader actions vs. overflow menu', () =>
     expect(within(menu).queryByRole('button', { name: /^delete$/i })).not.toBeInTheDocument();
     expect(within(menu).queryByRole('button', { name: /^lock$/i })).not.toBeInTheDocument();
     expect(within(menu).queryByRole('button', { name: /^pin$/i })).not.toBeInTheDocument();
+    expect(within(menu).queryByRole('button', { name: /move to category/i })).not.toBeInTheDocument();
   });
 
   it('shows Edit and Delete (not Lock/Pin/Report) behind the toggle for the post author', async () => {
@@ -136,11 +143,12 @@ describe('PostDetail action row: inline reader actions vs. overflow menu', () =>
     expect(within(menu).getByRole('button', { name: /^delete$/i })).toBeInTheDocument();
     expect(within(menu).queryByRole('button', { name: /^lock$/i })).not.toBeInTheDocument();
     expect(within(menu).queryByRole('button', { name: /^pin$/i })).not.toBeInTheDocument();
+    expect(within(menu).queryByRole('button', { name: /move to category/i })).not.toBeInTheDocument();
     // The author never reports their own post.
     expect(within(menu).queryByRole('button', { name: /^report$/i })).not.toBeInTheDocument();
   });
 
-  it('shows Edit, Delete, Lock, Pin and Report behind one toggle for an admin viewing someone else\'s post', async () => {
+  it('shows Edit, Delete, Lock, Pin, Move and Report behind one toggle for an admin viewing someone else\'s post', async () => {
     setupAsUser(ADMIN);
     renderPostDetail();
 
@@ -151,6 +159,7 @@ describe('PostDetail action row: inline reader actions vs. overflow menu', () =>
     expect(screen.queryByText(/^delete$/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/^lock$/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/^pin$/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/move to category/i)).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /more actions/i }));
 
@@ -159,6 +168,7 @@ describe('PostDetail action row: inline reader actions vs. overflow menu', () =>
     expect(within(menu).getByRole('button', { name: /^delete$/i })).toBeInTheDocument();
     expect(within(menu).getByRole('button', { name: /^lock$/i })).toBeInTheDocument();
     expect(within(menu).getByRole('button', { name: /^pin$/i })).toBeInTheDocument();
+    expect(within(menu).getByRole('button', { name: /move to category/i })).toBeInTheDocument();
     expect(within(menu).getByRole('button', { name: /^report$/i })).toBeInTheDocument();
   });
 
@@ -313,6 +323,56 @@ describe('PostDetail voting and moderation actions preserve populated post field
       `/api/posts/${POST_ID}/pin`
     ));
     // See the lock test above re: the alert not rendering in this tree.
+    expect(screen.getByRole('link', { name: AUTHOR.name })).toHaveAttribute(
+      'href',
+      `/profile/${AUTHOR._id}`
+    );
+  });
+
+  // BACKLOG.md: moveThread (PUT /api/posts/:id/move) was correctly mounted
+  // and permission-gated server-side but had no client entry point at all.
+  // This covers the "Move to category" overflow item added to close that
+  // gap, following the same merge-not-replace pattern verified above for
+  // lock/pin.
+  it('moves the thread to the chosen category and keeps the author link intact', async () => {
+    setupAsUser(ADMIN);
+    renderPostDetail();
+
+    await screen.findByText('A post with actions');
+    fireEvent.click(screen.getByRole('button', { name: /more actions/i }));
+    fireEvent.click(screen.getByRole('button', { name: /move to category/i }));
+
+    await screen.findByRole('option', { name: OTHER_CATEGORY.name });
+    // The current category never appears as a move target.
+    expect(
+      screen.queryByRole('option', { name: 'Career Advice' })
+    ).not.toBeInTheDocument();
+
+    axios.put.mockResolvedValueOnce({
+      data: {
+        success: true,
+        data: rawUnpopulatedPost({ category: OTHER_CATEGORY._id })
+      }
+    });
+    fireEvent.change(screen.getByLabelText(/move to category/i), {
+      target: { value: OTHER_CATEGORY._id }
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^move$/i }));
+
+    await waitFor(() =>
+      expect(axios.put).toHaveBeenCalledWith(`/api/posts/${POST_ID}/move`, {
+        category: OTHER_CATEGORY._id
+      })
+    );
+
+    // Modal closes and the thread now links to the target category (using
+    // the populated category fetched for the picker, not the raw id the
+    // move endpoint's response carries).
+    expect(screen.queryByLabelText(/move to category/i)).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: OTHER_CATEGORY.name })).toHaveAttribute(
+      'href',
+      `/categories/${OTHER_CATEGORY._id}`
+    );
     expect(screen.getByRole('link', { name: AUTHOR.name })).toHaveAttribute(
       'href',
       `/profile/${AUTHOR._id}`
