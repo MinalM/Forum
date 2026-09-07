@@ -25,6 +25,8 @@ const PostDetail = () => {
   const [notFound, setNotFound] = useState(false);
   useDocumentTitle(notFound ? 'Post Not Found' : post?.title);
   const [comments, setComments] = useState([]);
+  const [relatedPosts, setRelatedPosts] = useState([]);
+  const [relatedLoading, setRelatedLoading] = useState(true);
   const [commentText, setCommentText] = useState('');
   const [pageLoading, setPageLoading] = useState(true);
   const [replyingTo, setReplyingTo] = useState(null);
@@ -67,6 +69,32 @@ const PostDetail = () => {
 
     fetchPostData();
   }, [id, setAlert]);
+
+  useEffect(() => {
+    // Depends only on id - never on post/comments - so a vote or a new
+    // comment (both of which replace post/comments with new object/array
+    // references) never re-fires this fetch.
+    let cancelled = false;
+    setRelatedLoading(true);
+
+    axios
+      .get(`/api/posts/${id}/related`)
+      .then((res) => {
+        if (cancelled) return;
+        setRelatedPosts(Array.isArray(res.data?.data) ? res.data.data : []);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setRelatedPosts([]);
+      })
+      .finally(() => {
+        if (!cancelled) setRelatedLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
 
   useEffect(() => {
     const fetchSubscriptionStatus = async () => {
@@ -514,6 +542,23 @@ const PostDetail = () => {
               <TagChip key={tag} tag={tag} />
             ))}
         </div>
+
+        {!relatedLoading && (
+          <div className="related-questions">
+            <h3>Related questions</h3>
+            {relatedPosts.length > 0 ? (
+              <ul className="related-questions-list">
+                {relatedPosts.map((relatedPost) => (
+                  <li key={relatedPost._id} className="related-questions-item">
+                    <Link to={`/posts/${relatedPost._id}`}>{relatedPost.title}</Link>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="related-questions-empty">No related questions yet.</p>
+            )}
+          </div>
+        )}
 
         <div className="post-actions">
           <div className="post-actions-primary">
