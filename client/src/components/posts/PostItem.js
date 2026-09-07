@@ -8,6 +8,7 @@ import { getPostStatus } from '../../utils/postStatus';
 import { useAuth } from '../../context/AuthContext';
 import { useAlert } from '../../context/AlertContext';
 import { useFeedComposer } from '../../context/FeedComposerContext';
+import { useDraftAutosave } from '../../hooks/useDraftAutosave';
 import TagChip from '../common/TagChip';
 
 // Defensive cap on how many tag chips a card renders — pairs with the
@@ -36,6 +37,22 @@ const PostItem = ({ post: initialPost }) => {
   // present; falls back to local-only state otherwise (e.g. in isolation).
   const feedComposer = useFeedComposer();
   const [localComposerOpen, setLocalComposerOpen] = useState(false);
+
+  const { restoredDraft: restoredAnswerDraft, clearDraft: clearAnswerDraft } =
+    useDraftAutosave(`draft:post:${initialPost._id}:quick-answer`, draftText, {
+      isEmpty: (v) => !v
+    });
+
+  useEffect(() => {
+    if (restoredAnswerDraft) {
+      setDraftText(restoredAnswerDraft);
+    }
+  }, [restoredAnswerDraft]);
+
+  const discardAnswerDraft = () => {
+    setDraftText('');
+    clearAnswerDraft();
+  };
 
   const {
     _id,
@@ -158,6 +175,7 @@ const PostItem = ({ post: initialPost }) => {
           ? [...prev.comments, res.data.data]
           : prev.comments
       }));
+      clearAnswerDraft();
       closeComposer();
     } catch (err) {
       setAlert('Error posting your answer', 'danger');
@@ -311,6 +329,18 @@ const PostItem = ({ post: initialPost }) => {
             {isComposerOpen && (
               isAuthenticated ? (
                 <form className="answer-composer" onSubmit={handleAnswerSubmit}>
+                  {restoredAnswerDraft && (
+                    <div className="alert alert-info draft-restored-banner">
+                      Draft restored —{' '}
+                      <button
+                        type="button"
+                        className="btn btn-sm"
+                        onClick={discardAnswerDraft}
+                      >
+                        Discard
+                      </button>
+                    </div>
+                  )}
                   <textarea
                     className="form-control"
                     rows="3"
