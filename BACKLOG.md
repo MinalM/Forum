@@ -115,20 +115,22 @@ screenshots — that is the sandbox, not the product.
   and between the tag block and `.post-actions`; existing `PostDetail` and
   `PostItem` tests updated.
 
-- [ ] **`moveThread` (move a post to a different category) has no UI and is
-  dead code end to end.** Found alongside the pin/lock routing bug: unlike
-  `pinPost`/`lockThread`, `moveThread` (`server/controllers/posts.js`) is
-  correctly exported and mounted at `PUT /api/posts/:id/move`, but nothing
-  in the client calls it — `client/src/utils/permissions.js` defines the
-  `moveThread` permission and nothing else references it. Low priority: no
-  user-facing regression (there was never a working feature here to break),
-  but it's either a capability worth finishing or code worth removing.
-  Scope: either add a "Move to category" control to the post-detail
-  moderation menu (`PostDetailActionRow`) calling the existing endpoint, or
-  remove `moveThread`/its route/its permission entry if the feature isn't
-  wanted. Acceptance depends on which direction is chosen; if adding UI,
-  follow the pattern of `handleLockThread`/`handlePinThread` (merge the
-  response, don't replace `post`).
+- [x] **`moveThread` (move a post to a different category) has no UI and is
+  dead code end to end.** Done in #123: added a "Move to category" item to
+  the post-detail overflow menu (moderator/admin only, gated on the
+  existing `moveThread` permission), backed by a new `MoveThreadModal`
+  (`client/src/components/posts/MoveThreadModal.js`) that fetches
+  `/api/categories`, excludes the post's current category from the picker,
+  and calls the existing `PUT /api/posts/:id/move` endpoint on submit. The
+  move endpoint's response carries a raw unpopulated `category` id (same
+  class of issue as the upvote/lock/pin fix above), so the modal hands its
+  caller the already-fetched, populated category object to merge in,
+  following the merge-not-replace pattern used by
+  `handleLockThread`/`handlePinThread`. Regression coverage in
+  `client/src/components/posts/__tests__/MoveThreadModal.test.js` (the
+  modal in isolation) and `client/src/pages/__tests__/PostDetailActionRow.test.js`
+  (menu visibility per role, and the end-to-end move keeping the author
+  link intact).
 
 ### Growth: adoption and engagement
 
