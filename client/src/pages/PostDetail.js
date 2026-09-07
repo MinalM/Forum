@@ -10,6 +10,7 @@ import { getPostStatus } from '../utils/postStatus';
 import { getAvatarUrl } from '../utils/avatar';
 import ReportModal from '../components/reports/ReportModal';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
+import { useDraftAutosave } from '../hooks/useDraftAutosave';
 import Seo, { truncateDescription, buildQaPageJsonLd } from '../components/common/Seo';
 import TagChip from '../components/common/TagChip';
 import MarkdownComposer from '../components/common/MarkdownComposer';
@@ -42,6 +43,22 @@ const PostDetail = () => {
     itemId: '',
     itemName: ''
   });
+
+  const { restoredDraft: restoredCommentDraft, clearDraft: clearCommentDraft } =
+    useDraftAutosave(`draft:post:${id}:comment`, commentText, {
+      isEmpty: (v) => !v
+    });
+
+  useEffect(() => {
+    if (restoredCommentDraft) {
+      setCommentText(restoredCommentDraft);
+    }
+  }, [restoredCommentDraft]);
+
+  const discardCommentDraft = () => {
+    setCommentText('');
+    clearCommentDraft();
+  };
 
   useEffect(() => {
     const fetchPostData = async () => {
@@ -174,6 +191,7 @@ const PostDetail = () => {
       // Add the new comment to the comments array
       setComments([...comments, res.data.data]);
       setCommentText('');
+      clearCommentDraft();
       setAlert('Comment added successfully', 'success');
       
       // Refetch post to update comment count in UI
@@ -715,6 +733,14 @@ const PostDetail = () => {
 
         {isAuthenticated && !post.isLocked ? (
           <div className="comment-form">
+            {restoredCommentDraft && (
+              <div className="alert alert-info draft-restored-banner">
+                Draft restored —{' '}
+                <button type="button" className="btn btn-sm" onClick={discardCommentDraft}>
+                  Discard
+                </button>
+              </div>
+            )}
             <form onSubmit={handleCommentSubmit}>
               <div className="form-group">
                 <MarkdownComposer
