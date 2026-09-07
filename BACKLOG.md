@@ -170,11 +170,6 @@ enough traffic for it to work.
   or the deployed sitemap's post URLs) shows real post title/body content
   in the raw HTML; `build-and-test` and the rest of `deploy` unchanged.
 
-**Email delivery, password reset, and welcome email.** Split into slices —
-the original item bundled a mail transport, the forgot/reset-password API,
-a client UI flow, and a welcome send into one PR, which is bigger than the
-one-PR-or-less rule allows.
-
 - [x] **"Related questions" on the post thread.** Done in #124: a new
   `GET /api/posts/:id/related` endpoint ranks other posts by tag overlap
   (weighted) and title/content similarity (the same escaped-regex approach
