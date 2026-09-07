@@ -549,4 +549,111 @@ describe('Posts API', () => {
       expect(res.body.count).toBe(0);
     });
   });
+
+  describe('Related Posts', () => {
+    let source;
+
+    beforeEach(async () => {
+      source = await Post.create({
+        title: 'Understanding Neural Networks',
+        content: 'A deep dive into backpropagation.',
+        tags: ['neural-networks', 'deep-learning'],
+        user: user._id,
+        category: category._id
+      });
+    });
+
+    it('ranks a post sharing tags above unrelated posts', async () => {
+      const tagMatch = await Post.create({
+        title: 'Something else entirely',
+        content: 'Nothing in common on the surface.',
+        tags: ['neural-networks'],
+        user: user._id,
+        category: category._id
+      });
+      const unrelated = await Post.create({
+        title: 'Totally unrelated post',
+        content: 'No overlap at all.',
+        tags: ['career-advice'],
+        user: user._id,
+        category: category._id
+      });
+
+      const res = await request(server).get(`/api/posts/${source._id}/related`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      const ids = res.body.data.map((p) => p._id);
+      expect(ids).toContain(tagMatch._id.toString());
+      expect(ids).not.toContain(unrelated._id.toString());
+    });
+
+    it('matches on title/content similarity when there is no tag overlap', async () => {
+      const titleMatch = await Post.create({
+        title: 'More neural networks questions',
+        content: 'Different topic entirely.',
+        tags: ['unrelated-tag'],
+        user: user._id,
+        category: category._id
+      });
+
+      const res = await request(server).get(`/api/posts/${source._id}/related`);
+
+      expect(res.status).toBe(200);
+      const ids = res.body.data.map((p) => p._id);
+      expect(ids).toContain(titleMatch._id.toString());
+    });
+
+    it('excludes the current post itself', async () => {
+      const res = await request(server).get(`/api/posts/${source._id}/related`);
+
+      expect(res.status).toBe(200);
+      const ids = res.body.data.map((p) => p._id);
+      expect(ids).not.toContain(source._id.toString());
+    });
+
+    it('caps results at 5, newest first among ties', async () => {
+      for (let i = 0; i < 8; i++) {
+        await Post.create({
+          title: `Neural networks question ${i}`,
+          content: 'Related content.',
+          tags: ['neural-networks'],
+          user: user._id,
+          category: category._id
+        });
+      }
+
+      const res = await request(server).get(`/api/posts/${source._id}/related`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.length).toBeLessThanOrEqual(5);
+      expect(new Set(res.body.data.map((p) => p._id)).size).toBe(res.body.data.length);
+    });
+
+    it('returns an empty result set when nothing matches', async () => {
+      const lonely = await Post.create({
+        title: 'Xyzzy plugh',
+        content: 'Zorkmid frobnicate quux',
+        tags: [],
+        user: user._id,
+        category: category._id
+      });
+
+      const res = await request(server).get(`/api/posts/${lonely._id}/related`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.count).toBe(0);
+      expect(res.body.data).toEqual([]);
+    });
+
+    it('404s for an unknown post id', async () => {
+      const res = await request(server).get(
+        '/api/posts/000000000000000000000099/related'
+      );
+
+      expect(res.status).toBe(404);
+      expect(res.body.success).toBe(false);
+    });
+  });
 });

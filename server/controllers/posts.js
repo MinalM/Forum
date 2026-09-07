@@ -16,6 +16,13 @@ const { processMentions, notifyMentionedUsers } = require('../utils/mentions');
 // ranked by rankUnansweredForUser.
 const RECOMMENDED_LIMIT = 5;
 
+// How many "Related questions" the post thread shows.
+const RELATED_LIMIT = 5;
+
+// Title words this short (articles, prepositions, etc.) are too common to
+// be a useful similarity signal, so getRelatedPosts ignores them.
+const MIN_RELATED_TITLE_WORD_LENGTH = 4;
+
 // @desc    Get all posts. GET /api/posts supports ?feed=recent|unanswered|top
 //          (see server/middleware/advancedResults.js), plus the existing
 //          sort/page/limit/search params.
@@ -565,6 +572,81 @@ exports.searchPosts = asyncHandler(async (req, res, next) => {
     count: posts.length,
     pagination,
     data: posts
+  });
+});
+
+// @desc    Related questions for a post thread - ranked by tag overlap and
+//          title/content similarity, reusing the same case-insensitive
+//          escaped-regex matching as searchPosts. Excludes the post itself,
+//          capped at RELATED_LIMIT. Powers the "Related questions" section
+//          on PostDetail and interlinks content for crawlers.
+// @route   GET /api/posts/:id/related
+// @access  Public
+exports.getRelatedPosts = asyncHandler(async (req, res, next) => {
+  const post = await Post.findById(req.params.id).select('title tags');
+
+  if (!post) {
+    return next(
+      new ErrorResponse(`Post not found with id of ${req.params.id}`, 404)
+    );
+  }
+
+  const limit = Math.min(
+    parseInt(req.query.limit, 10) || RELATED_LIMIT,
+    RELATED_LIMIT
+  );
+
+  const tags = post.tags || [];
+  const titleWords = post.title
+    .split(/\W+/)
+    .filter((word) => word.length >= MIN_RELATED_TITLE_WORD_LENGTH);
+  const titleRegex = titleWords.length
+    ? new RegExp(titleWords.map(escapeRegex).join('|'), 'i')
+    : null;
+
+  const orClauses = [];
+  if (tags.length) {
+    orClauses.push({ tags: { $in: tags } });
+  }
+  if (titleRegex) {
+    orClauses.push({ title: titleRegex }, { content: titleRegex });
+  }
+
+  if (!orClauses.length) {
+    return res.status(200).json({ success: true, count: 0, data: [] });
+  }
+
+  // Overfetch newest-first, then re-rank by relevance in memory - the
+  // scoring below (tag overlap weighted above a single text match) isn't
+  // expressible as a Mongo sort without a text index this schema doesn't
+  // have.
+  const candidates = await Post.find({ _id: { $ne: post._id }, $or: orClauses })
+    .sort('-createdAt')
+    .limit(limit * 4)
+    .populate({ path: 'user', select: 'name avatar' })
+    .populate('category', 'name');
+
+  const tagSet = new Set(tags.map((tag) => tag.toLowerCase()));
+
+  const related = candidates
+    .map((candidate) => {
+      const overlap = (candidate.tags || []).filter((tag) =>
+        tagSet.has(tag.toLowerCase())
+      ).length;
+      const textMatch =
+        titleRegex && (titleRegex.test(candidate.title) || titleRegex.test(candidate.content))
+          ? 1
+          : 0;
+      return { candidate, score: overlap * 2 + textMatch };
+    })
+    .sort((a, b) => b.score - a.score || b.candidate.createdAt - a.candidate.createdAt)
+    .slice(0, limit)
+    .map((entry) => entry.candidate);
+
+  res.status(200).json({
+    success: true,
+    count: related.length,
+    data: related
   });
 });
 
