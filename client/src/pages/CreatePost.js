@@ -3,7 +3,11 @@ import { useNavigate } from 'react-router';
 import axios from 'axios';
 import { useAlert } from '../context/AlertContext';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
+import { useDraftAutosave } from '../hooks/useDraftAutosave';
 import MarkdownComposer from '../components/common/MarkdownComposer';
+
+const DRAFT_KEY = 'draft:create-post';
+const isDraftEmpty = (draft) => !draft?.title && !draft?.content;
 
 const CreatePost = () => {
   const { setAlert } = useAlert();
@@ -22,6 +26,23 @@ const CreatePost = () => {
   const [loading, setLoading] = useState(true);
 
   const { title, content, category, tags, aiMlLevel } = formData;
+
+  const { restoredDraft, clearDraft } = useDraftAutosave(
+    DRAFT_KEY,
+    { title, content },
+    { isEmpty: isDraftEmpty }
+  );
+
+  useEffect(() => {
+    if (restoredDraft) {
+      setFormData((prev) => ({ ...prev, ...restoredDraft }));
+    }
+  }, [restoredDraft]);
+
+  const discardDraft = () => {
+    setFormData((prev) => ({ ...prev, title: '', content: '' }));
+    clearDraft();
+  };
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -66,6 +87,7 @@ const CreatePost = () => {
       };
 
       const res = await axios.post('/api/posts', newPost);
+      clearDraft();
       setAlert('Post created successfully', 'success');
       navigate(`/posts/${res.data.data._id}`);
     } catch (err) {
@@ -88,6 +110,15 @@ const CreatePost = () => {
         <p className="text-center mb-4">
           Share your question or knowledge with the community
         </p>
+
+        {restoredDraft && (
+          <div className="alert alert-info draft-restored-banner">
+            Draft restored —{' '}
+            <button type="button" className="btn btn-sm" onClick={discardDraft}>
+              Discard
+            </button>
+          </div>
+        )}
 
         <form onSubmit={onSubmit}>
           <div className="form-group">
