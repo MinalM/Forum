@@ -397,6 +397,43 @@
   opacity: 0.85;
 }
 
+/* "Related questions" section (PostDetail) - see PostDetail.js. */
+.related-questions {
+  background: var(--surface-color);
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.related-questions-list {
+  list-style: none;
+}
+
+.related-questions-item {
+  border-bottom: 1px solid var(--background-color);
+}
+
+.related-questions-item:last-child {
+  border-bottom: none;
+}
+
+/* Anchors are inline by default, so min-height needs a block-ish display
+   to have any effect. WCAG 2.5.5 wants pointer targets >= 44x44 CSS px. */
+.related-questions-item a {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0.5rem 0;
+  color: var(--text-color);
+  text-decoration: none;
+}
+
+.related-questions-empty {
+  color: #666;
+  font-size: 0.95rem;
+}
+
 .tag-chip-btn.following {
   background-color: var(--secondary-color);
   color: var(--text-on-secondary);

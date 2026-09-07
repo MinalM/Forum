@@ -12,7 +12,8 @@ const {
   lockThread,
   getPostsByLevel,
   searchPosts,
-  getRecommendedUnanswered
+  getRecommendedUnanswered,
+  getRelatedPosts
 } = require('../controllers/posts');
 const {
   subscribeToPost,
@@ -47,6 +48,7 @@ router.put('/:id/solve', protect, solvePost);
 // for every caller, including the moderation buttons in PostDetail.js.
 router.put('/:id/pin', protect, pinPost);
 router.put('/:id/lock', protect, lockThread);
+router.get('/:id/related', getRelatedPosts);
 
 router
   .route('/:id/subscribe')

@@ -1279,6 +1279,92 @@ describe('PostDetail tag follow toggle', () => {
   });
 });
 
+describe('PostDetail related questions', () => {
+  const ASKER = { _id: '000000000000000000000060', name: 'Asker', role: 'user' };
+  const relatedPost1 = {
+    _id: '000000000000000000000061',
+    title: 'How do I deploy a PyTorch model?'
+  };
+  const relatedPost2 = {
+    _id: '000000000000000000000062',
+    title: 'Best practices for data pipelines'
+  };
+
+  const postWithAsker = { ...basePost, user: { _id: ASKER._id, name: ASKER.name } };
+
+  const setup = ({ currentUser = null, related = [] } = {}) => {
+    axios.get.mockReset();
+    axios.put.mockReset();
+    localStorage.clear();
+    if (currentUser) {
+      localStorage.setItem('token', 'fake-token');
+    }
+    axios.get.mockImplementation((url) => {
+      if (url === '/api/users/me') {
+        return Promise.resolve({ data: { data: currentUser } });
+      }
+      if (url.endsWith('/comments')) {
+        return Promise.resolve({ data: { success: true, data: [] } });
+      }
+      if (url.endsWith('/related')) {
+        return Promise.resolve({ data: { success: true, data: related } });
+      }
+      return Promise.resolve({ data: { success: true, data: postWithAsker } });
+    });
+  };
+
+  afterEach(() => {
+    localStorage.clear();
+  });
+
+  it('renders distinct related links excluding the current post, each linking into a thread', async () => {
+    setup({ related: [relatedPost1, relatedPost2] });
+    renderPostDetail();
+
+    expect(await screen.findByText('Related questions')).toBeInTheDocument();
+    expect(axios.get).toHaveBeenCalledWith(`/api/posts/${POST_ID}/related`);
+
+    const link1 = screen.getByRole('link', { name: relatedPost1.title });
+    expect(link1).toHaveAttribute('href', `/posts/${relatedPost1._id}`);
+    const link2 = screen.getByRole('link', { name: relatedPost2.title });
+    expect(link2).toHaveAttribute('href', `/posts/${relatedPost2._id}`);
+
+    expect(
+      screen.queryByRole('link', { name: postWithAsker.title })
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows an empty state when nothing is related', async () => {
+    setup({ related: [] });
+    renderPostDetail();
+
+    await screen.findByText(postWithAsker.title);
+    expect(await screen.findByText('No related questions yet.')).toBeInTheDocument();
+  });
+
+  it('does not re-fetch related questions after an in-page upvote', async () => {
+    setup({ currentUser: ASKER, related: [relatedPost1] });
+    axios.put.mockResolvedValue({
+      data: { success: true, data: { upvotes: [ASKER._id], downvotes: [], score: 1 } }
+    });
+    renderPostDetail();
+
+    await screen.findByText('Related questions');
+    const relatedCallsBefore = axios.get.mock.calls.filter((call) =>
+      call[0].endsWith('/related')
+    ).length;
+    expect(relatedCallsBefore).toBe(1);
+
+    fireEvent.click(screen.getByRole('button', { name: /upvote question/i }));
+    await waitFor(() => expect(axios.put).toHaveBeenCalled());
+
+    const relatedCallsAfter = axios.get.mock.calls.filter((call) =>
+      call[0].endsWith('/related')
+    ).length;
+    expect(relatedCallsAfter).toBe(1);
+  });
+});
+
 const AlertCountProbe = () => {
   const { alerts } = useAlert();
   return <div data-testid="alert-count">{alerts.length}</div>;
