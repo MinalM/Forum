@@ -60,6 +60,22 @@ const PostDetail = () => {
     clearCommentDraft();
   };
 
+  const { restoredDraft: restoredReplyDraft, clearDraft: clearReplyDraft } =
+    useDraftAutosave(`draft:post:${id}:reply:${replyingTo}`, replyText, {
+      isEmpty: (v) => !v
+    });
+
+  useEffect(() => {
+    if (restoredReplyDraft) {
+      setReplyText(restoredReplyDraft);
+    }
+  }, [restoredReplyDraft]);
+
+  const discardReplyDraft = () => {
+    setReplyText('');
+    clearReplyDraft();
+  };
+
   useEffect(() => {
     const fetchPostData = async () => {
       try {
@@ -364,6 +380,7 @@ const PostDetail = () => {
 
       setComments([...comments, res.data.data]);
       setReplyText('');
+      clearReplyDraft();
       setReplyingTo(null);
       setAlert('Reply added successfully', 'success');
     } catch (err) {
@@ -915,6 +932,18 @@ const PostDetail = () => {
 
                 {replyingTo === comment._id && (
                   <div className="comment-form">
+                    {restoredReplyDraft && (
+                      <div className="alert alert-info draft-restored-banner">
+                        Draft restored —{' '}
+                        <button
+                          type="button"
+                          className="btn btn-sm"
+                          onClick={discardReplyDraft}
+                        >
+                          Discard
+                        </button>
+                      </div>
+                    )}
                     <form
                       onSubmit={(e) => {
                         e.preventDefault();
