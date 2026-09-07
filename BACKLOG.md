@@ -218,17 +218,27 @@ enough traffic for it to work.
   suites / 421 tests) and lint run clean locally - see PR #126 for
   the actual output.
 
-- [ ] **Extend draft autosave to the reply-to-comment and feed-card
-  quick-answer composers.** Split off the item above: `PostDetail.js`'s
-  reply form (`replyText`, keyed by the comment being replied to -
-  `` draft:post:${id}:reply:${parentId} ``) and `PostItem.js`'s inline
-  answer composer on feed/list cards (`draftText`, keyed by the post's
-  `_id`) are the same composer pattern and can reuse
-  `useDraftAutosave` as-is; they were left out of the first slice to keep
-  it to one PR.
-  Acceptance: same shape as the shipped slice - debounced save, restore
-  with a discard affordance, and clearing on discard/successful submit,
-  for both composers; existing `PostDetail`/`PostItem` tests unchanged.
+- [x] **Extend draft autosave to the reply-to-comment and feed-card
+  quick-answer composers.** Done in #127: `PostDetail.js`'s reply form
+  now autosaves `replyText` under `` draft:post:${id}:reply:${parentId} ``
+  (a single shared field, since only one reply box is open at a time) and
+  `PostItem.js`'s inline feed-card composer autosaves `draftText` under
+  `` draft:post:${_id}:quick-answer `` (a distinct key from `PostDetail`'s
+  own top-level `` draft:post:${id}:comment `` key, kept separate rather
+  than shared since they are different component instances). Both reuse
+  `useDraftAutosave` as-is, following the shipped pattern: a "Draft
+  restored — Discard" banner inside the composer, the draft cleared on
+  discard or a successful submit, and left intact in storage when the
+  composer is merely closed/cancelled (so reopening it - the reply form
+  for the same comment, or the feed card's composer - restores it).
+  Regression coverage in
+  `client/src/pages/__tests__/PostDetail.replyDraftAutosave.test.js` (5
+  cases, including that two comments' reply drafts are kept in separate
+  storage keys) and
+  `client/src/components/posts/__tests__/PostItem.draftAutosave.test.js`
+  (4 cases). Full client suite (76 suites / 431 tests) and lint run clean
+  locally - see PR #127 for the actual output; the server suite is
+  unaffected by this client-only change and was not run.
 
 - [ ] **RSS / Atom feeds.** Power users and aggregators cannot follow the
   forum without an account. Add `GET /api/feed.xml` (newest questions)
