@@ -175,16 +175,24 @@ the original item bundled a mail transport, the forgot/reset-password API,
 a client UI flow, and a welcome send into one PR, which is bigger than the
 one-PR-or-less rule allows.
 
-- [ ] **"Related questions" on the post thread.** A thread is a dead end
-  once read. Below the post (or beside the comments) show 3–5 other
-  questions by tag overlap and title/body similarity, reusing the
-  existing `GET /api/posts/search` relevance, excluding the current
-  post. Interlinks content for crawlers as well as readers.
-  Acceptance: a test renders `PostDetail` with the related endpoint
-  mocked and asserts 3–5 distinct links excluding the current post, an
-  empty state when there are no matches, and that each links into a
-  thread; the query is capped and does not re-fire on in-page
-  vote/comment updates.
+- [x] **"Related questions" on the post thread.** Done in #124: a new
+  `GET /api/posts/:id/related` endpoint ranks other posts by tag overlap
+  (weighted) and title/content similarity (the same escaped-regex approach
+  `searchPosts` uses, built from the source post's own title — `searchPosts`
+  itself has no tag-aware or scored "relevance" to reuse beyond that regex
+  strategy, so this is net-new ranking logic, not a thin wrapper).
+  `PostDetail.js` fetches it in a `useEffect` keyed only on the post `id`
+  (never on `post`/`comments`, which get new object/array references on
+  every vote or new comment) and renders a "Related questions" list below
+  the tags, capped at 5, with a plain-text empty state. Regression coverage
+  in `server/__tests__/integration/posts.test.js` (`describe('Related
+  Posts', ...)`, 6 cases) and `client/src/pages/__tests__/PostDetail.test.js`
+  (distinct links excluding the current post, empty state, no re-fetch on
+  an in-page upvote), plus a `mobileTouchTargets.test.js` entry for the new
+  `.related-questions-item a` 44px link. The server suite could not be run
+  in the sandbox that implemented this (`mongodb-memory-server` can't reach
+  its binary host there, and the Docker daemon isn't running either) — see
+  #124 for the caveat and lean on CI to confirm it.
 
 - [ ] **Draft autosave for the composer.** A long answer lost to an
   accidental navigation or refresh is a silent contribution killed.
