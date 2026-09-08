@@ -139,6 +139,30 @@ describe('Seo', () => {
     });
     expect(getJsonLd()).toBeNull();
   });
+
+  it('renders an Atom alternate link when feedUrl is given', async () => {
+    renderSeo({ title: 'Home', feedUrl: 'http://localhost:2000/api/feed.xml' });
+
+    await waitFor(() => {
+      expect(getHeadLink('alternate')).toHaveAttribute(
+        'href',
+        'http://localhost:2000/api/feed.xml'
+      );
+    });
+    expect(getHeadLink('alternate')).toHaveAttribute(
+      'type',
+      'application/atom+xml'
+    );
+  });
+
+  it('omits the Atom alternate link when feedUrl is not given', async () => {
+    renderSeo({});
+
+    await waitFor(() => {
+      expect(getMeta('property', 'og:title')).toBeInTheDocument();
+    });
+    expect(getHeadLink('alternate')).not.toBeInTheDocument();
+  });
 });
 
 describe('buildQaPageJsonLd', () => {

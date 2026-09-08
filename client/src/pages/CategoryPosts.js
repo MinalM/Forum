@@ -7,6 +7,7 @@ import PostItem from '../components/posts/PostItem';
 import { FeedComposerProvider } from '../context/FeedComposerContext';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import Seo, { truncateDescription } from '../components/common/Seo';
+import config from '../config';
 
 const CategoryPosts = () => {
   const { categoryId } = useParams();
@@ -120,6 +121,7 @@ const CategoryPosts = () => {
         title={category.name}
         description={truncateDescription(category.description)}
         path={`/categories/${categoryId}`}
+        feedUrl={`${config.apiUrl}/categories/${categoryId}/feed.xml`}
       />
       <div className="category-header">
         <div className="category-info">

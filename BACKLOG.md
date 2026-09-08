@@ -240,17 +240,37 @@ enough traffic for it to work.
   locally - see PR #127 for the actual output; the server suite is
   unaffected by this client-only change and was not run.
 
-- [ ] **RSS / Atom feeds.** Power users and aggregators cannot follow the
-  forum without an account. Add `GET /api/feed.xml` (newest questions)
-  and `GET /api/categories/:id/feed.xml`, each a valid Atom document of
-  the N most recent posts (title, author, summary, link, timestamp),
-  linked with `<link rel="alternate" type="application/atom+xml">` in the
-  relevant page `<head>`.
-  Acceptance: integration tests assert each endpoint returns valid Atom
-  (parses; required elements present), the item set and order match
-  `feed=recent` for the same scope, and the category feed 404s for an
-  unknown id; the `<head>` alternate link is present on the home and
-  category pages.
+- [x] **RSS / Atom feeds.** Done in #128: added `GET /api/feed.xml`
+  (sitewide) and `GET /api/categories/:id/feed.xml`, each a hand-built
+  Atom document (following `server/src/routes/sitemap.ts`'s existing
+  precedent for XML responses built from the plain-JS models, rather than
+  pulling in a new dependency) of the 20 most recent posts — title,
+  author name, a Markdown-stripped summary (`server/src/utils/feedSummary.ts`,
+  a small server-only equivalent of the client's DOM-dependent
+  `markdownToPlainText`), permalink, and `<published>`/`<updated>`
+  timestamps, sorted `-createdAt` to match `feed=recent`'s own anonymous
+  default order (`server/middleware/advancedResults.js`). The category
+  feed 404s for both an unknown and a malformed id (a `CastError` flows
+  through the existing global error handler, same as `getCategory`).
+  Both routes are owned by one new file, `server/src/routes/feed.ts`,
+  mounted at `/api` — despite categories' own CRUD living in plain JS
+  (`routes/categories.js`), the two-segment `/:id/feed.xml` path never
+  collides with that router's own routes (`/:id`, `/:categoryId/posts`),
+  which fall through to the next matching middleware when nothing inside
+  them matches. `client/src/components/common/Seo.js` gained a `feedUrl`
+  prop rendering the `<link rel="alternate" type="application/atom+xml">`
+  tag; `Home.js` and `CategoryPosts.js` pass their respective feed URLs.
+  Regression coverage in `server/__tests__/integration/feed.test.js` (7
+  cases: empty feed, ordering/content, order parity with `feed=recent`,
+  the 20-post cap, category scoping, and both 404 cases) plus
+  `Seo.test.js`/`Home.test.js`/`CategoryPosts.test.js` additions for the
+  alternate link. Full client suite (76 suites / 434 tests) and lint ran
+  clean locally. The server suite could not be run in this sandbox —
+  same known constraint as #124/#126 (`mongodb-memory-server` can't reach
+  its binary host, and the Docker daemon won't start either); `npm run
+  build` in `server/` compiled cleanly and the compiled `server/dist/`
+  output is committed alongside the source. See #128 for the caveat and
+  lean on CI to confirm the server suite.
 
 - [ ] **Reputation, badges, and a leaderboard. (Parked — not yet.)** A
   Q&A community's contribution incentive: points for upvotes received and

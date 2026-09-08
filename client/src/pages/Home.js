@@ -9,6 +9,7 @@ import RecommendedForYou from '../components/RecommendedForYou';
 import { useAuth } from '../context/AuthContext';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import Seo from '../components/common/Seo';
+import config from '../config';
 
 // Drives GET /api/posts?feed=... (see server/middleware/advancedResults.js).
 // "For you" (feed=recent) is ranked server-side against the signed-in
@@ -95,7 +96,7 @@ const Home = () => {
 
   return (
     <div className="main-content">
-      <Seo path="/" />
+      <Seo path="/" feedUrl={`${config.apiUrl}/feed.xml`} />
       <h1 className="visually-hidden">Home</h1>
 
       {!isAuthenticated && (

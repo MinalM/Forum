@@ -6,7 +6,8 @@ import axios from 'axios';
 import Home from '../Home';
 import { AlertProvider } from '../../context/AlertContext';
 import AuthContext from '../../context/AuthContext';
-import { getHeadMeta } from '../../test-utils/headMeta';
+import { getHeadMeta, getHeadLink } from '../../test-utils/headMeta';
+import config from '../../config';
 
 jest.mock('axios', () => ({
   defaults: {},
@@ -252,5 +253,22 @@ describe('Home <head> metadata', () => {
       'AI/ML Career Transition Forum - A community for professionals transitioning to AI/ML careers'
     );
     expect(getHeadMeta('property', 'og:url').getAttribute('content')).toMatch(/\/$/);
+  });
+
+  it('links the sitewide Atom feed as an alternate', async () => {
+    renderHome({ isAuthenticated: false, user: null });
+
+    await screen.findByText('Join the Community');
+
+    await waitFor(() => {
+      expect(getHeadLink('alternate')).toHaveAttribute(
+        'href',
+        `${config.apiUrl}/feed.xml`
+      );
+    });
+    expect(getHeadLink('alternate')).toHaveAttribute(
+      'type',
+      'application/atom+xml'
+    );
   });
 });

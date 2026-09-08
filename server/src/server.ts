@@ -146,6 +146,15 @@ app.get('/api/health', (req, res) => {
 import otelDiagnostics from './routes/otel-diagnostics';
 app.use('/api', otelDiagnostics);
 
+// RSS/Atom feeds (GET /api/feed.xml, GET /api/categories/:id/feed.xml).
+// Mounted after the plain-JS `categories` router above, but that's fine:
+// Express falls through a router whose own routes don't match a given
+// sub-path, so `/api/categories/:id` (one segment) and
+// `/api/categories/:categoryId/posts` never intercept the two-segment
+// `/api/categories/:id/feed.xml` this router owns.
+import feedRouter from './routes/feed';
+app.use('/api', feedRouter);
+
 // Sitemap / robots.txt (crawlers hit these at the site root, proxied there
 // from the client's Netlify domain — see client/netlify.toml)
 import sitemapRouter from './routes/sitemap';
