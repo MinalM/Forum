@@ -6,6 +6,7 @@ import CategoryPosts from '../CategoryPosts';
 import { AlertProvider, useAlert } from '../../context/AlertContext';
 import { AuthProvider } from '../../context/AuthContext';
 import { getHeadMeta, getHeadLink } from '../../test-utils/headMeta';
+import config from '../../config';
 
 jest.mock('axios', () => ({
   defaults: {},
@@ -239,6 +240,14 @@ describe('CategoryPosts <head> metadata', () => {
     );
     expect(getHeadLink('canonical').getAttribute('href')).toContain(
       `/categories/${CATEGORY_ID}`
+    );
+    expect(getHeadLink('alternate')).toHaveAttribute(
+      'href',
+      `${config.apiUrl}/categories/${CATEGORY_ID}/feed.xml`
+    );
+    expect(getHeadLink('alternate')).toHaveAttribute(
+      'type',
+      'application/atom+xml'
     );
   });
 

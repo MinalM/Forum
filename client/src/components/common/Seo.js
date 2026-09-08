@@ -83,7 +83,8 @@ const Seo = ({
   type = 'website',
   image,
   noindex = false,
-  jsonLd
+  jsonLd,
+  feedUrl
 }) => {
   const socialTitle = title ? `${title} | ${SITE_NAME}` : SITE_NAME;
   const url = toAbsoluteUrl(path);
@@ -92,6 +93,9 @@ const Seo = ({
     <Helmet>
       <meta name="description" content={description} />
       <link rel="canonical" href={url} />
+      {feedUrl && (
+        <link rel="alternate" type="application/atom+xml" title={`${SITE_NAME} feed`} href={feedUrl} />
+      )}
       <meta property="og:site_name" content={SITE_NAME} />
       <meta property="og:title" content={socialTitle} />
       <meta property="og:description" content={description} />
