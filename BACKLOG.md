@@ -356,33 +356,25 @@ one PR rather than three.
   green under the new version; `client/package.json` engines/version pins
   revisited if the bump also permits newer Vite/plugin-react majors.
 
-- [ ] **The `security` CI job is red on `main` right now — root `npm audit`
-  fails on a moderate `qs` advisory.** Discovered while driving #101's CI
-  to green: the `security` job's root `npm audit` step (which runs before
-  the client-specific `npm audit --omit=dev` step) fails on
-  [GHSA-x5fp-wj9c-mxmx](https://github.com/advisories/GHSA-x5fp-wj9c-mxmx)
-  (array-limit bypass via bracket-key comma parsing) and
-  [GHSA-4mjr-xmp4-gh2g](https://github.com/advisories/GHSA-4mjr-xmp4-gh2g)
-  (DoS via attacker-controlled `isBuffer`), both in `qs@6.15.3`. `qs` is
-  pulled in transitively at the root (server) level via
-  `express@5.2.1` → `body-parser@2.3.0`, and via
-  `supertest@7.1.4` → `superagent@10.2.3` — nothing client-side. Confirmed
-  reproducing on an unmodified checkout of `main` at `3ebd1e4` (the same
-  commit whose own CI run, ~3.5h earlier, was green on this exact
-  lockfile) — this is a newly-surfaced advisory, not something any
-  particular PR introduced. Priority: high — every open and future PR's
-  `security` check will be red until this is fixed, which blocks this
-  autonomous cycle's merge gate for unrelated work.
-  Scope: root `package.json`/`package-lock.json` only. Likely fix:
-  add a `qs` entry to the root `overrides` block (matching the existing
-  `brace-expansion` pattern) pinning to a patched version (>=6.16.0 once
-  published, or whatever version resolves both advisories), then
-  regenerate the lockfile and confirm `npm run build`/`npm test` and
-  `express`/`body-parser`/`supertest` still behave correctly.
-  Acceptance: root `npm audit` (and `npm run ci` end to end) is clean;
-  server test suite still passes; note in the PR whether `express`/
-  `body-parser`/`superagent` have since published their own fix
-  upstream (in which case the override may already be unnecessary).
+- [x] **The `security` CI job is red on `main` right now — root `npm audit`
+  fails on a moderate `qs` advisory.** Already fixed, checkbox just never
+  updated: PR #102 (merged 2026-09-02) added `"qs": "^6.16.0"` to the root
+  `overrides` block and regenerated `package-lock.json`, exactly the fix
+  this item called for. PR #103, in flight around the same time, ported
+  the identical override into its own branch independently (its commit
+  message cites #102 as already carrying the fix) so it wasn't blocked
+  waiting on #102 to merge first — either way, `main` has carried the fix
+  since 2026-09-02 and this item was simply never checked off.
+  Re-verified 2026-09-08 on `main` at `c275ce7`: root `npm audit` → 0
+  vulnerabilities, `cd client && npm audit --omit=dev` → 0 vulnerabilities,
+  `package-lock.json` resolves `qs` to `6.16.0` at the top level, and the
+  `security` job on `main`'s latest CI run
+  (https://github.com/MinalM/Forum/actions/runs/34173981817/job/101899631516)
+  is green. Per the original acceptance criteria's ask to check whether the
+  override is still needed: no — `body-parser@2.3.0` still declares
+  `qs: ^6.15.2` and `superagent@10.2.3` still declares `qs: ^6.11.2`,
+  neither has bumped its own floor past the vulnerable `6.15.3`, so the
+  override remains load-bearing.
 
 - [ ] **`server/.env.production` is committed to the repo with live
   secrets.** Discovered while checking existing env-var conventions for
