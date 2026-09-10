@@ -376,25 +376,57 @@ one PR rather than three.
   neither has bumped its own floor past the vulnerable `6.15.3`, so the
   override remains load-bearing.
 
-- [ ] **`server/.env.production` is committed to the repo with live
-  secrets.** Discovered while checking existing env-var conventions for
-  the weekly digest's unsubscribe link: `.gitignore` only ignores the
-  literal `.env`, not `.env.production`, so `server/.env.production` —
-  containing a real MongoDB Atlas connection string with credentials,
-  `JWT_SECRET`, and `SESSION_SECRET` — has been committed since PR #65
-  and sits in the repo's git history on every clone. This is a live
-  secrets leak, not a hypothetical one.
-  Needs a human: rotate the Atlas credentials, `JWT_SECRET`, and
-  `SESSION_SECRET` in Render's actual environment config, then remove
-  the file from the working tree going forward (add `.env.production` to
-  `.gitignore`, `git rm --cached` it) — and, since rotation alone doesn't
-  un-leak already-published history, decide whether the exposed commits
-  need scrubbing (e.g. a filtered history rewrite), given this is a
-  private repo that's already been cloned into at least this sandbox.
-  Deliberately not fixed inline: rotating live production credentials
-  needs a human with Render/Atlas access, and rewriting git history is
-  exactly the kind of destructive, hard-to-reverse operation these
-  autonomous-cycle ground rules keep off-limits without a human driving.
-  Acceptance: `server/.env.production` no longer trackable going forward;
-  the Atlas/JWT/session secrets it contained are rotated; a fresh clone
-  can no longer read the old credentials.
+- [x] **`server/.env.production` is committed to the repo with live
+  secrets — stop tracking it going forward.** Split into two items (this
+  one plus the rotation item below) because the original scope mixed a
+  plain repo-hygiene fix with an action only a human with Render/Atlas
+  access can take. Done in #130: `.gitignore` gained a `server/.env.production`
+  entry (the pre-existing `.env` line only matched the literal name, not
+  this one), the file was `git rm --cached` and deleted from the working
+  tree, and `server/.env.production.example` was added (mirroring the
+  existing root `.env.example` pattern) documenting every var
+  `server/src/server.ts` reads in production — `MONGO_URI`, `JWT_SECRET`,
+  `JWT_EXPIRE`, `JWT_COOKIE_EXPIRE`, `PORT`, `NODE_ENV`, `CORS_ORIGIN`,
+  `SESSION_SECRET`, plus the commented-out OTEL vars — with placeholder
+  values only. Confirmed via `dotenv.config()` in `server/src/server.ts`
+  (no explicit path, no `NODE_ENV`-based filename) that the app never
+  actually loaded `.env.production` at runtime, so removing it has no
+  runtime effect; `scripts/switch-mongo.js`'s `npm run mongo:atlas`
+  already guards its read with `fs.existsSync` and degrades to a clear
+  "no MONGO_URI found" message instead of crashing when the file is
+  absent, which is now the expected fresh-clone state. Regression
+  coverage in `server/__tests__/envProductionSecrets.test.js` (3 cases:
+  the file is gitignored, it no longer exists in the working tree, and
+  the example file documents the same keys without any of the leaked
+  values). The server suite could not be run in the sandbox that did this
+  work — same `mongodb-memory-server` binary-download constraint noted on
+  #124/#126/#128 — so this suite is unverified beyond manual assertion
+  checks outside Jest; lean on CI to confirm it.
+  This slice does **not** address the leak itself: the credentials this
+  file exposed are still valid and still sit in git history. See the item
+  below.
+
+- [ ] **Rotate the Atlas/JWT/session secrets leaked via the
+  now-untracked `server/.env.production`, and decide on a history
+  scrub.** Remaining half of the item above, after #130 split off the
+  repo-hygiene slice. The credentials that file exposed — a MongoDB Atlas
+  connection string with password, `JWT_SECRET`, `SESSION_SECRET` — have
+  been in the repo's git history since PR #65 and are still live; removing
+  the file from the working tree (done in #130) does not invalidate them
+  or scrub the history that still contains them.
+  Needs a human: rotate the Atlas password, `JWT_SECRET`, and
+  `SESSION_SECRET` in Render's actual environment config (Render reads its
+  own dashboard env vars, not this file — confirmed while doing #130 that
+  `server/src/server.ts` never loaded `.env.production` at runtime, so
+  rotating here is purely about Render's config and Atlas's own user
+  management), then decide whether the exposed commits need scrubbing
+  (e.g. a filtered history rewrite), given this is a private repo that's
+  already been cloned into at least this sandbox. Deliberately not
+  attempted autonomously: rotating live production credentials needs a
+  human with Render/Atlas access, and rewriting git history is exactly the
+  kind of destructive, hard-to-reverse operation these autonomous-cycle
+  ground rules keep off-limits without a human driving.
+  Acceptance: the Atlas/JWT/session secrets that were in
+  `server/.env.production` are rotated in Render and Atlas; a decision is
+  made and, if scrubbing is chosen, executed on whether the exposed
+  history needs rewriting.

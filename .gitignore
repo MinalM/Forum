@@ -5,6 +5,11 @@ node_modules/
 # Environment variables
 .env
 
+# server/.env.production was committed with live production secrets
+# (MongoDB Atlas credentials, JWT_SECRET, SESSION_SECRET) - see BACKLOG.md.
+# Ignored going forward; server/.env.production.example documents the keys.
+server/.env.production
+
 # Build files
 /client/build
 
